@@ -76,7 +76,7 @@ int ContaminationEstimator::ReadSVDMatrix(const std::string UDpath, const std::s
     return 0;
 }
 
-ContaminationEstimator::ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile, int nfiles):viewer(bamFile,faiFile,bedFile,1) {
+ContaminationEstimator::ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile, int nfiles):PC(1,std::vector<PCtype>(2,0)),viewer(bamFile,faiFile,bedFile,1) {
     ReadChooseBed(std::string(bedFile));
     alpha=0.01;
     NumMarker=0;
@@ -143,10 +143,11 @@ int ContaminationEstimator::ReadMean(const std::string &path)
         chr=snpName.substr(0,snpName.find(':',0));
         pos = atoi(snpName.substr(snpName.find(':', 0)+1,snpName.find('_',0)).c_str());
         ss >> mu;
-        //std::cerr << chr << "\t" << pos << std::endl;
+        std::cerr << chr << "\t" << pos << "\t"<<mu<<std::endl;
         PosVec.push_back(make_pair(chr, pos));
-        means[index]=mu;
-        index++;
+        means.push_back(mu);
+        //means[index]=mu;
+        //index++;
     }
     fin.close();
     return means.size();

@@ -45,7 +45,7 @@ public:
         double llk0;
         double llk1;
         ContaminationEstimator *ptr;
-        double PC1, PC2;
+        double PC1, PC2, alpha;
 
         fullLLKFunc(){};
 
@@ -256,18 +256,21 @@ public:
         }
 
         virtual double Evaluate(Vector &v) {
-            if (v.Length() != 2)
-                error("fullMixLLKFunc(): Input vector must be length of 2");
+            if (v.Length() != 3)
+                error("fullMixLLKFunc(): Input vector must be length of 3");
 
             double tmpPC1 = v[0];//invLogit(v[0]);
             double tmpPC2 = v[1]; //invLogit(v[1]);
+            double tmpAlpha = v[2];
 
-            double smLLK = 0 - computeMixLLKs(tmpPC1, tmpPC2);
+            double smLLK = 0 - computeMixLLKs(tmpPC1, tmpPC2, tmpAlpha);
 
             if (smLLK < llk1) {
                 llk1 = smLLK;
                 PC1 = tmpPC1;
                 PC2 = tmpPC2;
+                alpha=tmpAlpha;
+
             }
 
             return smLLK;
