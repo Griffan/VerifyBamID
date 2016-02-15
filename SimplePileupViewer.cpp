@@ -46,8 +46,8 @@ static inline void pileup_seq(FILE *fp, const bam_pileup1_t *p, int pos, int ref
 {
     int j;
     if (p->is_head) {
-        putc('^', fp);
-        putc(p->b->core.qual > 93? 126 : p->b->core.qual + 33, fp);
+//        putc('^', fp);
+//        putc(p->b->core.qual > 93? 126 : p->b->core.qual + 33, fp);
     }
     if (!p->is_del) {
         int c = p->qpos < p->b->core.l_qseq
@@ -61,23 +61,24 @@ static inline void pileup_seq(FILE *fp, const bam_pileup1_t *p, int pos, int ref
             if (c == '=') c = bam_is_rev(p->b)? ',' : '.';
             else c = bam_is_rev(p->b)? tolower(c) : toupper(c);
         }
-        putc(c, fp);
+//        putc(c, fp);
         tmpBase.push_back(c);
-    } else putc(p->is_refskip? (bam_is_rev(p->b)? '<' : '>') : '*', fp);
+    }
+//    else putc(p->is_refskip? (bam_is_rev(p->b)? '<' : '>') : '*', fp);
     if (p->indel > 0) {//insertion
-        putc('+', fp); printw(p->indel, fp);
+//        putc('+', fp); printw(p->indel, fp);
         for (j = 1; j <= p->indel; ++j) {
             int c = seq_nt16_str[bam_seqi(bam_get_seq(p->b), p->qpos + j)];
-            putc(bam_is_rev(p->b)? tolower(c) : toupper(c), fp);
+//            putc(bam_is_rev(p->b)? tolower(c) : toupper(c), fp);
         }
     } else if (p->indel < 0) {//deletion
-        printw(p->indel, fp);
+//        printw(p->indel, fp);
         for (j = 1; j <= -p->indel; ++j) {
             int c = (ref && (int)pos+j < ref_len)? ref[pos+j] : 'N';
-            putc(bam_is_rev(p->b)? tolower(c) : toupper(c), fp);
+//            putc(bam_is_rev(p->b)? tolower(c) : toupper(c), fp);
         }
     }
-    if (p->is_tail) putc('$', fp);
+//    if (p->is_tail) putc('$', fp);
 }
 
 
@@ -528,12 +529,12 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
         }
     }
     else {
-        pileup_fp = conf->output_fname? fopen(conf->output_fname, "w") : stdout;
+       // pileup_fp = conf->output_fname? fopen(conf->output_fname, "w") : stdout;
 
-        if (pileup_fp == NULL) {
-            fprintf(stderr, "[%s] failed to write to %s: %s\n", __func__, conf->output_fname, strerror(errno));
-            exit(EXIT_FAILURE);
-        }
+//        if (pileup_fp == NULL) {
+//            fprintf(stderr, "[%s] failed to write to %s: %s\n", __func__, conf->output_fname, strerror(errno));
+//            exit(EXIT_FAILURE);
+//        }
     }
 
     // init pileup
@@ -588,7 +589,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
                 }
             }
         } else {
-            fprintf(pileup_fp, "%s\t%d\t%c", h->target_name[tid], pos + 1, (ref && pos < ref_len)? ref[pos] : 'N');
+            //fprintf(pileup_fp, "%s\t%d\t%c", h->target_name[tid], pos + 1, (ref && pos < ref_len)? ref[pos] : 'N');
 
             std::string chr=h->target_name[tid];
             posIndex[chr][pos]=globalIndex;
@@ -603,11 +604,12 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
                             : 0;
                     if (c >= conf->min_baseQ) ++cnt;
                 }
-                fprintf(pileup_fp, "\t%d\t", cnt);
+                //fprintf(pileup_fp, "\t%d\t", cnt);
                 if (n_plp[i] == 0) {// if no reads covered
-                    fputs("*\t*", pileup_fp);
-                    if (conf->flag & MPLP_PRINT_MAPQ) fputs("\t*", pileup_fp);
-                    if (conf->flag & MPLP_PRINT_POS) fputs("\t*", pileup_fp);
+                    //fputs("*\t*", pileup_fp);
+                    //if (conf->flag & MPLP_PRINT_MAPQ) fputs("\t*", pileup_fp);
+                    //if (conf->flag & MPLP_PRINT_POS) fputs("\t*", pileup_fp);
+                    continue;
                 } else {
                     for (j = 0; j < n_plp[i]; ++j) {//each covered read in ith bam file
                         const bam_pileup1_t *p = plp[i] + j;
@@ -619,7 +621,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
                             pileup_seq(pileup_fp, plp[i] + j, pos, ref_len, ref,tmpBase);
                         }
                     }
-                    putc('\t', pileup_fp);
+                    //putc('\t', pileup_fp);
                     for (j = 0; j < n_plp[i]; ++j) {
                         const bam_pileup1_t *p = plp[i] + j;
                         int c = p->qpos < p->b->core.l_qseq
@@ -627,36 +629,36 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
                                 : 0;
                         if (c >= conf->min_baseQ) {
                             c = c + 33 < 126? c + 33 : 126;
-                            putc(c, pileup_fp);
+                            //putc(c, pileup_fp);
                             tmpQual.push_back(c);
                         }
                     }
-                    if (conf->flag & MPLP_PRINT_MAPQ) {
-                        putc('\t', pileup_fp);
-                        for (j = 0; j < n_plp[i]; ++j) {
-                            const bam_pileup1_t *p = plp[i] + j;
-                            int c = bam_get_qual(p->b)[p->qpos];
-                            if ( c < conf->min_baseQ ) continue;
-                            c = plp[i][j].b->core.qual + 33;
-                            if (c > 126) c = 126;
-                            putc(c, pileup_fp);
-                        }
-                    }
-                    if (conf->flag & MPLP_PRINT_POS) {
-                        putc('\t', pileup_fp);
-                        int last = 0;
-                        for (j = 0; j < n_plp[i]; ++j) {
-                            const bam_pileup1_t *p = plp[i] + j;
-                            int c = bam_get_qual(p->b)[p->qpos];
-                            if ( c < conf->min_baseQ ) continue;
-
-                            if (last++) putc(',', pileup_fp);
-                            fprintf(pileup_fp, "%d", plp[i][j].qpos + 1); // FIXME: printf() is very slow...
-                        }
-                    }
+//                    if (conf->flag & MPLP_PRINT_MAPQ) {//multiple pileups
+//                        putc('\t', pileup_fp);
+//                        for (j = 0; j < n_plp[i]; ++j) {
+//                            const bam_pileup1_t *p = plp[i] + j;
+//                            int c = bam_get_qual(p->b)[p->qpos];
+//                            if ( c < conf->min_baseQ ) continue;
+//                            c = plp[i][j].b->core.qual + 33;
+//                            if (c > 126) c = 126;
+//                            putc(c, pileup_fp);
+//                        }
+//                    }
+//                    if (conf->flag & MPLP_PRINT_POS) {
+//                        putc('\t', pileup_fp);
+//                        int last = 0;
+//                        for (j = 0; j < n_plp[i]; ++j) {
+//                            const bam_pileup1_t *p = plp[i] + j;
+//                            int c = bam_get_qual(p->b)[p->qpos];
+//                            if ( c < conf->min_baseQ ) continue;
+//
+//                            if (last++) putc(',', pileup_fp);
+//                            fprintf(pileup_fp, "%d", plp[i][j].qpos + 1); // FIXME: printf() is very slow...
+//                        }
+//                    }
                 }
             }
-            putc('\n', pileup_fp);
+           // putc('\n', pileup_fp);
             baseInfo.push_back(tmpBase);
             qualInfo.push_back(tmpQual);
             globalIndex++;
@@ -679,7 +681,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
         free(bc.fmt_arr);
         free(bcr);
     }
-    if (pileup_fp && conf->output_fname) fclose(pileup_fp);
+    //if (pileup_fp && conf->output_fname) fclose(pileup_fp);
     bam_smpl_destroy(sm); free(buf.s);
     for (i = 0; i < gplp.n; ++i) free(gplp.plp[i]);
     free(gplp.plp); free(gplp.n_plp); free(gplp.m_plp);
