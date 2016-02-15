@@ -247,10 +247,10 @@ public:
                         }
                         tmpLK+=tmpLKallBase*GF[geno1]*GF[geno2];
                     }
-                sumLLK *= tmpLK;
+                sumLLK += log(tmpLK);
             }
             //std::cerr << "sumLLK:" << sumLLK << std::endl;
-            return log(sumLLK);
+            return sumLLK;
         }
 
         fullLLKFunc(ContaminationEstimator *inPtr) {
