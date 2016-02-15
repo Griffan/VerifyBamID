@@ -208,19 +208,21 @@ public:
             size_t glIndex = 0;
             for (size_t i = 0; i != ptr->NumMarker; ++i) {
                 double tmpLK(0);
-                std::cerr << "Number " << i << "th marker out of " << ptr->NumMarker << " markers and " << ptr->NumIndividual << " individuals"<<std::endl;
-                std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "\tmeans:" << ptr->means[i] << std::endl;
+                //std::cerr << "Number " << i << "th marker out of " << ptr->NumMarker << " markers and " << ptr->NumIndividual << " individuals"<<std::endl;
+                //std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "\tmeans:" << ptr->means[i] << std::endl;
 
                 chr = ptr->PosVec[i].first;
                 pos = ptr->PosVec[i].second;
 
-                std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<std::endl;
+                //std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<std::endl;
 
 //                if (ptr->MarkerIndex[chr].find(pos) != ptr->MarkerIndex[chr].end())
 //                    glIndex = ptr->MarkerIndex[chr][pos];
 //                else
 //                    glIndex = ptr->GL.size() - 1;
                 ptr->AFs[i] = ((ptr->UD[i][0] * tPC1 + ptr->UD[i][1] * tPC2) + ptr->means[i]) / 2.0;
+                //std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "\tmeans:" << ptr->means[i] << std::endl;
+
                 if (ptr->AFs[i] < min_af) ptr->AFs[i] = min_af;
                 if (ptr->AFs[i] > max_af) ptr->AFs[i] = max_af;
                 GF[0] = (1 - ptr->AFs[i]) * (1 - ptr->AFs[i]);//genotype frequency
@@ -248,7 +250,7 @@ public:
                 sumLLK *= tmpLK;
             }
             //std::cerr << "sumLLK:" << sumLLK << std::endl;
-            return sumLLK;
+            return log(sumLLK);
         }
 
         fullLLKFunc(ContaminationEstimator *inPtr) {
