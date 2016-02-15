@@ -1,0 +1,338 @@
+/* The MIT License
+
+   Copyright (c) 2009 Genome Research Ltd (GRL), 2010 Broad Institute
+
+   Permission is hereby granted, free of charge, to any person obtaining
+   a copy of this software and associated documentation files (the
+   "Software"), to deal in the Software without restriction, including
+   without limitation the rights to use, copy, modify, merge, publish,
+   distribute, sublicense, and/or sell copies of the Software, and to
+   permit persons to whom the Software is furnished to do so, subject to
+   the following conditions:
+
+   The above copyright notice and this permission notice shall be
+   included in all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+   NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+   BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+   ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+*/
+
+/* Contact: Fan Zhang <fanzhang@umich.edu> */
+#ifndef CONTAMINATIONESTIMATOR_H_
+#define CONTAMINATIONESTIMATOR_H_
+#include <string>
+
+#include <unordered_map>
+//#include <tkDecls.h>
+#include "MathVector.h"
+#include "MathGenMin.h"
+#include "SimplePileupViewer.h"
+class ContaminationEstimator {
+public:
+
+#define PCtype double
+#define PHRED(x)    pow(10.0,x/-10.0)
+
+    class fullLLKFunc : public VectorFunc {
+    public:
+
+        double llk0;
+        double llk1;
+        ContaminationEstimator *ptr;
+        double PC1, PC2;
+
+        fullLLKFunc(){};
+
+        ~fullLLKFunc(){};
+
+        inline static double invLogit(double &x) {
+            double e = exp(x);
+            return e / (1. + e);
+        };
+
+        inline double computeMixLLKs(double tPC1, double tPC2) {
+            double min_af(0.5 / ptr->NumIndividual), max_af((ptr->NumIndividual - 0.5) / ptr->NumIndividual);
+            double sumLLK(0), GF0(0), GF1(0), GF2(0);
+            std::string chr;
+            uint32_t pos;
+            size_t glIndex = 0;
+            for (size_t i = 0; i != ptr->NumMarker; ++i) {
+                //std::cerr << "Number " << i << "th marker out of " << ptr->NumMarker << " markers and " << ptr->NumIndividual << " individuals"<<std::endl;
+                //std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "\tmeans:" << ptr->means[i] << std::endl;
+                chr = ptr->PosVec[i].first;
+                pos = ptr->PosVec[i].second;
+                if (ptr->MarkerIndex[chr].find(pos) != ptr->MarkerIndex[chr].end())
+                    glIndex = ptr->MarkerIndex[chr][pos];
+                else
+                    glIndex = ptr->GL.size() - 1;
+                ptr->AFs[i] = ((ptr->UD[i][0] * tPC1 + ptr->UD[i][1] * tPC2) + ptr->means[i]) / 2.0;
+                if (ptr->AFs[i] < min_af) ptr->AFs[i] = min_af;
+                if (ptr->AFs[i] > max_af) ptr->AFs[i] = max_af;
+                GF0 = (1 - ptr->AFs[i]) * (1 - ptr->AFs[i]);
+                GF1 = 2 * (ptr->AFs[i]) * (1 - ptr->AFs[i]);
+                GF2 = (ptr->AFs[i]) * (ptr->AFs[i]);
+                sumLLK += log(PHRED(ptr->GL[glIndex][0]) * GF0 + PHRED(ptr->GL[glIndex][1]) * GF1 +
+                              PHRED(ptr->GL[glIndex][2]) * GF2);
+                //std::cerr << "GL:" << ptr->GL[glIndex][0] << "\t" << ptr->GL[glIndex][1] << "\t" << ptr->GL[glIndex][2] << "\t" << chr << "\t" << pos << std::endl;
+                //std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "\tmeans:" << ptr->means[i] << std::endl;
+            }
+            //std::cerr << "sumLLK:" << sumLLK << std::endl;
+            return sumLLK;
+        }
+
+        const char base[4]={'a','c','t','g'};
+
+        inline char findAlt(std::vector<char>& tmpBase)
+        {
+            int a[4];
+
+            for (int i = 0; i < tmpBase.size(); ++i) {
+                if(tmpBase[i]=='A' || tmpBase[i]=='a') a[0]++;
+                else if(tmpBase[i]=='C' || tmpBase[i]=='c') a[1]++;
+                else if(tmpBase[i]=='T' || tmpBase[i]=='t') a[2]++;
+                else if(tmpBase[i]=='G' || tmpBase[i]=='g') a[3]++;
+            }
+            int maxIndex(0);
+            for (int j = 0; j < 4; ++j) {
+                if(a[j]>a[maxIndex]) maxIndex=j;
+            }
+            return base[maxIndex];
+        }
+
+        inline double getConditionalBaseLK(char base, int genotype, char altBase, bool error)
+        {
+            if(error)
+            {
+                if(genotype==0)
+                {
+                    if(base=='.' || base==',')
+                    {
+                        return 1;
+                    }
+                    else
+                        return 0;
+                }
+                else if(genotype==1)
+                {
+                if(base=='.' || base==',')
+                {
+                    return 0.5;
+                }
+                else if(base ==altBase || base ==toupper(altBase))
+                {
+                    return 0.5;
+                }
+                else
+                    return 0;
+                }
+                else if(genotype==2)
+                {
+                    if(base==altBase || base==toupper(altBase))
+                    {
+                        return 1;
+                    }
+                    else
+                        return 0;
+                }
+                else
+                {
+                std::cerr<<"genotype error!"<<std::endl;
+                exit(EXIT_FAILURE);
+                }
+            }
+            else
+            {
+                if(genotype==0)
+                {
+                    if(base=='.' || base==',')
+                    {
+                        return 0;
+                    }
+                    else if(base==altBase||base==toupper(altBase))
+                    {
+                        return 1/3;
+                    }
+                    else
+                        return 2/3;
+                }
+                else if(genotype==1)
+                {
+                    if(base=='.' || base==',')
+                    {
+                        return 1/6;
+                    }
+                    else if(base ==altBase || base ==toupper(altBase))
+                    {
+                        return 1/6;
+                    }
+                    else
+                        return 2/3;
+                }
+                else if(genotype==2)
+                {
+                    if(base=='.'||base==',')
+                    {
+                        return 1/3;
+                    }
+                    if(base==altBase || base==toupper(altBase))
+                    {
+                        return 0;
+                    }
+                    else
+                        return 2/3;
+                }
+                else
+                {
+                    std::cerr<<"genotype error!"<<std::endl;
+                    exit(EXIT_FAILURE);
+                }
+
+            }
+
+
+        }
+
+        inline double computeMixLLKs(double tPC1, double tPC2, double alpha) {
+            double min_af(0.5 / ptr->NumIndividual), max_af((ptr->NumIndividual - 0.5) / ptr->NumIndividual);
+            double sumLLK(0);//, GF0(0), GF1(0), GF2(0);
+            double GF[3];
+            std::string chr;
+            uint32_t pos;
+            size_t glIndex = 0;
+            for (size_t i = 0; i != ptr->NumMarker; ++i) {
+                double tmpLK(0);
+                //std::cerr << "Number " << i << "th marker out of " << ptr->NumMarker << " markers and " << ptr->NumIndividual << " individuals"<<std::endl;
+                //std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "\tmeans:" << ptr->means[i] << std::endl;
+                chr = ptr->PosVec[i].first;
+                pos = ptr->PosVec[i].second;
+                if (ptr->MarkerIndex[chr].find(pos) != ptr->MarkerIndex[chr].end())
+                    glIndex = ptr->MarkerIndex[chr][pos];
+                else
+                    glIndex = ptr->GL.size() - 1;
+                ptr->AFs[i] = ((ptr->UD[i][0] * tPC1 + ptr->UD[i][1] * tPC2) + ptr->means[i]) / 2.0;
+                if (ptr->AFs[i] < min_af) ptr->AFs[i] = min_af;
+                if (ptr->AFs[i] > max_af) ptr->AFs[i] = max_af;
+                GF[0] = (1 - ptr->AFs[i]) * (1 - ptr->AFs[i]);//genotype frequency
+                GF[1] = 2 * (ptr->AFs[i]) * (1 - ptr->AFs[i]);
+                GF[2] = (ptr->AFs[i]) * (ptr->AFs[i]);
+                std::vector<char> tmpBase = ptr->viewer.GetBaseInfoAt(chr,pos);
+                std::vector<char> tmpQual = ptr->viewer.GetQualInfoAt(chr,pos);
+                char altBase=findAlt(tmpBase);
+
+                for (int geno1 = 0; geno1 < 3; ++geno1)
+                    for (int geno2 = 0; geno2 < 3; ++geno2) {
+                        double tmpLKallBase(0);
+                        for (int j = 0; j < tmpBase.size(); ++j) {
+
+                            tmpLKallBase *= ((1 - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
+                                      alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
+                                     PHRED(tmpQual[j] - 33)
+                                     + ((1 - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
+                                        alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
+                                       (1 - PHRED(tmpQual[j] - 33));
+                            //std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "\tmeans:" << ptr->means[i] << std::endl;
+                        }
+                        tmpLK+=tmpLKallBase*GF[geno1]*GF[geno2];
+                    }
+                sumLLK *= tmpLK;
+            }
+            //std::cerr << "sumLLK:" << sumLLK << std::endl;
+            return sumLLK;
+        }
+
+        fullLLKFunc(ContaminationEstimator *inPtr) {
+            ptr = inPtr;
+            srand(time(NULL));
+            double r1 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            double r2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            double r3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            llk1 = llk0 = (0 - computeMixLLKs(r1, r2, r3));
+        }
+
+        virtual double Evaluate(Vector &v) {
+            if (v.Length() != 2)
+                error("fullMixLLKFunc(): Input vector must be length of 2");
+
+            double tmpPC1 = v[0];//invLogit(v[0]);
+            double tmpPC2 = v[1]; //invLogit(v[1]);
+
+            double smLLK = 0 - computeMixLLKs(tmpPC1, tmpPC2);
+
+            if (smLLK < llk1) {
+                llk1 = smLLK;
+                PC1 = tmpPC1;
+                PC2 = tmpPC2;
+            }
+
+            return smLLK;
+        }
+    };
+
+    SimplePileupViewer viewer;
+    double alpha;
+    uint32_t NumMarker;
+    uint32_t NumIndividual;
+    fullLLKFunc fn;
+
+    std::unordered_map<std::string, std::unordered_map<uint32_t, uint32_t> > MarkerIndex;
+    //std::unordered_map<std::string, uint32_t> IndividualIndex;
+
+    std::vector<std::vector<PCtype> > UD;
+    std::vector<std::vector<PCtype> > PC;
+    std::vector<std::vector<double> > GL;
+    std::vector<PCtype> means;
+    std::vector<double> AFs;
+
+    std::unordered_map<std::string, std::unordered_map<int, std::pair<char, char> > > ChooseBed;
+    std::vector<std::pair<std::string, int> > PosVec;
+
+    ContaminationEstimator();
+    ContaminationEstimator(const char *bamFile, const char* faiFile, const char* bedFile, int nfiles=1);
+
+    /*Initialize from existed UD*/
+    /*This assumes the markers are the same as the selected vcf*/
+    ContaminationEstimator(const std::string &UDpath, const std::string &PCpath, const std::string &Mean,
+                           const std::string &pileup, const std::string &GLpath, const std::string &Bed);
+
+    int ReadMatrixUD(const std::string &path);
+
+    int ReadMatrixPC(const std::string &path);
+
+    /*Intersect marker sites*/
+    int ReadMatrixGL(const std::string &path);
+
+    int ReadChooseBed(const std::string &path);
+
+    int ReadMean(const std::string &path);
+
+    int CheckMarkerSetConsistency();
+
+    int FormatMarkerIntersection();
+
+    /*Optimize*/
+    int OptimizeLLK();
+
+    int RunMapping();
+
+    int writeVcfFile(const std::string &path);
+
+    int ReadPileup(const std::string &path);
+
+    ~ContaminationEstimator();
+
+    int RunFromVCF(const std::string VcfSiteAFFile, const std::string CurrentMPU, const std::string ReadGroup,
+                   const std::string Prefix);
+
+    int RunFromSVDMatrix(const std::string UDpath, const std::string PCpath, const std::string Mean, const std::string & MPUpath, const std::string &Bed, const std::string& Prefix,const std::string& ReadGroup);
+
+    int ReadSVDMatrix(const std::string UDpath, const std::string Mean, const std::string &Bed);
+
+    int FromBamtoPileup();
+};
+#endif /* CONTAMINATIONESTIMATOR_H_ */
