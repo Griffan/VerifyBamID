@@ -199,7 +199,8 @@ public:
         }
 
         inline double computeMixLLKs(double tPC1, double tPC2, double alpha) {
-            double min_af(0.5 / ptr->NumIndividual), max_af((ptr->NumIndividual - 0.5) / ptr->NumIndividual);
+//            double min_af(0.5 / ptr->NumIndividual), max_af((ptr->NumIndividual - 0.5) / ptr->NumIndividual);
+            double min_af(0.0005), max_af(0.9995);
             double sumLLK(0);//, GF0(0), GF1(0), GF2(0);
             double GF[3];
             std::string chr;
