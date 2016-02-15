@@ -214,7 +214,7 @@ public:
                 chr = ptr->PosVec[i].first;
                 pos = ptr->PosVec[i].second;
 
-                //std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<std::endl;
+                std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<std::endl;
 
 //                if (ptr->MarkerIndex[chr].find(pos) != ptr->MarkerIndex[chr].end())
 //                    glIndex = ptr->MarkerIndex[chr][pos];
@@ -230,11 +230,15 @@ public:
                 GF[2] = (ptr->AFs[i]) * (ptr->AFs[i]);
                 std::vector<char> tmpBase = ptr->viewer.GetBaseInfoAt(chr,pos);
                 std::vector<char> tmpQual = ptr->viewer.GetQualInfoAt(chr,pos);
+                for (int k = 0; k <tmpBase.size() ; ++k) {
+                    std::cerr<<"tmpBase:"<<tmpBase[k]<<std::endl;
+                }
+                std::cerr<<std::endl;
                 char altBase=findAlt(tmpBase);
 
                 for (int geno1 = 0; geno1 < 3; ++geno1)
                     for (int geno2 = 0; geno2 < 3; ++geno2) {
-                        double tmpLKallBase(0);
+                        double tmpLKallBase(1);
                         for (int j = 0; j < tmpBase.size(); ++j) {
 
                             tmpLKallBase *= ((1 - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
@@ -243,13 +247,16 @@ public:
                                      + ((1 - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
                                         alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
                                        (1 - PHRED(tmpQual[j] - 33));
-                            //std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "\tmeans:" << ptr->means[i] << std::endl;
+                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\talpha:"<<alpha<<"\tgetConditionalBaseLK:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\t"<<PHRED(tmpQual[j] - 33)
+                             <<"\t"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 0)<<"\t"<<getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)<< std::endl;
                         }
+                        std::cerr<<"tmpLKallBase:"<<tmpLKallBase;
                         tmpLK+=tmpLKallBase*GF[geno1]*GF[geno2];
+                        std::cerr<<"tmpLK:"<<tmpLK<<std::endl;
                     }
                 sumLLK += log(tmpLK);
             }
-            //std::cerr << "sumLLK:" << sumLLK << std::endl;
+            std::cerr << "sumLLK:" << sumLLK << std::endl;
             return sumLLK;
         }
 

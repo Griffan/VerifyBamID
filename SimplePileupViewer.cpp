@@ -592,8 +592,34 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
             //fprintf(pileup_fp, "%s\t%d\t%c", h->target_name[tid], pos + 1, (ref && pos < ref_len)? ref[pos] : 'N');
 
             std::string chr=h->target_name[tid];
-            posIndex[chr][pos]=globalIndex;
+            int tmpIndex(0);
+            bool existed(false);
+
+            if(posIndex.find(chr)!=posIndex.end())//chr existed
+            {
+                if(posIndex[chr].find(pos)!=posIndex[chr].end())//pos existed
+                {
+                    tmpIndex=posIndex[chr][pos];
+                    existed=true;
+                }
+                else
+                {
+                    posIndex[chr][pos]=globalIndex;
+                    globalIndex++;
+                }
+            }
+            else
+            {
+                posIndex[chr][pos]=globalIndex;
+                globalIndex++;
+            }
+
             std::vector<char> tmpBase,tmpQual;
+            if(existed)
+            {
+                tmpBase=GetBaseInfoAt(chr,pos);
+                tmpQual=GetQualInfoAt(chr,pos);
+            }
 
             for (i = 0; i < n; ++i) {//for each bam file
                 int j, cnt;
@@ -659,9 +685,12 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
                 }
             }
            // putc('\n', pileup_fp);
-            baseInfo.push_back(tmpBase);
-            qualInfo.push_back(tmpQual);
-            globalIndex++;
+            if(not existed)
+            {
+                baseInfo.push_back(tmpBase);
+                qualInfo.push_back(tmpQual);
+            }
+
         }
 
     }
