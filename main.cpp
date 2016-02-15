@@ -57,6 +57,7 @@ int main(int argc, char ** argv) {
 
     ContaminationEstimator Estimator(BamFile.c_str(),RefPath.c_str(),BedPath.c_str(),nfiles);
     Estimator.ReadSVDMatrix(UDPath,MeanPath,BedPath);
+    std::cerr<<"NumMarker:"<<Estimator.NumMarker<<" and UD size:"<<Estimator.UD.size()<<std::endl;
     Estimator.OptimizeLLK();
     return 0;
 }

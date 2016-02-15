@@ -73,10 +73,11 @@ int ContaminationEstimator::ReadSVDMatrix(const std::string UDpath, const std::s
 {
     ReadMatrixUD(UDpath);
     ReadMean(Mean);
+    fn.initialize(this);
     return 0;
 }
 
-ContaminationEstimator::ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile, int nfiles):PC(1,std::vector<PCtype>(2,0)),fn(this),viewer(bamFile,faiFile,bedFile,1) {
+ContaminationEstimator::ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile, int nfiles):PC(1,std::vector<PCtype>(2,0)),viewer(bamFile,faiFile,bedFile,1) {
     ReadChooseBed(std::string(bedFile));
     alpha=0.01;
     NumMarker=0;
@@ -99,7 +100,9 @@ int ContaminationEstimator::ReadMatrixUD(const std::string &path)
         //ss >> chr >> pos;
         ss >> tmpUD[0] >> tmpUD[1];
         UD.push_back(tmpUD);
+        //initialize arrays
         NumMarker++;
+        AFs.push_back(0.);
     }
     fin.close();
     return UD.size();

@@ -208,14 +208,18 @@ public:
             size_t glIndex = 0;
             for (size_t i = 0; i != ptr->NumMarker; ++i) {
                 double tmpLK(0);
-                //std::cerr << "Number " << i << "th marker out of " << ptr->NumMarker << " markers and " << ptr->NumIndividual << " individuals"<<std::endl;
-                //std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "\tmeans:" << ptr->means[i] << std::endl;
+                std::cerr << "Number " << i << "th marker out of " << ptr->NumMarker << " markers and " << ptr->NumIndividual << " individuals"<<std::endl;
+                std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "\tmeans:" << ptr->means[i] << std::endl;
+
                 chr = ptr->PosVec[i].first;
                 pos = ptr->PosVec[i].second;
-                if (ptr->MarkerIndex[chr].find(pos) != ptr->MarkerIndex[chr].end())
-                    glIndex = ptr->MarkerIndex[chr][pos];
-                else
-                    glIndex = ptr->GL.size() - 1;
+
+                std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<std::endl;
+
+//                if (ptr->MarkerIndex[chr].find(pos) != ptr->MarkerIndex[chr].end())
+//                    glIndex = ptr->MarkerIndex[chr][pos];
+//                else
+//                    glIndex = ptr->GL.size() - 1;
                 ptr->AFs[i] = ((ptr->UD[i][0] * tPC1 + ptr->UD[i][1] * tPC2) + ptr->means[i]) / 2.0;
                 if (ptr->AFs[i] < min_af) ptr->AFs[i] = min_af;
                 if (ptr->AFs[i] > max_af) ptr->AFs[i] = max_af;
@@ -248,6 +252,16 @@ public:
         }
 
         fullLLKFunc(ContaminationEstimator *inPtr) {
+            ptr = inPtr;
+            srand(time(NULL));
+            double r1 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            double r2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            double r3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            llk1 = llk0 = (0 - computeMixLLKs(r1, r2, r3));
+        }
+
+        bool initialize(ContaminationEstimator *inPtr)
+        {
             ptr = inPtr;
             srand(time(NULL));
             double r1 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
