@@ -42,12 +42,12 @@ int ContaminationEstimator::OptimizeLLK()
     myMinimizer.point = startingPoint;
     //std::cerr << "Before minimizing:3" << startingPoint.label << std::endl;
     myMinimizer.Minimize(1e-6);
-    double optimalPC1 = myMinimizer.point[0];// fullLLKFunc::invLogit(myMinimizer.point[0]);
-    double optimalPC2 = myMinimizer.point[1]; //fullLLKFunc::invLogit(myMinimizer.point[1]);
-    double optimalAlpha = myMinimizer.point[2];
+    double optimalPC1 = myMinimizer.point[0];
+    double optimalPC2 = myMinimizer.point[1];//fullLLKFunc::invLogit
+    double optimalAlpha = fullLLKFunc::invLogit(myMinimizer.point[2]);
     std::cout << "PCs in OptimizaLLK():" << std::endl;
     std::cout << "PC1:" << optimalPC1 << "\tPC2:" << optimalPC2 << std::endl;
-    std::cout << "Alpha:" << optimalAlpha<<std::endl;
+    std::cout << "Alpha:" << (optimalAlpha<0.5?optimalAlpha:(1-optimalAlpha))<<std::endl;
 
     return 0;
 }
@@ -77,8 +77,9 @@ int ContaminationEstimator::ReadSVDMatrix(const std::string UDpath, const std::s
     return 0;
 }
 
-ContaminationEstimator::ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile, int nfiles):PC(1,std::vector<PCtype>(2,0)),viewer(bamFile,faiFile,bedFile,1) {
+ContaminationEstimator:: ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile, int nfiles):PC(1,std::vector<PCtype>(2,0)) {
     ReadChooseBed(std::string(bedFile));
+    viewer = SimplePileupViewer(&BedVec,bamFile,faiFile,bedFile,1);
     alpha=0.01;
     NumMarker=0;
     NumIndividual=0;
@@ -125,7 +126,7 @@ int ContaminationEstimator::ReadChooseBed(const std::string &path)
         ss >> chr >> pos>>pos;
         ss >> ref >> alt;
 
-        //bedContainer.push_back(line);
+        BedVec.push_back(region_t(chr,pos-1,pos));
         ChooseBed[chr][pos] = std::make_pair(ref,alt);
     }
     fin.close();
@@ -136,7 +137,7 @@ int ContaminationEstimator::ReadMean(const std::string &path)
 {
     std::ifstream fin(path);
     std::string line;
-    uint32_t index(0),pos(0);
+    int index(0),pos(0);
     double mu(0);
     std::string snpName,chr;
     if (!fin.is_open()) {  std::cerr<<"Open file:"<<path<<"\t failed, exit!";exit(EXIT_FAILURE);  }

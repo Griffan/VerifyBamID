@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <iostream>
+
 typedef struct {
     int min_mq, flag, min_baseQ, capQ_thres, max_depth, max_indel_depth, fmt_flag;
     int rflag_require, rflag_filter;
@@ -25,9 +27,28 @@ typedef struct {
 
 typedef std::vector<std::vector<char> >BaseInfo;
 typedef std::vector<std::vector<char> >QualInfo;
+
+class ContaminationEstimator;
+struct region_t{
+    std::string chr;
+    int beg;
+    int end;
+    region_t(std::string chr0, int beg0, int end0)
+    {
+        chr=chr0;
+        beg=beg0;
+        end=end0;
+    }
+} ;
+
+
 class SimplePileupViewer {
 
 public:
+
+    int regIndex;
+    std::vector<region_t>* BedVec;
+
     mplp_conf_t mplp;
 
     BaseInfo baseInfo;
@@ -37,10 +58,22 @@ public:
 
     SimplePileupViewer();
 
-    SimplePileupViewer(const char *bamFile, const char* faiFile, const char* bedFile, int nfiles=1);
+    SimplePileupViewer(std::vector<region_t>* A,const char *bamFile, const char* faiFile, const char* bedFile,int nfiles=1);
 
     int SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn);
 
+    region_t GetNextRegion(bool& BedEOF)
+    {
+        BedEOF=false;
+        if(regIndex<BedVec->size()) {
+            if(regIndex==(BedVec->size()-1)) BedEOF=true;
+            return BedVec->at(regIndex++);
+        }
+        else {
+            std::cerr<<"Region number out of bound!\n"<<std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
 
     inline std::vector<char>& GetBaseInfoAt(std::string& chr, int32_t pos)
     {

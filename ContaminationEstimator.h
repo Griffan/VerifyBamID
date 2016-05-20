@@ -33,11 +33,16 @@
 #include "MathVector.h"
 #include "MathGenMin.h"
 #include "SimplePileupViewer.h"
+#include "omp.h"
 class ContaminationEstimator {
 public:
 
 #define PCtype double
-#define PHRED(x)    pow(10.0,x/-10.0)
+//#define PHRED(x)    pow(10.0,x/-10.0)
+static double Phred(double x)
+{
+	return pow(10.0,x/-10.0);
+}
 
     class fullLLKFunc : public VectorFunc {
     public:
@@ -77,8 +82,8 @@ public:
                 GF0 = (1 - ptr->AFs[i]) * (1 - ptr->AFs[i]);
                 GF1 = 2 * (ptr->AFs[i]) * (1 - ptr->AFs[i]);
                 GF2 = (ptr->AFs[i]) * (ptr->AFs[i]);
-                sumLLK += log(PHRED(ptr->GL[glIndex][0]) * GF0 + PHRED(ptr->GL[glIndex][1]) * GF1 +
-                              PHRED(ptr->GL[glIndex][2]) * GF2);
+                sumLLK += log(Phred(ptr->GL[glIndex][0]) * GF0 + Phred(ptr->GL[glIndex][1]) * GF1 +
+                              Phred(ptr->GL[glIndex][2]) * GF2);
                 //std::cerr << "GL:" << ptr->GL[glIndex][0] << "\t" << ptr->GL[glIndex][1] << "\t" << ptr->GL[glIndex][2] << "\t" << chr << "\t" << pos << std::endl;
                 //std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "\tmeans:" << ptr->means[i] << std::endl;
             }
@@ -91,23 +96,26 @@ public:
         inline char findAlt(std::vector<char>& tmpBase)
         {
             int a[4];
-
+            int maxIndex(-1);
             for (int i = 0; i < tmpBase.size(); ++i) {
+                if(tmpBase[i]=='.'||tmpBase[i]==',') continue;
                 if(tmpBase[i]=='A' || tmpBase[i]=='a') a[0]++;
                 else if(tmpBase[i]=='C' || tmpBase[i]=='c') a[1]++;
                 else if(tmpBase[i]=='T' || tmpBase[i]=='t') a[2]++;
                 else if(tmpBase[i]=='G' || tmpBase[i]=='g') a[3]++;
+                maxIndex=0;
             }
-            int maxIndex(0);
+            if(maxIndex==-1) return 0;
+
             for (int j = 0; j < 4; ++j) {
                 if(a[j]>a[maxIndex]) maxIndex=j;
             }
             return base[maxIndex];
         }
 
-        inline double getConditionalBaseLK(char base, int genotype, char altBase, bool error)
+        inline double getConditionalBaseLK(char base, int genotype, char altBase, bool is_error)
         {
-            if(error)
+            if(!is_error)
             {
                 if(genotype==0)
                 {
@@ -124,7 +132,7 @@ public:
                 {
                     return 0.5;
                 }
-                else if(base ==altBase || base ==toupper(altBase))
+                else if(toupper(base) ==toupper(altBase))
                 {
                     return 0.5;
                 }
@@ -133,7 +141,7 @@ public:
                 }
                 else if(genotype==2)
                 {
-                    if(base==altBase || base==toupper(altBase))
+                    if(toupper(base)==toupper(altBase))
                     {
                         return 1;
                     }
@@ -154,38 +162,38 @@ public:
                     {
                         return 0;
                     }
-                    else if(base==altBase||base==toupper(altBase))
+                    else if(toupper(base)==toupper(altBase))
                     {
-                        return 1/3;
+                        return 1./3.;
                     }
                     else
-                        return 2/3;
+                        return 2./3.;
                 }
                 else if(genotype==1)
                 {
                     if(base=='.' || base==',')
                     {
-                        return 1/6;
+                        return 1./6.;
                     }
-                    else if(base ==altBase || base ==toupper(altBase))
+                    else if(toupper(base) ==toupper(altBase))
                     {
-                        return 1/6;
+                        return 1./6.;
                     }
                     else
-                        return 2/3;
+                        return 2./3.;
                 }
                 else if(genotype==2)
                 {
                     if(base=='.'||base==',')
                     {
-                        return 1/3;
+                        return 1./3.;
                     }
-                    if(base==altBase || base==toupper(altBase))
+                    if(toupper(base)==toupper(altBase))
                     {
                         return 0;
                     }
                     else
-                        return 2/3;
+                        return 2./3.;
                 }
                 else
                 {
@@ -199,29 +207,27 @@ public:
         }
 
         inline double computeMixLLKs(double tPC1, double tPC2, double alpha) {
-//            double min_af(0.5 / ptr->NumIndividual), max_af((ptr->NumIndividual - 0.5) / ptr->NumIndividual);
             double min_af(0.0005), max_af(0.9995);
             double sumLLK(0);//, GF0(0), GF1(0), GF2(0);
-            double GF[3];
-            std::string chr;
-            uint32_t pos;
-            size_t glIndex = 0;
-            for (size_t i = 0; i != ptr->NumMarker; ++i) {
-                double tmpLK(0);
-                //std::cerr << "Number " << i << "th marker out of " << ptr->NumMarker << " markers and " << ptr->NumIndividual << " individuals"<<std::endl;
-                //std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "\tmeans:" << ptr->means[i] << std::endl;
+//            size_t glIndex = 0;
+            omp_set_num_threads(16);
+#pragma omp parallel for reduction (+:sumLLK)
+            for (size_t i = 0; i < ptr->NumMarker; ++i) {
+                double markerLK(0);
+                double GF[3];
+                std::string chr = ptr->PosVec[i].first;
+                uint32_t pos = ptr->PosVec[i].second;
+		        if(ptr->viewer.posIndex.find(chr)==ptr->viewer.posIndex.end())
+		        {
+		        	continue;
+		        }
+		        else if(ptr->viewer.posIndex[chr].find(pos)==ptr->viewer.posIndex[chr].end())
+		        {
+		        	continue;
+		        }
 
-                chr = ptr->PosVec[i].first;
-                pos = ptr->PosVec[i].second;
-
-                std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<std::endl;
-
-//                if (ptr->MarkerIndex[chr].find(pos) != ptr->MarkerIndex[chr].end())
-//                    glIndex = ptr->MarkerIndex[chr][pos];
-//                else
-//                    glIndex = ptr->GL.size() - 1;
                 ptr->AFs[i] = ((ptr->UD[i][0] * tPC1 + ptr->UD[i][1] * tPC2) + ptr->means[i]) / 2.0;
-                //std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "\tmeans:" << ptr->means[i] << std::endl;
+//                std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "PC:"<<tPC1<<"\t"<<tPC2<<"\tmeans:" << ptr->means[i] << std::endl;
 
                 if (ptr->AFs[i] < min_af) ptr->AFs[i] = min_af;
                 if (ptr->AFs[i] > max_af) ptr->AFs[i] = max_af;
@@ -230,33 +236,35 @@ public:
                 GF[2] = (ptr->AFs[i]) * (ptr->AFs[i]);
                 std::vector<char> tmpBase = ptr->viewer.GetBaseInfoAt(chr,pos);
                 std::vector<char> tmpQual = ptr->viewer.GetQualInfoAt(chr,pos);
-                for (int k = 0; k <tmpBase.size() ; ++k) {
-                    std::cerr<<"tmpBase:"<<tmpBase[k]<<std::endl;
-                }
-                std::cerr<<std::endl;
-                char altBase=findAlt(tmpBase);
+                if(tmpBase.size()==0) continue;
+//                std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<"\t";
+//                std::cerr<<"tmpBase:";
+//                for (int k = 0; k <tmpBase.size() ; ++k) {
+//                    std::cerr<<tmpBase[k];
+//                }
+//                std::cerr<<"\t";
+                //char altBase=findAlt(tmpBase);
+                char altBase = ptr->ChooseBed[chr][pos].second;
 
                 for (int geno1 = 0; geno1 < 3; ++geno1)
                     for (int geno2 = 0; geno2 < 3; ++geno2) {
-                        double tmpLKallBase(1);
+                        double baseLK(0);
                         for (int j = 0; j < tmpBase.size(); ++j) {
-
-                            tmpLKallBase *= ((1 - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                      alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
-                                     PHRED(tmpQual[j] - 33)
-                                     + ((1 - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                        alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
-                                       (1 - PHRED(tmpQual[j] - 33));
-                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\talpha:"<<alpha<<"\tgetConditionalBaseLK:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\t"<<PHRED(tmpQual[j] - 33)
-                             <<"\t"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 0)<<"\t"<<getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)<< std::endl;
+                            baseLK += log(((1. - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) + alpha* getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) * Phred(tmpQual[j] - 33)
+                                     + ((1. - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) + alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) * (1 - Phred(tmpQual[j] - 33)));
+//                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\talpha:"<<alpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
+//                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
+//                            <<"\tgetConditionalBaseLK0:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 0)<<"\t"<<getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)<< std::endl;
                         }
-                        std::cerr<<"tmpLKallBase:"<<tmpLKallBase;
-                        tmpLK+=tmpLKallBase*GF[geno1]*GF[geno2];
-                        std::cerr<<"tmpLK:"<<tmpLK<<std::endl;
+//                        std::cerr<<"baseLK:"<<baseLK;
+                        markerLK+=exp(baseLK)*GF[geno1]*GF[geno2];
+//                        std::cerr<<"markerLK:"<<markerLK<<std::endl;
                     }
-                sumLLK += log(tmpLK);
+                if(markerLK > 0)
+                sumLLK += log(markerLK);
+//                std::cerr << "sumLLK:" << sumLLK << std::endl;
             }
-            std::cerr << "sumLLK:" << sumLLK << std::endl;
+//            std::cerr << "sumLLK:" << sumLLK << std::endl;
             return sumLLK;
         }
 
@@ -283,9 +291,9 @@ public:
             if (v.Length() != 3)
                 error("fullMixLLKFunc(): Input vector must be length of 3");
 
-            double tmpPC1 = v[0];//invLogit(v[0]);
-            double tmpPC2 = v[1]; //invLogit(v[1]);
-            double tmpAlpha = v[2];
+            double tmpPC1 = v[0];
+            double tmpPC2 = v[1];
+            double tmpAlpha = invLogit(v[2]);;
 
             double smLLK = 0 - computeMixLLKs(tmpPC1, tmpPC2, tmpAlpha);
 
@@ -296,7 +304,7 @@ public:
                 alpha=tmpAlpha;
 
             }
-
+            std::cerr<<"tmpPC1:"<<PC1<<"\ttmpPC2:"<<PC2<<"\talpha:"<<alpha<<"\tllk:"<<llk1<<std::endl;
             return smLLK;
         }
     };
@@ -317,6 +325,7 @@ public:
     std::vector<double> AFs;
 
     std::unordered_map<std::string, std::unordered_map<int, std::pair<char, char> > > ChooseBed;
+    std::vector<region_t> BedVec;
     std::vector<std::pair<std::string, int> > PosVec;
 
     ContaminationEstimator();

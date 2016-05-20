@@ -306,7 +306,8 @@ static void group_smpl(mplp_pileup_t *m, bam_sample_t *sm, kstring_t *buf,
  */
 int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
 {
-
+    bool BedEOF;
+    hts_idx_t *idx=NULL;
     mplp_aux_t **data;
     int i, tid, pos, *n_plp, beg0 = 0, end0 = INT_MAX, ref_len, max_depth, max_indel_depth;
     const bam_pileup1_t **plp;
@@ -369,8 +370,14 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
         bam_smpl_add(sm, fn[i], (conf->flag&MPLP_IGNORE_RG)? 0 : h_tmp->text);
         // Collect read group IDs with PL (platform) listed in pl_list (note: fragile, strstr search)
         rghash = bcf_call_add_rg(rghash, h_tmp->text, conf->pl_list);
+
+        region_t fisrtReg=GetNextRegion(BedEOF);
+        conf->reg=new char [1024];
+        sprintf(conf->reg,"%s:%d-%d",fisrtReg.chr.c_str(),fisrtReg.beg,fisrtReg.end);
+
         if (conf->reg) {
-            hts_idx_t *idx = sam_index_load(data[i]->fp, fn[i]);
+//            hts_idx_t *idx = sam_index_load(data[i]->fp, fn[i]);
+            idx = sam_index_load(data[i]->fp, fn[i]);
             if (idx == NULL) {
                 fprintf(stderr, "[%s] fail to load index for %s\n", __func__, fn[i]);
                 exit(EXIT_FAILURE);
@@ -380,7 +387,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
                 exit(EXIT_FAILURE);
             }
             if (i == 0) beg0 = data[i]->iter->beg, end0 = data[i]->iter->end;
-            hts_idx_destroy(idx);
+//            hts_idx_destroy(idx);
         }
         else
             data[i]->iter = NULL;
@@ -557,8 +564,41 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
     int32_t globalIndex=0;
 
 
-    while ( (ret=bam_mplp_auto(iter, &tid, &pos, n_plp, plp)) > 0) {
-        if (conf->reg && (pos < beg0 || pos >= end0)) continue; // out of the region requested
+    while (1) {
+        ret=bam_mplp_auto(iter, &tid, &pos, n_plp, plp);
+        //Fan changed:
+        //Now we assume the bam files are sorted, then sites within each region should be consecutive,
+        // then each time pos > end0, we can update beg0 and end0, as well as data[0]->iter
+        //old:
+        //if (conf->reg && (pos < beg0 || pos >= end0)) continue; // out of the region requested
+        //new:
+
+        if (ret<=0||pos >= end0)
+        {
+//            fprintf(stderr,"Process %s...\n",conf->reg);
+            if(BedEOF) break;
+            region_t tmp=GetNextRegion(BedEOF);
+            char reg[1024];
+            sprintf(reg,"%s:%d-%d",tmp.chr.c_str(),tmp.beg,tmp.end);
+            fprintf(stderr,"Process %s...\n",reg);
+//            hts_idx_t *idx = sam_index_load(data[0]->fp, fn[0]);
+//            if (idx == NULL) {
+//                fprintf(stderr, "[%s] fail to load index for %s\n", __func__, fn[0]);
+//                exit(EXIT_FAILURE);
+//            }
+            if ( (data[0]->iter=sam_itr_querys(idx, data[0]->h, reg)) == 0) {
+                fprintf(stderr, "[E::%s] fail to parse region '%s' with %s\n", __func__, reg, fn[0]);
+                exit(EXIT_FAILURE);
+            }
+            beg0 = data[0]->iter->beg, end0 = data[0]->iter->end;
+//            hts_idx_destroy(idx);
+            bam_mplp_destroy(iter);
+            iter = bam_mplp_init(n, mplp_func, (void**)data);
+            if ( conf->flag & MPLP_SMART_OVERLAPS ) bam_mplp_init_overlaps(iter);
+            continue;
+        }
+        else if (pos < beg0 ) continue;
+
         if (conf->bed && tid >= 0 && !bed_overlap(conf->bed, h->target_name[tid], pos, pos+1)) continue;
         mplp_get_ref(data[0], tid, &ref, &ref_len);
         //printf("tid=%d len=%d ref=%p/%s\n", tid, ref_len, ref, ref);
@@ -597,28 +637,28 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
 
             if(posIndex.find(chr)!=posIndex.end())//chr existed
             {
-                if(posIndex[chr].find(pos)!=posIndex[chr].end())//pos existed
+                if(posIndex[chr].find(pos+1)!=posIndex[chr].end())//pos existed
                 {
-                    tmpIndex=posIndex[chr][pos];
+                    tmpIndex=posIndex[chr][pos+1];
                     existed=true;
                 }
                 else
                 {
-                    posIndex[chr][pos]=globalIndex;
+                    posIndex[chr][pos+1]=globalIndex;
                     globalIndex++;
                 }
             }
             else
             {
-                posIndex[chr][pos]=globalIndex;
+                posIndex[chr][pos+1]=globalIndex;
                 globalIndex++;
             }
 
             std::vector<char> tmpBase,tmpQual;
             if(existed)
             {
-                tmpBase=GetBaseInfoAt(chr,pos);
-                tmpQual=GetQualInfoAt(chr,pos);
+                tmpBase=GetBaseInfoAt(chr,pos+1);
+                tmpQual=GetQualInfoAt(chr,pos+1);
             }
 
             for (i = 0; i < n; ++i) {//for each bam file
@@ -694,6 +734,8 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
         }
 
     }
+
+    hts_idx_destroy(idx);
 
     // clean up
     free(bc.tmp.s);
@@ -1475,7 +1517,9 @@ SimplePileupViewer::SimplePileupViewer() {
 
 
 
-SimplePileupViewer::SimplePileupViewer(const char *bamFile, const char* faiFile, const char* bedFile, int nfiles) {
+SimplePileupViewer::SimplePileupViewer(std::vector<region_t>* BedPtr,const char *bamFile, const char* faiFile, const char* bedFile, int nfiles) {
+    BedVec=BedPtr;
+    regIndex=0;
     int c;
     const char *file_list = bamFile;
     char **fn = NULL;
@@ -1523,12 +1567,10 @@ SimplePileupViewer::SimplePileupViewer(const char *bamFile, const char* faiFile,
         delete fn[0];
         delete [] fn;
     }
-
+    if (mplp.fai) fai_destroy(mplp.fai);
+    if (mplp.bed) bed_destroy(mplp.bed);
 }
 
 SimplePileupViewer::~SimplePileupViewer() {
-    if (mplp.rghash) khash_str2int_destroy_free(mplp.rghash);
-    free(mplp.reg); free(mplp.pl_list);
-    if (mplp.fai) fai_destroy(mplp.fai);
-    if (mplp.bed) bed_destroy(mplp.bed);
+
 }
