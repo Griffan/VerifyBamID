@@ -25,48 +25,58 @@ ContaminationEstimator::~ContaminationEstimator() {
 
 int ContaminationEstimator::OptimizeLLK()
 {
-    //std::cerr << "Now the label is:1" << std::endl;
     AmoebaMinimizer myMinimizer;
-    //std::cerr << "Now the label is:2" << std::endl;
-    Vector startingPoint("TestPoint",3);
-    //std::cerr << "Now the label is:3" << std::endl;
-    startingPoint[0] = PC[0][0];
-    startingPoint[1] = PC[0][1];
-    startingPoint[2] = alpha;
-    //startingPoint.label = "startPoint";
-    //std::cerr << "Now the label is:" << startingPoint.label << std::endl;
-    myMinimizer.func = &fn;
-    //std::cerr << "Before minimizing:1" << startingPoint.label << std::endl;
-    myMinimizer.Reset(3);
-    //std::cerr << "Before minimizing:2" << startingPoint.label << std::endl;
-    myMinimizer.point = startingPoint;
-    //std::cerr << "Before minimizing:3" << startingPoint.label << std::endl;
-    myMinimizer.Minimize(1e-6);
-    double optimalPC1 = myMinimizer.point[0];
-    double optimalPC2 = myMinimizer.point[1];//fullLLKFunc::invLogit
-    double optimalAlpha = fullLLKFunc::invLogit(myMinimizer.point[2]);
+    double optimalPC1=0;
+    double optimalPC2=0;
+    double optimalPC3=0;
+    double optimalPC4=0;
+    double optimalAlpha =0;
+    if(isPCFixed)
+    {
+        Vector startingPoint("TestPoint", 1);
+        startingPoint[0] = alpha;
+        startingPoint.label = "startPoint";
+        myMinimizer.func = &fn;
+        myMinimizer.Reset(1);
+        myMinimizer.point = startingPoint;
+        myMinimizer.Minimize(1e-6);
+        optimalAlpha = fullLLKFunc::invLogit(myMinimizer.point[0]);
+    }
+    else if(isAlphaFixed)
+    {
+        Vector startingPoint("TestPoint", 2);
+        startingPoint[0] = PC[0][0];
+        startingPoint[1] = PC[0][1];
+        startingPoint.label = "startPoint";
+        myMinimizer.func = &fn;
+        myMinimizer.Reset(2);
+        myMinimizer.point = startingPoint;
+        myMinimizer.Minimize(1e-6);
+        optimalPC1 = myMinimizer.point[0];
+        optimalPC2 = myMinimizer.point[1];
+    }
+    else {
+        Vector startingPoint("TestPoint", 5);
+        startingPoint[0] = PC[0][0];
+        startingPoint[1] = PC[0][1];
+        startingPoint[2] = PC[0][2];
+        startingPoint[3] = PC[0][3];
+        startingPoint[4] = alpha;
+        startingPoint.label = "startPoint";
+        myMinimizer.func = &fn;
+        myMinimizer.Reset(5);
+        myMinimizer.point = startingPoint;
+        myMinimizer.Minimize(1e-6);
+        optimalPC1 = myMinimizer.point[0];
+        optimalPC2 = myMinimizer.point[1];
+        optimalPC3 = myMinimizer.point[2];
+        optimalPC4 = myMinimizer.point[3];
+        optimalAlpha = fullLLKFunc::invLogit(myMinimizer.point[4]);
+    }
     std::cout << "PCs in OptimizaLLK():" << std::endl;
     std::cout << "PC1:" << optimalPC1 << "\tPC2:" << optimalPC2 << std::endl;
     std::cout << "Alpha:" << (optimalAlpha<0.5?optimalAlpha:(1-optimalAlpha))<<std::endl;
-
     return 0;
-}
-int ContaminationEstimator::RunFromVCF(const std::string VcfSiteAFFile,const std::string CurrentMPU, const std::string ReadGroup, const std::string Prefix)
-{
-	char cmdline[9*1024];
-	char** params = new char*[9];
-	sprintf(cmdline, MPU_PATH " verify --vcf %s --mpu %s --smID %s --out %s.ctm", VcfSiteAFFile.c_str(), CurrentMPU.c_str(), ReadGroup.c_str(), Prefix.c_str());
-	std::stringstream ss(cmdline);
-	std::string para;
-	ss >> para;
-	for (int i = 0; i != 9; ++i)
-	{
-		ss >> para;
-		params[i] = new char[1024];
-		strcpy(params[i], para.c_str());
-	}
-	//runVerify(9, params);
-	return 0;
 }
 
 int ContaminationEstimator::ReadSVDMatrix(const std::string UDpath, const std::string Mean, const std::string &Bed)
@@ -77,7 +87,7 @@ int ContaminationEstimator::ReadSVDMatrix(const std::string UDpath, const std::s
     return 0;
 }
 
-ContaminationEstimator:: ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile, int nfiles):PC(1,std::vector<PCtype>(2,0)) {
+ContaminationEstimator:: ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile, int nfiles):PC(1,std::vector<PCtype>(4,0)) {
     ReadChooseBed(std::string(bedFile));
     viewer = SimplePileupViewer(&BedVec,bamFile,faiFile,bedFile,1);
     alpha=0.01;
@@ -91,7 +101,7 @@ int ContaminationEstimator::ReadMatrixUD(const std::string &path)
     std::ifstream fin(path);
     std::string line;
     uint32_t index(0);
-    std::vector<PCtype> tmpUD(2, 0);
+    std::vector<PCtype> tmpUD(4, 0);
     if (!fin.is_open()) {  std::cerr<<"Open file:"<<path<<"\t failed, exit!";exit(EXIT_FAILURE);  }
     while (std::getline(fin, line))
     {
@@ -99,7 +109,7 @@ int ContaminationEstimator::ReadMatrixUD(const std::string &path)
         //std::string chr;
         //int pos;
         //ss >> chr >> pos;
-        ss >> tmpUD[0] >> tmpUD[1];
+        ss >> tmpUD[0] >> tmpUD[1]>>tmpUD[2]>>tmpUD[3];
         UD.push_back(tmpUD);
         //initialize arrays
         NumMarker++;
@@ -127,7 +137,8 @@ int ContaminationEstimator::ReadChooseBed(const std::string &path)
         ss >> ref >> alt;
 
         BedVec.push_back(region_t(chr,pos-1,pos));
-        ChooseBed[chr][pos] = std::make_pair(ref,alt);
+        PosVec.push_back(make_pair(chr, pos));
+	ChooseBed[chr][pos] = std::make_pair(ref,alt);
     }
     fin.close();
     return UD.size();
@@ -149,11 +160,36 @@ int ContaminationEstimator::ReadMean(const std::string &path)
         pos = atoi(snpName.substr(snpName.find(':', 0)+1,snpName.find('_',0)).c_str());
         ss >> mu;
         //std::cerr << chr << "\t" << pos << "\t"<<mu<<std::endl;
-        PosVec.push_back(make_pair(chr, pos));
+        //PosVec.push_back(make_pair(chr, pos));
         means.push_back(mu);
         //means[index]=mu;
         //index++;
     }
     fin.close();
     return means.size();
+}
+
+int ContaminationEstimator::ReadAF(const std::string & path)
+{
+    std::ifstream fin(path);
+    std::string line;
+    uint32_t pos(0);
+    double AF(0);
+    std::string snpName,chr;
+    int beg(0),end(0);
+    if (!fin.is_open()) {  std::cerr<<"Open file:"<<path<<"\t failed, exit!";exit(EXIT_FAILURE);  }
+    while (std::getline(fin, line))
+    {
+//        if(line[0]=='#'||line.find("INDEL")!=std::string::npos) continue;
+        std::stringstream ss(line);
+        ss>>chr;
+        ss>>pos;
+//        ss>>snpName>>snpName>>snpName>>snpName>>snpName>>snpName;
+//        beg=snpName.find("EUR_AF=");
+//        beg+=7;
+//        AF=atof(snpName.substr(beg,4).c_str());
+        ss>>AF;
+        knownAF[chr][pos]=AF;
+    }
+    return 0;
 }
