@@ -1,1 +1,1 @@
-# contamination-finder
+# VerifyBamID
