@@ -17,15 +17,15 @@ int main(int argc, char **argv) {
                     LONG_PARAM_GROUP("Input/Output Files",
                                      "Input/Output files for the program[Complete Path Recommended]")
                     LONG_STRING_PARAM("UDPath", &UDPath,
-                                      "[String] Pair end 1 fastq file[Leave empty if using fq_list or bam_in]")
-//    LONG_STRING_PARAM("BamFileList", &BamFileList, "[String] Pair end 2 fastq file.[Leave empty if using single end]")
-                    LONG_STRING_PARAM("BamFile", &BamFile,
-                                      "[String] Pair end 2 fastq file.[Leave empty if using single end]")
-                    LONG_STRING_PARAM("BedPath", &BedPath,
-                                      "[String] Path of input fastq files, tab-delimited, one pair-end files per line(one file per line for single end)[Leave empty if using bam_in or fastq_1]")
+                                      "[String] UD matrix from SVD result of genotype matrix[Required]")
                     LONG_STRING_PARAM("MeanPath", &MeanPath,
-                                      "[String] Input bam file path[Leave empty if using fq_list or fastq_1]")
-                    LONG_STRING_PARAM("Reference", &RefPath, "[String] Prefix of all the output files[Required]")
+                                      "[String] Mean matrix of genotype matrix[Required]")
+                    LONG_STRING_PARAM("BamFile", &BamFile,
+                                      "[String] Bam or Cram file for the sample[Required]")
+                    LONG_STRING_PARAM("BedPath", &BedPath,
+                                      "[String] Bed file for markers used in this analysis,(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]")
+
+                    LONG_STRING_PARAM("Reference", &RefPath, "[String] Prefix of reference fa file[Required]")
                     LONG_PARAM("fixPC", &fixPC, "[Bool] Fix PCs to estimate alpha[Optional]")
                     LONG_PARAM("fixAlpha", &fixAlpha, "[Bool] fixAlpha to estimate PC coordinates[Optional]")
                     LONG_STRING_PARAM("knownAF", &knownAF, "[Bool] input known allele frequency, (chr\tpos\tfreq)[Optional]")
@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    ContaminationEstimator Estimator(BamFile.c_str(), RefPath.c_str(), BedPath.c_str(), nfiles);
+    ContaminationEstimator Estimator(BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
     Estimator.ReadSVDMatrix(UDPath, MeanPath, BedPath);
     //std::cerr<<"NumMarker:"<<Estimator.NumMarker<<" and UD size:"<<Estimator.UD.size()<<std::endl;
     if(fixPC)

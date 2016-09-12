@@ -34,7 +34,9 @@
 #include "MathVector.h"
 #include "MathGenMin.h"
 #include "SimplePileupViewer.h"
+#ifdef _OPENMP
 #include "omp.h"
+#endif
 
 class ContaminationEstimator {
 public:
@@ -51,8 +53,7 @@ public:
     class fullLLKFunc : public VectorFunc {
     public:
 
-        double llk0;
-        double llk1;
+        double llk;
         ContaminationEstimator *ptr;
         double PC1, PC2, PC3, PC4,alpha;
 
@@ -192,13 +193,15 @@ public:
             double min_af(0.0005), max_af(0.9995);
             double sumLLK(0);//, GF0(0), GF1(0), GF2(0);
 //            size_t glIndex = 0;
+#ifdef _OPENMP
             omp_set_num_threads(16);
 #pragma omp parallel for reduction (+:sumLLK)
+#endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
                 double markerLK(0);
                 double GF[3];
                 std::string chr = ptr->PosVec[i].first;
-                uint32_t pos = ptr->PosVec[i].second;
+                int pos = ptr->PosVec[i].second;
                 if (ptr->viewer.posIndex.find(chr) == ptr->viewer.posIndex.end()) {
                     continue;
                 }
@@ -257,13 +260,15 @@ public:
             alpha=0.01;
             double sumLLK(0);//, GF0(0), GF1(0), GF2(0);
 //            size_t glIndex = 0;
+#ifdef _OPENMP
             omp_set_num_threads(16);
 #pragma omp parallel for reduction (+:sumLLK)
+#endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
                 double markerLK(0);
                 double GF[3];
                 std::string chr = ptr->PosVec[i].first;
-                uint32_t pos = ptr->PosVec[i].second;
+                int pos = ptr->PosVec[i].second;
                 if (ptr->viewer.posIndex.find(chr) == ptr->viewer.posIndex.end()) {
                     continue;
                 }
@@ -324,14 +329,15 @@ public:
         inline double computeMixLLKs(double alpha) {
             double min_af(0.0005), max_af(0.9995);
             double sumLLK(0);//, GF0(0), GF1(0), GF2(0);
-
+#ifdef _OPENMP
             omp_set_num_threads(16);
 #pragma omp parallel for reduction (+:sumLLK)
+#endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
                 double markerLK(0);
                 double GF[3];
                 std::string chr = ptr->PosVec[i].first;
-                uint32_t pos = ptr->PosVec[i].second;
+                int pos = ptr->PosVec[i].second;
                 if (ptr->viewer.posIndex.find(chr) == ptr->viewer.posIndex.end()) {
                     continue;
                 }
@@ -392,95 +398,85 @@ public:
 
         fullLLKFunc(ContaminationEstimator *inPtr) {
             ptr = inPtr;
-            srand(time(NULL));
+            srand(static_cast<unsigned>(time(NULL)));
             double r1 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             double r2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             double r3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             double r4 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             double r5 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             if(ptr->isPCFixed)
-                llk1 = llk0 = (0 - computeMixLLKs(r3));
+                llk = (0 - computeMixLLKs(r3));
             else if(ptr->isAlphaFixed)
-                llk1 = llk0 = (0 - computeMixLLKs(r1,r2));
+                llk = (0 - computeMixLLKs(r1,r2));
             else
-                llk1 = llk0 = (0 - computeMixLLKs(r1,r2,r3,r4,r5));
+                llk = (0 - computeMixLLKs(r1,r2,r3,r4,r5));
         }
 
-        bool initialize(ContaminationEstimator *inPtr) {
+        int initialize(ContaminationEstimator *inPtr) {
             ptr = inPtr;
-            srand(time(NULL));
+            srand(static_cast<unsigned>(time(NULL)));
             double r1 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             double r2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             double r3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             double r4 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             double r5 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             if(ptr->isPCFixed)
-                llk1 = llk0 = (0 - computeMixLLKs(r3));
+                llk = (0 - computeMixLLKs(r3));
             else if(ptr->isAlphaFixed)
-                llk1 = llk0 = (0 - computeMixLLKs(r1,r2));
+                llk = (0 - computeMixLLKs(r1,r2));
             else
-                llk1 = llk0 = (0 - computeMixLLKs(r1,r2,r3,r4,r5));
-
+                llk = (0 - computeMixLLKs(r1,r2,r3,r4,r5));
+            return 0;
         }
 
         virtual double Evaluate(Vector &v) {
             double smLLK = 0;
             switch (v.Length()) {
                 case 5: {
-                    if (v.Length() != 5)
-                        error("fullMixLLKFunc(): Input vector must be length of 5");
-
                     double tmpPC1 = v[0];
                     double tmpPC2 = v[1];
                     double tmpPC3 = v[2];
                     double tmpPC4 = v[3];
                     double tmpAlpha = invLogit(v[4]);
-
                     smLLK = 0 - computeMixLLKs(tmpPC1, tmpPC2, tmpPC3, tmpPC4,tmpAlpha);
-
-                    if (smLLK < llk1) {
-                        llk1 = smLLK;
+                    if (smLLK < llk) {
+                        llk = smLLK;
                         PC1 = tmpPC1;
                         PC2 = tmpPC2;
                         PC3 = tmpPC3;
                         PC4 = tmpPC4;
                         alpha = tmpAlpha;
-
                     }
                     break;
                 }
-                case 2: {
-                    if (v.Length() != 2)
-                        error("fullMixLLKFunc(): Input vector must be length of 2");
 
+                case 2: {
                     double tmpPC1 = v[0];
                     double tmpPC2 = v[1];
-
                     smLLK = 0 - computeMixLLKs(tmpPC1, tmpPC2);
-
-                    if (smLLK < llk1) {
-                        llk1 = smLLK;
+                    if (smLLK < llk) {
+                        llk = smLLK;
                         PC1 = tmpPC1;
                         PC2 = tmpPC2;
                     }
                     break;
                 }
+
                 case 1: {
-                    if (v.Length() != 1)
-                        error("fullMixLLKFunc(): Input vector must be length of 1");
-
                     double tmpAlpha = invLogit(v[0]);;
-
                     smLLK = 0 - computeMixLLKs(tmpAlpha);
-
-                    if (smLLK < llk1) {
-                        llk1 = smLLK;
+                    if (smLLK < llk) {
+                        llk = smLLK;
                         alpha = tmpAlpha;
                     }
                     break;
                 }
+
+                default:
+                    error("Simplex Vector dimension error!");
+                    exit(EXIT_FAILURE);
             }
-            std::cerr << "tmpPC1:" << PC1 << "\ttmpPC2:" << PC2 << "\talpha:" << alpha << "\tllk:" << llk1 << std::endl;
+            std::cerr << "tmpPC1:" << PC1 << "\ttmpPC2:" << PC2 << "\talpha:" << alpha << "\tllk:" << llk << std::endl;
             return smLLK;
         }
     };
@@ -488,16 +484,16 @@ public:
     SimplePileupViewer viewer;
     double alpha;
     uint32_t NumMarker;
-    uint32_t NumIndividual;
+    //uint32_t NumIndividual;
     fullLLKFunc fn;
 
-    std::unordered_map<std::string, std::unordered_map<uint32_t, uint32_t> > MarkerIndex;
+    //std::unordered_map<std::string, std::unordered_map<uint32_t, uint32_t> > MarkerIndex;
     std::unordered_map<std::string, std::unordered_map<uint32_t, double> > knownAF;
     //std::unordered_map<std::string, uint32_t> IndividualIndex;
 
     std::vector<std::vector<PCtype> > UD;
     std::vector<std::vector<PCtype> > PC;
-    std::vector<std::vector<double> > GL;
+    //std::vector<std::vector<double> > GL;
     std::vector<PCtype> means;
     std::vector<double> AFs;
 
@@ -507,51 +503,53 @@ public:
 
     ContaminationEstimator();
 
-    ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile, int nfiles = 1);
+    ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile);
 
     /*Initialize from existed UD*/
     /*This assumes the markers are the same as the selected vcf*/
-    ContaminationEstimator(const std::string &UDpath, const std::string &PCpath, const std::string &Mean,
+    /*ContaminationEstimator(const std::string &UDpath, const std::string &PCpath, const std::string &Mean,
                            const std::string &pileup, const std::string &GLpath, const std::string &Bed);
-
+    */
     int ReadMatrixUD(const std::string &path);
-
+    /*
     int ReadMatrixPC(const std::string &path);
-
+    */
     /*Intersect marker sites*/
+    /*
     int ReadMatrixGL(const std::string &path);
-
+    */
     int ReadChooseBed(const std::string &path);
 
     int ReadMean(const std::string &path);
 
     int ReadAF(const std::string & path);
-
+    /*
     int CheckMarkerSetConsistency();
 
     int FormatMarkerIntersection();
-
+    */
     /*Optimize*/
     int OptimizeLLK();
-
+    /*
     int RunMapping();
 
     int writeVcfFile(const std::string &path);
 
     int ReadPileup(const std::string &path);
-
+    */
     ~ContaminationEstimator();
-
+    /*
     int RunFromVCF(const std::string VcfSiteAFFile, const std::string CurrentMPU, const std::string ReadGroup,
                    const std::string Prefix);
 
     int RunFromSVDMatrix(const std::string UDpath, const std::string PCpath, const std::string Mean,
                          const std::string &MPUpath, const std::string &Bed, const std::string &Prefix,
                          const std::string &ReadGroup);
-
+    */
     int ReadSVDMatrix(const std::string UDpath, const std::string Mean, const std::string &Bed);
-
+    /*
     int FromBamtoPileup();
+     */
 };
 
 #endif /* CONTAMINATIONESTIMATOR_H_ */

@@ -6,7 +6,6 @@
  */
 
 #include "ContaminationEstimator.h"
-#include <iostream>
 #include <fstream>
 #include <sstream>
 
@@ -14,12 +13,10 @@
 #define MPU_PATH "mpuTools"
 #endif
 ContaminationEstimator::ContaminationEstimator() {
-	// TODO Auto-generated constructor stub
 
 }
 
 ContaminationEstimator::~ContaminationEstimator() {
-	// TODO Auto-generated destructor stub
 }
 
 
@@ -87,12 +84,11 @@ int ContaminationEstimator::ReadSVDMatrix(const std::string UDpath, const std::s
     return 0;
 }
 
-ContaminationEstimator:: ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile, int nfiles):PC(1,std::vector<PCtype>(4,0)) {
+ContaminationEstimator::ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile) : PC(1, std::vector<PCtype>(4, 0)) {
     ReadChooseBed(std::string(bedFile));
     viewer = SimplePileupViewer(&BedVec,bamFile,faiFile,bedFile,1);
     alpha=0.01;
     NumMarker=0;
-    NumIndividual=0;
 
 }
 
@@ -100,7 +96,6 @@ int ContaminationEstimator::ReadMatrixUD(const std::string &path)
 {
     std::ifstream fin(path);
     std::string line;
-    uint32_t index(0);
     std::vector<PCtype> tmpUD(4, 0);
     if (!fin.is_open()) {  std::cerr<<"Open file:"<<path<<"\t failed, exit!";exit(EXIT_FAILURE);  }
     while (std::getline(fin, line))
@@ -116,7 +111,7 @@ int ContaminationEstimator::ReadMatrixUD(const std::string &path)
         AFs.push_back(0.);
     }
     fin.close();
-    return UD.size();
+    return 0;
 }
 
 int ContaminationEstimator::ReadChooseBed(const std::string &path)
@@ -141,14 +136,14 @@ int ContaminationEstimator::ReadChooseBed(const std::string &path)
 	ChooseBed[chr][pos] = std::make_pair(ref,alt);
     }
     fin.close();
-    return UD.size();
+    return 0;
 }
 
 int ContaminationEstimator::ReadMean(const std::string &path)
 {
     std::ifstream fin(path);
     std::string line;
-    int index(0),pos(0);
+    //int pos(0);
     double mu(0);
     std::string snpName,chr;
     if (!fin.is_open()) {  std::cerr<<"Open file:"<<path<<"\t failed, exit!";exit(EXIT_FAILURE);  }
@@ -157,16 +152,14 @@ int ContaminationEstimator::ReadMean(const std::string &path)
         std::stringstream ss(line);
         ss >> snpName;
         chr=snpName.substr(0,snpName.find(':',0));
-        pos = atoi(snpName.substr(snpName.find(':', 0)+1,snpName.find('_',0)).c_str());
+        //pos = atoi(snpName.substr(snpName.find(':', 0)+1,snpName.find('_',0)).c_str());
         ss >> mu;
         //std::cerr << chr << "\t" << pos << "\t"<<mu<<std::endl;
         //PosVec.push_back(make_pair(chr, pos));
         means.push_back(mu);
-        //means[index]=mu;
-        //index++;
     }
     fin.close();
-    return means.size();
+    return 0;
 }
 
 int ContaminationEstimator::ReadAF(const std::string & path)
@@ -175,8 +168,8 @@ int ContaminationEstimator::ReadAF(const std::string & path)
     std::string line;
     uint32_t pos(0);
     double AF(0);
-    std::string snpName,chr;
-    int beg(0),end(0);
+    std::string chr;
+//    int beg(0),end(0);
     if (!fin.is_open()) {  std::cerr<<"Open file:"<<path<<"\t failed, exit!";exit(EXIT_FAILURE);  }
     while (std::getline(fin, line))
     {

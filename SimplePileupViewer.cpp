@@ -308,6 +308,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
 {
     bool BedEOF;
     hts_idx_t *idx=NULL;
+
     mplp_aux_t **data;
     int i, tid, pos, *n_plp, beg0 = 0, end0 = INT_MAX, ref_len, max_depth, max_indel_depth;
     const bam_pileup1_t **plp;
@@ -371,20 +372,28 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
         // Collect read group IDs with PL (platform) listed in pl_list (note: fragile, strstr search)
         rghash = bcf_call_add_rg(rghash, h_tmp->text, conf->pl_list);
 
-        region_t fisrtReg=GetNextRegion(BedEOF);
-        conf->reg=new char [1024];
-        sprintf(conf->reg,"%s:%d-%d",fisrtReg.chr.c_str(),fisrtReg.beg,fisrtReg.end);
 
+        idx = sam_index_load(data[i]->fp, fn[i]);
+        if (idx == NULL) {
+            fprintf(stderr, "[%s] fail to load index for %s\n", __func__, fn[i]);
+            exit(EXIT_FAILURE);
+        }
+        region_t firstReg;
+        conf->reg = new char [1024];
+        REGET:    firstReg = GetNextRegion(BedEOF);
+        sprintf(conf->reg,"%s:%d-%d",firstReg.chr.c_str(),firstReg.beg,firstReg.end);
         if (conf->reg) {
 //            hts_idx_t *idx = sam_index_load(data[i]->fp, fn[i]);
-            idx = sam_index_load(data[i]->fp, fn[i]);
-            if (idx == NULL) {
-                fprintf(stderr, "[%s] fail to load index for %s\n", __func__, fn[i]);
-                exit(EXIT_FAILURE);
-            }
+
             if ( (data[i]->iter=sam_itr_querys(idx, h_tmp, conf->reg)) == 0) {
-                fprintf(stderr, "[E::%s] fail to parse region '%s' with %s\n", __func__, conf->reg, fn[i]);
-                exit(EXIT_FAILURE);
+                fprintf(stderr, "[Warning::%s] initialization fail to parse region '%s' with %s, skip...\n", __func__, conf->reg, fn[i]);
+                if(BedEOF)
+                {
+                    delete [] conf->reg;
+                    fprintf(stderr,"No reads found in any of the regions, exit!");
+                    exit(EXIT_FAILURE);
+                }
+                goto REGET;
             }
             if (i == 0) beg0 = data[i]->iter->beg, end0 = data[i]->iter->end;
 //            hts_idx_destroy(idx);
@@ -577,8 +586,11 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
         {
 //            fprintf(stderr,"Process %s...\n",conf->reg);
             if(BedEOF) break;
-            region_t tmp=GetNextRegion(BedEOF);
             char reg[1024];
+
+            region_t tmp;
+            REGET2:
+            tmp = GetNextRegion(BedEOF);
             sprintf(reg,"%s:%d-%d",tmp.chr.c_str(),tmp.beg,tmp.end);
             fprintf(stderr,"Process %s...\n",reg);
 //            hts_idx_t *idx = sam_index_load(data[0]->fp, fn[0]);
@@ -587,8 +599,12 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
 //                exit(EXIT_FAILURE);
 //            }
             if ( (data[0]->iter=sam_itr_querys(idx, data[0]->h, reg)) == 0) {
-                fprintf(stderr, "[E::%s] fail to parse region '%s' with %s\n", __func__, reg, fn[0]);
-                exit(EXIT_FAILURE);
+                fprintf(stderr, "[Warning::%s] fail to parse region '%s' with %s\n", __func__, reg, fn[0]);
+                if(BedEOF)
+                {
+                    break;
+                }
+                goto REGET2;
             }
             beg0 = data[0]->iter->beg, end0 = data[0]->iter->end;
 //            hts_idx_destroy(idx);
@@ -841,7 +857,7 @@ int mpileup(mplp_conf_t *conf, int n, char **fn)
                 exit(EXIT_FAILURE);
             }
             if ( (data[i]->iter=sam_itr_querys(idx, h_tmp, conf->reg)) == 0) {
-                fprintf(stderr, "[E::%s] fail to parse region '%s' with %s\n", __func__, conf->reg, fn[i]);
+                fprintf(stderr, "[Warning::%s] fail to parse region '%s' with %s\n", __func__, conf->reg, fn[i]);
                 exit(EXIT_FAILURE);
             }
             if (i == 0) beg0 = data[i]->iter->beg, end0 = data[i]->iter->end;

@@ -39,6 +39,12 @@ struct region_t{
         beg=beg0;
         end=end0;
     }
+    region_t()
+    {
+        chr="";
+        beg=0;
+        end=0;
+    }
 } ;
 
 
