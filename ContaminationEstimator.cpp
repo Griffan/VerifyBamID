@@ -23,11 +23,11 @@ ContaminationEstimator::~ContaminationEstimator() {
 int ContaminationEstimator::OptimizeLLK()
 {
     AmoebaMinimizer myMinimizer;
-    double optimalPC1=0;
-    double optimalPC2=0;
-    double optimalPC3=0;
-    double optimalPC4=0;
-    double optimalAlpha =0;
+    double optimalPC1=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+    double optimalPC2=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+    double optimalPC3=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+    double optimalPC4=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+    double optimalAlpha =static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
     if(isPCFixed)
     {
         Vector startingPoint("TestPoint", 1);

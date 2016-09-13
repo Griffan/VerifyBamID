@@ -43,6 +43,7 @@ public:
     bool isPCFixed;
     bool isAlphaFixed;
     bool isAFknown;
+    int seed;
 #define PCtype double
 
 //#define PHRED(x)    pow(10.0,x/-10.0)
@@ -398,7 +399,7 @@ public:
 
         fullLLKFunc(ContaminationEstimator *inPtr) {
             ptr = inPtr;
-            srand(static_cast<unsigned>(time(NULL)));
+            srand(ptr->seed);
             double r1 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             double r2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             double r3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
@@ -414,7 +415,7 @@ public:
 
         int initialize(ContaminationEstimator *inPtr) {
             ptr = inPtr;
-            srand(static_cast<unsigned>(time(NULL)));
+            srand(ptr->seed);
             double r1 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             double r2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             double r3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
