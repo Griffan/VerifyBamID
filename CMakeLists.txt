@@ -14,7 +14,7 @@ ExternalProject_Add(HTSLIB
         UPDATE_COMMAND ""
 
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib
-        CONFIGURE_COMMAND autoheader && /usr/local/bin/autoconf && ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/configure --prefix=${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib
+        CONFIGURE_COMMAND autoheader && autoconf && ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/configure --prefix=${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib
         BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib
         BUILD_COMMAND make && make test
 )
