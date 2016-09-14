@@ -13,16 +13,18 @@ Results: We applied our method to 1000 Genomes datasets by simulating contaminat
   - make test
 
 ## Usage
+```
+VerifyBamID --UDPath ./resource/hapmap_3.3.b37.dat.UD --BamFile ./resource/test.bam --BedPath ./resource/choose.bed --MeanPath ./resource/hapmap_3.3.b37.dat.mu --Reference ./resource/chr20.fa.gz
+```
+```
+--UDPath    [String] UD matrix file from SVD result of genotype matrix[Required]
+--MeanPath  [String] Mean matrix file of genotype matrix[Required]
+--BamFile   [String] Bam or Cram file for the sample[Required]
+--BedPath   [String] Bed file for markers used in this analysis,(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]
+--Reference [String] reference file[Required]
+--Seed      [INT] Random number seed(default:12345)
+```
 
-`VerifyBamID --UDPath ./resource/hapmap_3.3.b37.dat.UD --BamFile ./resource/test.bam --BedPath ./resource/choose.bed --MeanPath ./resource/hapmap_3.3.b37.dat.mu --Reference ./resource/chr20.fa.gz`
-
-`                   --UDPath    [String] UD matrix file from SVD result of genotype matrix[Required]
-                    --MeanPath  [String] Mean matrix file of genotype matrix[Required]
-                    --BamFile   [String] Bam or Cram file for the sample[Required]
-                    --BedPath   [String] Bed file for markers used in this analysis,(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]
-                    --Reference [String] reference file[Required]
-                    --Seed      [INT] Random number seed(default:12345)
-`
 ## Contributing
 
 1. Fork it!
