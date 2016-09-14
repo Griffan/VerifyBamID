@@ -36,9 +36,9 @@ add_executable(VerifyBamID ${SOURCE_FILES})
 
 find_library(ZLIB z HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
 #find_library(HITSLIB hts HINTS  ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/ /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
-link_directories(${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/lib/)
-target_link_libraries(VerifyBamID statgen samtools hts ${ZLIB})
 
+target_link_libraries(VerifyBamID statgen samtools ${ZLIB})
+add_dependencies(VerifyBamID HTSLIB)
 enable_testing()
 add_test( NAME myTest
           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
