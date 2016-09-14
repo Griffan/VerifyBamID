@@ -97,7 +97,7 @@ public:
             return sumLLK;
         }
 */
-        const char base[4] = {'a', 'c', 't', 'g'};
+        const std::string base = "actg";
 
         inline char findAlt(std::vector<char> &tmpBase) {
             int a[4];
