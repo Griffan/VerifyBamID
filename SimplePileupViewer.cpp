@@ -15,14 +15,14 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <getopt.h>
-#include "sam.h"
+#include "htslib/sam.h"
 
-#include "kstring.h"
-#include "khash_str2int.h"
+#include "htslib/kstring.h"
+#include "htslib/khash_str2int.h"
 #include "sam_header.h"
 #include "samtools.h"
 #include <assert.h>
-#include <vcf.h>
+#include "htslib/vcf.h"
 #include "bam2bcf.h"
 #include "sample.h"
 

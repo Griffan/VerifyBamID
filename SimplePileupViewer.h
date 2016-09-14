@@ -5,7 +5,7 @@
 #ifndef CONTAMINATIONFINDER_SIMPLEPILEUP_H
 #define CONTAMINATIONFINDER_SIMPLEPILEUP_H
 #include "sam_opts.h"
-#include "faidx.h"
+#include "htslib/faidx.h"
 #include <string>
 #include <vector>
 #include <unordered_map>

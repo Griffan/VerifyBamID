@@ -30,7 +30,7 @@ if (OPENMP_FOUND)
 endif()
 
 set(SOURCE_FILES main.cpp ContaminationEstimator.cpp MathGenMin.cpp MathGold.cpp Random.cpp SimplePileupViewer.cpp params.cpp)
-include_directories(statgen samtools/htslib/include/htslib samtools)
+include_directories(statgen ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/include/ samtools)
 add_executable(VerifyBamID ${SOURCE_FILES})
 
 find_library(ZLIB z HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
