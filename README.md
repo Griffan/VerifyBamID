@@ -5,6 +5,8 @@
 * Results: We applied our method to 1000 Genomes datasets by simulating contamination levels from 1% to 20% and comparing the contamination estimates obtain from different methods. When using pooled allele frequencies, as opposed to population-specific allele frequencies, we observed that the contamination levels are underestimated by 20%, 40%, 51%, and 73% for CEU, YRI, FIN, and CHS populations, respectively. Using our new method, the underestimation bias was reduced to 2-5%.
 
 * Input Files: Aligned NGS sequence files(Bam or Cram); Marker related files(SVD result on genotype matrix, provided in resorce directory)
+
+
 ## Installation
 
   - mkdir build
