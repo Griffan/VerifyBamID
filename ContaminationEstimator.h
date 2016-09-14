@@ -57,8 +57,11 @@ public:
         double llk;
         ContaminationEstimator *ptr;
         double PC1, PC2, PC3, PC4,alpha;
-
-        fullLLKFunc() { };
+        const char* Base;
+        fullLLKFunc()
+        {
+            fullLLKFunc::Base = "actg";
+        };
 
         ~fullLLKFunc() { };
 
@@ -97,7 +100,7 @@ public:
             return sumLLK;
         }
 */
-        static const std::string base = "actg";
+
 
         inline char findAlt(std::vector<char> &tmpBase) {
             int a[4];
@@ -115,7 +118,7 @@ public:
             for (int j = 0; j < 4; ++j) {
                 if (a[j] > a[maxIndex]) maxIndex = j;
             }
-            return base[maxIndex];
+            return Base[maxIndex];
         }
 
         inline double getConditionalBaseLK(char base, int genotype, char altBase, bool is_error) {
