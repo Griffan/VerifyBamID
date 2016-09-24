@@ -402,34 +402,36 @@ public:
 
         fullLLKFunc(ContaminationEstimator *inPtr) {
             ptr = inPtr;
-            srand(ptr->seed);
-            double r1 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            double r2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            double r3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            double r4 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            double r5 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            //srand(ptr->seed);
+            srand(static_cast<unsigned>(time(NULL)));
+            PC1 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC4 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             if(ptr->isPCFixed)
-                llk = (0 - computeMixLLKs(r3));
+                llk = (0 - computeMixLLKs(alpha));
             else if(ptr->isAlphaFixed)
-                llk = (0 - computeMixLLKs(r1,r2));
+                llk = (0 - computeMixLLKs(PC1,PC2));
             else
-                llk = (0 - computeMixLLKs(r1,r2,r3,r4,r5));
+                llk = (0 - computeMixLLKs(PC1,PC2,PC3,PC4,alpha));
         }
 
         int initialize(ContaminationEstimator *inPtr) {
             ptr = inPtr;
-            srand(ptr->seed);
-            double r1 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            double r2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            double r3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            double r4 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            double r5 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            //srand(ptr->seed);
+            srand(static_cast<unsigned>(time(NULL)));
+            PC1 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC4 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             if(ptr->isPCFixed)
-                llk = (0 - computeMixLLKs(r3));
+                llk = (0 - computeMixLLKs(alpha));
             else if(ptr->isAlphaFixed)
-                llk = (0 - computeMixLLKs(r1,r2));
+                llk = (0 - computeMixLLKs(PC1,PC2));
             else
-                llk = (0 - computeMixLLKs(r1,r2,r3,r4,r5));
+                llk = (0 - computeMixLLKs(PC1,PC2,PC3,PC4,alpha));
             return 0;
         }
 
