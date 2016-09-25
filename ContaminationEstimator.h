@@ -402,8 +402,8 @@ public:
 
         fullLLKFunc(ContaminationEstimator *inPtr) {
             ptr = inPtr;
-            //srand(ptr->seed);
-            srand(static_cast<unsigned>(time(NULL)));
+            srand(ptr->seed);
+//            srand(static_cast<unsigned>(time(NULL)));
             PC1 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             PC2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             PC3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
@@ -419,8 +419,8 @@ public:
 
         int initialize(ContaminationEstimator *inPtr) {
             ptr = inPtr;
-            //srand(ptr->seed);
-            srand(static_cast<unsigned>(time(NULL)));
+            srand(ptr->seed);
+//            srand(static_cast<unsigned>(time(NULL)));
             PC1 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             PC2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             PC3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);

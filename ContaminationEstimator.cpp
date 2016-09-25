@@ -85,6 +85,9 @@ int ContaminationEstimator::ReadSVDMatrix(const std::string UDpath, const std::s
 }
 
 ContaminationEstimator::ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile) : PC(1, std::vector<PCtype>(4, 0)) {
+    isAFknown = false;
+    isPCFixed = false;
+    isAlphaFixed = false;
     ReadChooseBed(std::string(bedFile));
     viewer = SimplePileupViewer(&BedVec,bamFile,faiFile,bedFile,1);
     alpha=0.01;
