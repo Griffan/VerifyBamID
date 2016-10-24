@@ -204,6 +204,7 @@ public:
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
                 double markerLK(0);
                 double GF[3];
+                double GF2[3];
                 std::string chr = ptr->PosVec[i].first;
                 int pos = ptr->PosVec[i].second;
                 if (ptr->viewer.posIndex.find(chr) == ptr->viewer.posIndex.end()) {
@@ -213,14 +214,12 @@ public:
                     continue;
                 }
 
-                ptr->AFs[i] = ((ptr->UD[i][0] * tPC1 + ptr->UD[i][1] * tPC2+ ptr->UD[i][2] * tPC3 + ptr->UD[i][3] * tPC4) + ptr->means[i]) / 2.0;
-//                std::cerr << "AF:" << ptr->AFs[i] << "\tUD:" << ptr->UD[i][0] << "\t" << ptr->UD[i][1] << "PC:"<<tPC1<<"\t"<<tPC2<<"\t"<<tPC3<<"\t"<<tPC4<<std::endl;
+                ptr->AFs[i] = ((ptr->UD[i][0] * tPC1 + ptr->UD[i][1] * tPC2) + ptr->means[i]) / 2.0;
+                ptr->AF2s[i] = ((ptr->UD[i][0] * tPC3 + ptr->UD[i][1] * tPC4) + ptr->means[i]) / 2.0;
 
-                if (ptr->AFs[i] < min_af) ptr->AFs[i] = min_af;
-                if (ptr->AFs[i] > max_af) ptr->AFs[i] = max_af;
-                GF[0] = (1 - ptr->AFs[i]) * (1 - ptr->AFs[i]);//genotype frequency
-                GF[1] = 2 * (ptr->AFs[i]) * (1 - ptr->AFs[i]);
-                GF[2] = (ptr->AFs[i]) * (ptr->AFs[i]);
+
+                InitialGF(ptr->AFs[i], GF);
+                InitialGF(ptr->AF2s[i], GF2);
                 std::vector<char> tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
                 std::vector<char> tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
                 if (tmpBase.size() == 0) continue;
@@ -248,7 +247,7 @@ public:
 //                            <<"\tgetConditionalBaseLK0:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 0)<<"\t"<<getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)<< std::endl;
                         }
 //                        std::cerr<<"baseLK:"<<baseLK;
-                        markerLK += exp(baseLK) * GF[geno1] * GF[geno2];
+                        markerLK += exp(baseLK) * GF[geno1] * GF2[geno2];
 //                        std::cerr<<"markerLK:"<<markerLK<<std::endl;
                     }
                 if (markerLK > 0)
@@ -257,6 +256,14 @@ public:
             }
 //            std::cerr << "sumLLK:" << sumLLK << std::endl;
             return sumLLK;
+        }
+
+        void InitialGF(float AF, double *GF) const {
+            if (AF < 0.005) AF = 0.005;
+            if (AF > 0.995) AF = 0.995;
+            GF[0] = (1 - AF) * (1 - AF);//genotype frequency
+            GF[1] = 2 * (AF) * (1 - AF);
+            GF[2] = AF * AF;
         }
 
         inline double computeMixLLKs(double tPC1, double tPC2) {
@@ -502,6 +509,7 @@ public:
     //std::vector<std::vector<double> > GL;
     std::vector<PCtype> means;
     std::vector<double> AFs;
+    std::vector<double> AF2s;
 
     std::unordered_map<std::string, std::unordered_map<int, std::pair<char, char> > > ChooseBed;
     std::vector<region_t> BedVec;

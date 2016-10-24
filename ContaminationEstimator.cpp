@@ -28,6 +28,7 @@ int ContaminationEstimator::OptimizeLLK()
     double optimalPC3=0;
     double optimalPC4=0;
     double optimalAlpha =0;
+    std::cout << "PCs in OptimizaLLK():" << std::endl;
     if(isPCFixed)
     {
         Vector startingPoint("TestPoint", 1);
@@ -69,8 +70,9 @@ int ContaminationEstimator::OptimizeLLK()
         optimalPC3 = myMinimizer.point[2];
         optimalPC4 = myMinimizer.point[3];
         optimalAlpha = fullLLKFunc::invLogit(myMinimizer.point[4]);
+        std::cout << "PC3:" << optimalPC3 << "\tPC4:" << optimalPC4 << std::endl;
     }
-    std::cout << "PCs in OptimizaLLK():" << std::endl;
+
     std::cout << "PC1:" << optimalPC1 << "\tPC2:" << optimalPC2 << std::endl;
     std::cout << "Alpha:" << (optimalAlpha<0.5?optimalAlpha:(1-optimalAlpha))<<std::endl;
     return 0;
@@ -113,6 +115,7 @@ int ContaminationEstimator::ReadMatrixUD(const std::string &path)
         NumMarker++;
         AFs.push_back(0.);
     }
+    AF2s.assign(AFs.begin(),AFs.end());
     fin.close();
     return 0;
 }
