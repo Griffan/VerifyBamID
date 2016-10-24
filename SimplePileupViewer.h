@@ -60,6 +60,11 @@ public:
     BaseInfo baseInfo;
     QualInfo qualInfo;
 
+    std::string SEQ_SM;
+    int numReads;
+    float avgDepth;
+
+
     std::unordered_map<std::string,std::unordered_map<int32_t,int32_t> > posIndex;
 
     SimplePileupViewer();

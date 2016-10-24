@@ -23,6 +23,7 @@
    SOFTWARE.
 */
 #include <iostream>
+#include <fstream>
 #include "ContaminationEstimator.h"
 #include "params.h"
 
@@ -32,7 +33,7 @@ int main(int argc, char **argv) {
     cout << "Hello, World!" << endl;
 
     string UDPath("Empty"), MeanPath("Empty"), BedPath("Empty"), BamFileList("Empty"), BamFile("Empty"), RefPath(
-            "Empty");
+            "Empty"), OutputPrefix("result");
     string knownAF("Empty");
     bool fixPC(false), fixAlpha(false);
     int nfiles(0),seed(12345);
@@ -50,6 +51,8 @@ int main(int argc, char **argv) {
                                       "[String] Bed file for markers used in this analysis,(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]")
                     LONG_STRING_PARAM("Reference", &RefPath,
                                       "[String] reference file[Required]")
+                    LONG_STRING_PARAM("Output", &OutputPrefix,
+                                      "[String] OutputPrefix[optional]")
                     LONG_INT_PARAM("Seed",&seed,"[INT] Random number seed(default:12345)")
                     LONG_PARAM("fixPC", &fixPC, "[Bool] Fix PCs to estimate alpha[Optional]")
                     LONG_PARAM("fixAlpha", &fixAlpha, "[Bool] fixAlpha to estimate PC coordinates[Optional]")
@@ -104,5 +107,11 @@ int main(int argc, char **argv) {
     }
 
     Estimator.OptimizeLLK();
+
+    const char* headers[] = {"#SEQ_ID","RG","CHIP_ID","#SNPS","#READS","AVG_DP","FREEMIX","FREELK1","FREELK0","FREE_RH","FREE_RA","CHIPMIX","CHIPLK1","CHIPLK0","CHIP_RH","CHIP_RA","DPREF","RDPHET","RDPALT"};
+    std::ofstream fout(OutputPrefix+".selfSM");
+    fout<<headers<<std::endl;
+
+
     return 0;
 }

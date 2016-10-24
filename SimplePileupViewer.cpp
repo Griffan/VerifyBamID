@@ -22,6 +22,8 @@
 #include "sam_header.h"
 #include "samtools.h"
 #include <assert.h>
+#include <sample.h>
+//#include <sam.h>
 #include "htslib/vcf.h"
 #include "bam2bcf.h"
 #include "sample.h"
@@ -369,6 +371,11 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
             exit(EXIT_FAILURE);
         }
         bam_smpl_add(sm, fn[i], (conf->flag&MPLP_IGNORE_RG)? 0 : h_tmp->text);
+
+        int tmp_pos=std::string(h_tmp->text).find("\tSM:",0);
+        int tmp_end=std::string(h_tmp->text).find("\t",tmp_pos+4);
+        SEQ_SM=std::string(h_tmp->text).substr(tmp_pos+4,tmp_end-tmp_pos-4);
+
         // Collect read group IDs with PL (platform) listed in pl_list (note: fragile, strstr search)
         rghash = bcf_call_add_rg(rghash, h_tmp->text, conf->pl_list);
 
