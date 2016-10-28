@@ -73,7 +73,7 @@ int ContaminationEstimator::OptimizeLLK()
         optimalPC2 = myMinimizer.point[1];
         optimalPC3 = myMinimizer.point[4];
         optimalPC4 = myMinimizer.point[5];
-        optimalAlpha = fullLLKFunc::invLogit(myMinimizer.point[4]);
+        optimalAlpha = fullLLKFunc::invLogit(myMinimizer.point[8]);
         std::cout << "PC3:" << optimalPC3 << "\tPC4:" << optimalPC4 << std::endl;
     }
 
