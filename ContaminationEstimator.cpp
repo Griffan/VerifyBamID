@@ -54,21 +54,25 @@ int ContaminationEstimator::OptimizeLLK()
         optimalPC2 = myMinimizer.point[1];
     }
     else {
-        Vector startingPoint("TestPoint", 5);
+        Vector startingPoint("TestPoint", 9);
         startingPoint[0] = PC[0][0];
         startingPoint[1] = PC[0][1];
         startingPoint[2] = PC[0][2];
         startingPoint[3] = PC[0][3];
-        startingPoint[4] = alpha;
+        startingPoint[4] = PC[0][4];
+        startingPoint[5] = PC[0][5];
+        startingPoint[6] = PC[0][6];
+        startingPoint[7] = PC[0][7];
+        startingPoint[8] = alpha;
         startingPoint.label = "startPoint";
         myMinimizer.func = &fn;
-        myMinimizer.Reset(5);
+        myMinimizer.Reset(9);
         myMinimizer.point = startingPoint;
         myMinimizer.Minimize(1e-6);
         optimalPC1 = myMinimizer.point[0];
         optimalPC2 = myMinimizer.point[1];
-        optimalPC3 = myMinimizer.point[2];
-        optimalPC4 = myMinimizer.point[3];
+        optimalPC3 = myMinimizer.point[4];
+        optimalPC4 = myMinimizer.point[5];
         optimalAlpha = fullLLKFunc::invLogit(myMinimizer.point[4]);
         std::cout << "PC3:" << optimalPC3 << "\tPC4:" << optimalPC4 << std::endl;
     }

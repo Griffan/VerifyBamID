@@ -56,7 +56,7 @@ public:
 
         double llk;
         ContaminationEstimator *ptr;
-        double PC1, PC2, PC3, PC4,alpha;
+        double PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC8, alpha;
         const char* Base;
         fullLLKFunc()
         {
@@ -193,7 +193,7 @@ public:
 
         }
 
-        inline double computeMixLLKs(double tPC1, double tPC2, double tPC3, double tPC4, double alpha) {
+        inline double computeMixLLKs(double tPC1, double tPC2, double tPC3, double tPC4, double tPC5, double tPC6, double tPC7, double tPC8, double alpha) {
             double min_af(0.0005), max_af(0.9995);
             double sumLLK(0);//, GF0(0), GF1(0), GF2(0);
 //            size_t glIndex = 0;
@@ -214,8 +214,8 @@ public:
                     continue;
                 }
 
-                ptr->AFs[i] = ((ptr->UD[i][0] * tPC1 + ptr->UD[i][1] * tPC2) + ptr->means[i]) / 2.0;
-                ptr->AF2s[i] = ((ptr->UD[i][0] * tPC3 + ptr->UD[i][1] * tPC4) + ptr->means[i]) / 2.0;
+                ptr->AFs[i] = ((ptr->UD[i][0] * tPC1 + ptr->UD[i][1] * tPC2 + ptr->UD[i][2] * tPC3 + ptr->UD[i][3] * tPC4) + ptr->means[i]) / 2.0;
+                ptr->AF2s[i] = ((ptr->UD[i][0] * tPC5 + ptr->UD[i][1] * tPC6 + ptr->UD[i][2] * tPC7 + ptr->UD[i][3] * tPC8) + ptr->means[i]) / 2.0;
 
 
                 InitialGF(ptr->AFs[i], GF);
@@ -415,13 +415,17 @@ public:
             PC2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             PC3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             PC4 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC5 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC6 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC7 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC8 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             if(ptr->isPCFixed)
                 llk = (0 - computeMixLLKs(alpha));
             else if(ptr->isAlphaFixed)
                 llk = (0 - computeMixLLKs(PC1,PC2));
             else
-                llk = (0 - computeMixLLKs(PC1,PC2,PC3,PC4,alpha));
+                llk = (0 - computeMixLLKs(PC1,PC2,PC3,PC4,PC5,PC6,PC7,PC8,alpha));
         }
 
         int initialize(ContaminationEstimator *inPtr) {
@@ -432,32 +436,44 @@ public:
             PC2 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             PC3 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             PC4 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC5 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC6 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC7 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            PC8 = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             if(ptr->isPCFixed)
                 llk = (0 - computeMixLLKs(alpha));
             else if(ptr->isAlphaFixed)
                 llk = (0 - computeMixLLKs(PC1,PC2));
             else
-                llk = (0 - computeMixLLKs(PC1,PC2,PC3,PC4,alpha));
+                llk = (0 - computeMixLLKs(PC1,PC2,PC3,PC4,PC5,PC6,PC7,PC8,alpha));
             return 0;
         }
 
         virtual double Evaluate(Vector &v) {
             double smLLK = 0;
             switch (v.Length()) {
-                case 5: {
+                case 9: {
                     double tmpPC1 = v[0];
                     double tmpPC2 = v[1];
                     double tmpPC3 = v[2];
                     double tmpPC4 = v[3];
-                    double tmpAlpha = invLogit(v[4]);
-                    smLLK = 0 - computeMixLLKs(tmpPC1, tmpPC2, tmpPC3, tmpPC4,tmpAlpha);
+                    double tmpPC5 = v[4];
+                    double tmpPC6 = v[5];
+                    double tmpPC7 = v[6];
+                    double tmpPC8 = v[7];
+                    double tmpAlpha = invLogit(v[8]);
+                    smLLK = 0 - computeMixLLKs(tmpPC1, tmpPC2, tmpPC3, tmpPC4, tmpPC5, tmpPC6, tmpPC7, tmpPC8, tmpAlpha);
                     if (smLLK < llk) {
                         llk = smLLK;
                         PC1 = tmpPC1;
                         PC2 = tmpPC2;
                         PC3 = tmpPC3;
                         PC4 = tmpPC4;
+                        PC5 = tmpPC5;
+                        PC6 = tmpPC6;
+                        PC7 = tmpPC7;
+                        PC8 = tmpPC8;
                         alpha = tmpAlpha;
                     }
                     break;

@@ -4,3 +4,4 @@ libStatGen
 Debug
 Release
 build
+samtools/htslib/
