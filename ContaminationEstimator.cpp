@@ -23,80 +23,157 @@ ContaminationEstimator::~ContaminationEstimator() {
 int ContaminationEstimator::OptimizeLLK()
 {
     AmoebaMinimizer myMinimizer;
-    double optimalPC1=0;
-    double optimalPC2=0;
-    double optimalPC3=0;
-    double optimalPC4=0;
-    double optimalAlpha =0;
-    std::cout << "PCs in OptimizaLLK():" << std::endl;
-    if(isPCFixed)
+
+    if(!isHeter)
     {
-        Vector startingPoint("TestPoint", 1);
-        startingPoint[0] = alpha;
-        startingPoint.label = "startPoint";
-        myMinimizer.func = &fn;
-        myMinimizer.Reset(1);
-        myMinimizer.point = startingPoint;
-        myMinimizer.Minimize(1e-6);
-        optimalAlpha = fullLLKFunc::invLogit(myMinimizer.point[0]);
+        if(isPCFixed) {
+            std::cout << "Estimation from OptimizeHomFixedPC:"<<std::endl;
+            OptimizeHomFixedPC(myMinimizer);
+        }
+        else if(isAlphaFixed) {
+            std::cout << "Estimation from OptimizeHomFixedAlpha:"<<std::endl;
+            OptimizeHomFixedAlpha(myMinimizer);
+        }
+        else
+        {
+            std::cout << "Estimation from OptimizeHom:"<<std::endl;
+            OptimizeHom(myMinimizer);
+        }
+        std::cout << "PC1:" << PC[0][0] << "\tPC2:" << PC[0][1] << std::endl;
     }
-    else if(isAlphaFixed)
+    else//contamination source from different population
     {
-        Vector startingPoint("TestPoint", 2);
-        startingPoint[0] = PC[0][0];
-        startingPoint[1] = PC[0][1];
-        startingPoint.label = "startPoint";
-        myMinimizer.func = &fn;
-        myMinimizer.Reset(2);
-        myMinimizer.point = startingPoint;
-        myMinimizer.Minimize(1e-6);
-        optimalPC1 = myMinimizer.point[0];
-        optimalPC2 = myMinimizer.point[1];
-    }
-    else {
-        Vector startingPoint("TestPoint", 9);
-        startingPoint[0] = PC[0][0];
-        startingPoint[1] = PC[0][1];
-        startingPoint[2] = PC[0][2];
-        startingPoint[3] = PC[0][3];
-        startingPoint[4] = PC[0][4];
-        startingPoint[5] = PC[0][5];
-        startingPoint[6] = PC[0][6];
-        startingPoint[7] = PC[0][7];
-        startingPoint[8] = alpha;
-        startingPoint.label = "startPoint";
-        myMinimizer.func = &fn;
-        myMinimizer.Reset(9);
-        myMinimizer.point = startingPoint;
-        myMinimizer.Minimize(1e-6);
-        optimalPC1 = myMinimizer.point[0];
-        optimalPC2 = myMinimizer.point[1];
-        optimalPC3 = myMinimizer.point[4];
-        optimalPC4 = myMinimizer.point[5];
-        optimalAlpha = fullLLKFunc::invLogit(myMinimizer.point[8]);
-        std::cout << "PC3:" << optimalPC3 << "\tPC4:" << optimalPC4 << std::endl;
+        if(isPCFixed) {
+            std::cout << "Estimation from OptimizeHeterFixedPC:"<<std::endl;
+            OptimizeHeterFixedPC(myMinimizer);
+        }
+        else if(isAlphaFixed) {
+            std::cout << "Estimation from OptimizeHeterFixedAlpha:"<<std::endl;
+            OptimizeHeterFixedAlpha(myMinimizer);
+        }
+        else
+        {
+            std::cout << "Estimation from OptimizeHeter:"<<std::endl;
+            OptimizeHom(myMinimizer);
+            OptimizeHeter(myMinimizer);
+        }
+        std::cout << "PC1:" << PC[0][0] << "\tPC2:" << PC[0][1] << std::endl;
+        std::cout << "PC3:" << PC[1][0] << "\tPC4:" << PC[1][1] << std::endl;
     }
 
-    std::cout << "PC1:" << optimalPC1 << "\tPC2:" << optimalPC2 << std::endl;
-    std::cout << "Alpha:" << (optimalAlpha<0.5?optimalAlpha:(1-optimalAlpha))<<std::endl;
+    std::cout << "Alpha:" << (alpha<0.5?alpha:(1-alpha))<<std::endl;
     return 0;
+}
+
+void ContaminationEstimator::OptimizeHeter(AmoebaMinimizer &myMinimizer) {
+    Vector startingPoint("TestPoint", numPC * 2 + 1);
+    for (int i = 0; i < numPC * 2; ++i) {
+                if(i < numPC)
+                    startingPoint[i] = PC[0][i];
+                else
+                    startingPoint[i] = PC[1][i-numPC];
+            }
+    startingPoint[numPC * 2] = alpha;
+    startingPoint.label = "startPoint";
+    myMinimizer.func = &fn;
+    myMinimizer.Reset(numPC * 2 + 1);
+    myMinimizer.point = startingPoint;
+    myMinimizer.Minimize(1e-6);
+    alpha = fullLLKFunc::invLogit(myMinimizer.point[numPC * 2]);
+    for (int i = 0; i < numPC; ++i) {
+        PC[0][i] = myMinimizer.point[i];
+    }
+    for (int i = numPC; i < numPC * 2; ++i) {
+        PC[1][i-numPC] = myMinimizer.point[i];
+    }
+}
+
+void ContaminationEstimator::OptimizeHeterFixedAlpha(AmoebaMinimizer &myMinimizer) {
+    Vector startingPoint("TestPoint", numPC * 2);
+    for (int i = 0; i < numPC * 2; ++i) {
+                if(i < numPC)
+                    startingPoint[i] = PC[0][i];
+                else
+                    startingPoint[i] = PC[1][i-numPC];
+            }
+    startingPoint.label = "startPoint";
+    myMinimizer.func = &fn;
+    myMinimizer.Reset(numPC * 2);
+    myMinimizer.point = startingPoint;
+    myMinimizer.Minimize(1e-6);
+    for (int i = 0; i < numPC; ++i) {
+        PC[0][i] = myMinimizer.point[i];
+    }
+    for (int i = numPC; i < numPC * 2; ++i) {
+        PC[1][i-numPC] = myMinimizer.point[i];
+    }
+}
+
+void ContaminationEstimator::OptimizeHeterFixedPC(AmoebaMinimizer &myMinimizer) {
+    OptimizeHomFixedPC(myMinimizer);
+}
+
+void ContaminationEstimator::OptimizeHom(AmoebaMinimizer &myMinimizer) {
+    Vector startingPoint("TestPoint", numPC + 1);
+    for (int i = 0; i < numPC; ++i) {
+                startingPoint[i] = PC[0][i];
+            }
+    startingPoint[numPC] = alpha;
+    startingPoint.label = "startPoint";
+    myMinimizer.func = &fn;
+    myMinimizer.Reset(numPC + 1);
+    myMinimizer.point = startingPoint;
+    myMinimizer.Minimize(1e-6);
+    alpha = fullLLKFunc::invLogit(myMinimizer.point[numPC]);
+    for (int i = 0; i < numPC; ++i) {
+        PC[0][i] = myMinimizer.point[i];
+    }
+}
+
+void ContaminationEstimator::OptimizeHomFixedAlpha(AmoebaMinimizer &myMinimizer) {
+    Vector startingPoint("TestPoint", numPC);
+    for (int i = 0; i < numPC; ++i) {
+                startingPoint[i] = PC[0][i];
+            }
+    startingPoint.label = "startPoint";
+    myMinimizer.func = &fn;
+    myMinimizer.Reset(2);
+    myMinimizer.point = startingPoint;
+    myMinimizer.Minimize(1e-6);
+    for (int i = 0; i < numPC; ++i) {
+        PC[0][i] = myMinimizer.point[i];
+    }
+}
+
+void ContaminationEstimator::OptimizeHomFixedPC(AmoebaMinimizer &myMinimizer) {
+    Vector startingPoint("TestPoint", 1);
+    startingPoint[0] = alpha;
+    startingPoint.label = "startPoint";
+    myMinimizer.func = &fn;
+    myMinimizer.Reset(1);
+    myMinimizer.point = startingPoint;
+    myMinimizer.Minimize(1e-6);
+    alpha = fullLLKFunc::invLogit(myMinimizer.point[0]);
 }
 
 int ContaminationEstimator::ReadSVDMatrix(const std::string UDpath, const std::string Mean, const std::string &Bed)
 {
     ReadMatrixUD(UDpath);
     ReadMean(Mean);
-    fn.initialize(this);
+    fn.initialize();
     return 0;
 }
 
-ContaminationEstimator::ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile) : PC(1, std::vector<PCtype>(4, 0)) {
+ContaminationEstimator::ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile) :
+        numPC(2), PC(2, std::vector<PCtype>(numPC, 0)),fn(numPC,this) {
     isAFknown = false;
     isPCFixed = false;
     isAlphaFixed = false;
+    isHeter = true;
+
     ReadChooseBed(std::string(bedFile));
     viewer = SimplePileupViewer(&BedVec,bamFile,faiFile,bedFile,1);
-    alpha=0.01;
+    alpha=0.99;
     NumMarker=0;
 
 }

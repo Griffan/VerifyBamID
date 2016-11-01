@@ -5,3 +5,5 @@ Debug
 Release
 build
 samtools/htslib/
+bin/
+result.selfSM
