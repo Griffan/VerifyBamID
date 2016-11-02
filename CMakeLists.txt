@@ -30,7 +30,7 @@ if (OPENMP_FOUND)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-set(SOURCE_FILES main.cpp ContaminationEstimator.cpp MathGenMin.cpp MathGold.cpp Random.cpp SimplePileupViewer.cpp params.cpp)
+set(SOURCE_FILES main.cpp ContaminationEstimator.cpp MathGenMin.cpp MathGold.cpp Random.cpp SimplePileupViewer.cpp params.cpp )#SVDcalculator.cpp SVDcalculator.h)
 include_directories(statgen ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/include/ samtools)
 add_executable(VerifyBamID ${SOURCE_FILES})
 

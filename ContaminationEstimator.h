@@ -28,7 +28,6 @@
 #define CONTAMINATIONESTIMATOR_H_
 
 #include <string>
-
 #include <unordered_map>
 //#include <tkDecls.h>
 #include "MathVector.h"
@@ -381,7 +380,7 @@ public:
                     ptr->AFs[i] += ptr->means[i];
                     ptr->AFs[i] /= 2.0;
                     for (int k = 0; k <tPC2.size(); ++k) {
-                        ptr->AFs[i]+=ptr->UD[i][k] * tPC2[k];
+                        ptr->AF2s[i]+=ptr->UD[i][k] * tPC2[k];
                     }
                     ptr->AF2s[i] += ptr->means[i];
                     ptr->AF2s[i] /= 2.0;
@@ -536,7 +535,7 @@ public:
                     ptr->AFs[i] += ptr->means[i];
                     ptr->AFs[i] /= 2.0;
                     for (int k = 0; k <localPC2.size(); ++k) {
-                        ptr->AFs[i]+=ptr->UD[i][k] * localPC2[k];
+                        ptr->AF2s[i]+=ptr->UD[i][k] * localPC2[k];
                     }
                     ptr->AF2s[i] += ptr->means[i];
                     ptr->AF2s[i] /= 2.0;
@@ -782,7 +781,7 @@ public:
                         tmpPC[i]=v[i];
                     }
                     double tmpAlpha=invLogit(v[ptr->numPC]);
-                    llk = (0 - computeMixLLKs(tmpPC, tmpAlpha));
+                    smLLK = (0 - computeMixLLKs(tmpPC, tmpAlpha));
                     if (smLLK < llk) {
                         llk = smLLK;
                         localPC = tmpPC;
@@ -794,7 +793,7 @@ public:
             {
                 if(ptr->isPCFixed) {
                     double tmpAlpha = invLogit(v[0]);
-                    llk = (0 - computeMixLLKs_mix(localAlpha));
+                    smLLK = (0 - computeMixLLKs_mix(localAlpha));
                     if (smLLK < llk) {
                         llk = smLLK;
                         localAlpha = tmpAlpha;
@@ -808,13 +807,13 @@ public:
                         if(k < ptr->numPC)
                             tmpPC[k]=v[k];
                         else if(k< ptr->numPC*2)
-                            tmpPC2[k]=v[k];
+                            tmpPC2[k-(ptr->numPC)]=v[k];
                         else {
                             error("Simplex Vector dimension error!");
                             exit(EXIT_FAILURE);
                         }
                     }
-                    llk = (0 - computeMixLLKs(tmpPC, tmpPC2));
+                    smLLK = (0 - computeMixLLKs(tmpPC, tmpPC2));
                     if (smLLK < llk) {
                         llk = smLLK;
                         localPC = tmpPC;
@@ -829,7 +828,7 @@ public:
                         if(k < ptr->numPC)
                             tmpPC[k]=v[k];
                         else if(k < ptr->numPC*2)
-                            tmpPC2[k]=v[k];
+                            tmpPC2[k-(ptr->numPC)]=v[k];
                         else if(k == ptr->numPC*2)
                             tmpAlpha = invLogit(v[k]);
                         else{
@@ -837,7 +836,7 @@ public:
                             exit(EXIT_FAILURE);
                         }
                     }
-                    llk = (0 - computeMixLLKs(tmpPC, tmpPC2, tmpAlpha));
+                    smLLK = (0 - computeMixLLKs(tmpPC, tmpPC2, tmpAlpha));
                     if (smLLK < llk) {
                         llk = smLLK;
                         localPC = tmpPC;

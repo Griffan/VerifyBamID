@@ -36,6 +36,11 @@ int ContaminationEstimator::OptimizeLLK()
         }
         else
         {
+            for (int k = 0; k <PC[0].size(); ++k) {
+                PC[0][k]=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            }
+            alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+
             std::cout << "Estimation from OptimizeHom:"<<std::endl;
             OptimizeHom(myMinimizer);
         }
@@ -53,8 +58,18 @@ int ContaminationEstimator::OptimizeLLK()
         }
         else
         {
+            for (int k = 0; k <PC[0].size(); ++k) {
+                PC[0][k]=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            }
+            for (int k = 0; k <PC[1].size(); ++k) {
+                PC[1][k]=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            }
+            alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             std::cout << "Estimation from OptimizeHeter:"<<std::endl;
+            isHeter=false;
             OptimizeHom(myMinimizer);
+            std::cout << "testAlpha:" << (alpha<0.5?alpha:(1-alpha))<<std::endl;
+            isHeter=true;
             OptimizeHeter(myMinimizer);
         }
         std::cout << "PC1:" << PC[0][0] << "\tPC2:" << PC[0][1] << std::endl;
