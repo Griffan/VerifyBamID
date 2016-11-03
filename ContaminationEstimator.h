@@ -239,13 +239,13 @@ public:
                 else if (ptr->viewer.posIndex[chr].find(pos) == ptr->viewer.posIndex[chr].end()) {
                     continue;
                 }
-
+                ptr->AFs[i]=0.;
                 for (int k = 0; k <tPC1.size(); ++k) {
                     ptr->AFs[i]+=ptr->UD[i][k] * tPC1[k];
                 }
                 ptr->AFs[i] += ptr->means[i];
                 ptr->AFs[i] /= 2.0;
-
+                ptr->AF2s[i]=0.;
                 for (int k = 0; k <tPC2.size(); ++k) {
                     ptr->AF2s[i]+=ptr->UD[i][k] * tPC2[k];
                 }
@@ -306,6 +306,7 @@ public:
                     continue;
                 }
 
+                ptr->AFs[i]=0.;
                 for (int k = 0; k <tPC.size(); ++k) {
                     ptr->AFs[i]+=ptr->UD[i][k] * tPC[k];
                 }
@@ -374,11 +375,14 @@ public:
                 }
                 else
                 {
+                    ptr->AFs[i]=0.;
                     for (int k = 0; k <tPC1.size(); ++k) {
                         ptr->AFs[i]+=ptr->UD[i][k] * tPC1[k];
                     }
                     ptr->AFs[i] += ptr->means[i];
                     ptr->AFs[i] /= 2.0;
+
+                    ptr->AF2s[i]=0.;
                     for (int k = 0; k <tPC2.size(); ++k) {
                         ptr->AF2s[i]+=ptr->UD[i][k] * tPC2[k];
                     }
@@ -452,6 +456,7 @@ public:
                 }
                 else
                 {
+                    ptr->AFs[i]=0.;
                     for (int k = 0; k <tPC.size(); ++k) {
                         ptr->AFs[i]+=ptr->UD[i][k] * tPC[k];
                     }
@@ -529,11 +534,14 @@ public:
                 }
                 else
                 {
+                    ptr->AFs[i]=0.;
                     for (int k = 0; k <localPC.size(); ++k) {
                         ptr->AFs[i]+=ptr->UD[i][k] * localPC[k];
                     }
                     ptr->AFs[i] += ptr->means[i];
                     ptr->AFs[i] /= 2.0;
+
+                    ptr->AF2s[i]=0.;
                     for (int k = 0; k <localPC2.size(); ++k) {
                         ptr->AF2s[i]+=ptr->UD[i][k] * localPC2[k];
                     }
@@ -607,6 +615,7 @@ public:
                 }
                 else
                 {
+                    ptr->AFs[i]=0.;
                     for (int k = 0; k <localPC.size(); ++k) {
                         ptr->AFs[i]+=ptr->UD[i][k] * localPC[k];
                     }
@@ -776,12 +785,13 @@ public:
                     }
                 }
                 else {
+//                    std::cerr<<"evaluate from hom dynamic"<<std::endl;
                     vector<double> tmpPC(ptr->numPC,0.);
                     for (int i = 0; i <ptr->numPC ; ++i) {
                         tmpPC[i]=v[i];
                     }
                     double tmpAlpha=invLogit(v[ptr->numPC]);
-                    smLLK = (0 - computeMixLLKs(tmpPC, tmpAlpha));
+                    smLLK = 0 - computeMixLLKs(tmpPC, tmpAlpha);
                     if (smLLK < llk) {
                         llk = smLLK;
                         localPC = tmpPC;
