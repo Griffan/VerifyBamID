@@ -68,8 +68,9 @@ int ContaminationEstimator::OptimizeLLK()
             std::cout << "Estimation from OptimizeHeter:"<<std::endl;
             isHeter=false;
             OptimizeHom(myMinimizer);
-            std::cout << "testAlpha:" << (alpha<0.5?alpha:(1-alpha))<<std::endl;
+            std::cerr << "testAlpha:" << (alpha<0.5?alpha:(1-alpha))<<std::endl;
             isHeter=true;
+            fn.initialize();
             OptimizeHeter(myMinimizer);
         }
         std::cout << "PC1:" << PC[0][0] << "\tPC2:" << PC[0][1] << std::endl;
