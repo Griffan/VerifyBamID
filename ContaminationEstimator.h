@@ -70,8 +70,9 @@ public:
             llk=0;
             ptr=nullptr;
             localAlpha=0;
-        }
+            std::cerr<<"Initializae from fullLLKFunc()"<<std::endl;
 
+        }
         fullLLKFunc(int dim, ContaminationEstimator* contPtr):localPC(dim,0.),localPC2(dim,0.) {
             fullLLKFunc::Base = "actg";
             min_af = 0.0005;
@@ -79,6 +80,7 @@ public:
             llk = 0;
             ptr = contPtr;
             localAlpha = 0;
+            std::cerr<<"Initializae from fullLLKFunc(int dim, ContaminationEstimator* contPtr)"<<std::endl;
         }
 
         ~fullLLKFunc() { };
@@ -672,23 +674,20 @@ public:
             srand(ptr->seed);
 //            srand(static_cast<unsigned>(time(NULL)));
             for (int k = 0; k <localPC.size(); ++k) {
-                localPC[k]=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+                localPC[k]=ptr->PC[0][k];
             }
             for (int k = 0; k <localPC2.size(); ++k) {
-                localPC2[k]=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+                localPC2[k]=ptr->PC[1][k];
             }
-            localAlpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-
+            localAlpha=ptr->alpha;
             if(!ptr->isHeter)
             {
                 if(ptr->isPCFixed) {
-                    for (int k = 0; k <localPC.size(); ++k) {
-                        localPC[k]=ptr->PC[0][k];
-                    }
+
                     llk = (0 - computeMixLLKs(localAlpha));
                 }
                 else if(ptr->isAlphaFixed) {
-                    localAlpha=ptr->alpha;
+
                     llk = (0 - computeMixLLKs(localPC));
                 }
                 else
@@ -697,16 +696,11 @@ public:
             else//contamination source from different population
             {
                 if(ptr->isPCFixed) {
-                    for (int k = 0; k <localPC.size(); ++k) {
-                        localPC[k]=ptr->PC[0][k];
-                    }
-                    for (int k = 0; k <localPC2.size(); ++k) {
-                        localPC2[k]=ptr->PC[1][k];
-                    }
+
                     llk = (0 - computeMixLLKs_mix(localAlpha));
                 }
                 else if(ptr->isAlphaFixed) {
-                    localAlpha=ptr->alpha;
+
                     llk = (0 - computeMixLLKs(localPC, localPC2));
                 }
                 else
@@ -718,10 +712,10 @@ public:
             srand(ptr->seed);
 //            srand(static_cast<unsigned>(time(NULL)));
             for (int k = 0; k <localPC.size(); ++k) {
-                localPC[k]=0;//ptr->PC[0][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+                localPC[k] = ptr->PC[0][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             }
             for (int k = 0; k <localPC2.size(); ++k) {
-                localPC2[k]=0;//ptr->PC[1][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+                localPC2[k] = ptr->PC[1][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             }
             localAlpha = ptr->alpha;//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
 

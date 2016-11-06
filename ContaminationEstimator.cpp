@@ -65,18 +65,19 @@ int ContaminationEstimator::OptimizeLLK()
                 PC[1][k]=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             }
             alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-	    fn.initialize();
-	    std::cout << "Estimation from OptimizeHeter:"<<std::endl;
+
+	        std::cout << "Estimation from OptimizeHeter:"<<std::endl;
             isHeter=false;
+            fn.initialize();
             OptimizeHom(myMinimizer);
 	//	double lastAlpha=alpha;
 	//	std::vector<double> lastPC=PC[0];
-	    std::cerr << "PC1:" << PC[0][0] << "\tPC2:" << PC[0][1] << std::endl;
-   	    std::cerr << "PC3:" << PC[1][0] << "\tPC4:" << PC[1][1] << std::endl;
-	    std::cout << "testAlpha:" << (alpha<0.5?alpha:(1-alpha))<<std::endl;
+	        std::cerr << "PC1:" << PC[0][0] << "\tPC2:" << PC[0][1] << std::endl;
+   	        std::cerr << "PC3:" << PC[1][0] << "\tPC4:" << PC[1][1] << std::endl;
+	        std::cout << "testAlpha:" << (alpha<0.5?alpha:(1-alpha))<<std::endl;
+            PC[1]=PC[0];
             isHeter=true;
-	    PC[1]=PC[0];
-	    fn.initialize();
+	        fn.initialize();
             OptimizeHeter(myMinimizer);
 	    
         }
@@ -188,7 +189,7 @@ int ContaminationEstimator::ReadSVDMatrix(const std::string UDpath, const std::s
 }
 
 ContaminationEstimator::ContaminationEstimator(int nPC, const char *bamFile, const char *faiFile, const char *bedFile) :
-        numPC(nPC), PC(2, std::vector<PCtype>(numPC, 0.)),fn(numPC,this) {
+        numPC(nPC), PC(2, std::vector<PCtype>(nPC, 0.)),fn(nPC,this) {
     isAFknown = false;
     isPCFixed = false;
     isAlphaFixed = false;

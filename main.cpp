@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     string knownAF("Empty");
     string RefVCF("Empty");
     bool fixPC(false), fixAlpha(false), asHeter(false);
-    int nfiles(0),seed(12345),nPC(0);
+    int nfiles(0),seed(12345),nPC(2);
     paramList pl;
     BEGIN_LONG_PARAMS(longParameters)
                     LONG_PARAM_GROUP("Input/Output Files",
