@@ -107,9 +107,8 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    ContaminationEstimator Estimator(BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
+    ContaminationEstimator Estimator(nPC, BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
     Estimator.seed = seed;
-    Estimator.numPC = nPC < 2 ? 2 : nPC;
     Estimator.isHeter = asHeter;
     Estimator.ReadSVDMatrix(UDPath, MeanPath, BedPath);
     //std::cerr<<"NumMarker:"<<Estimator.NumMarker<<" and UD size:"<<Estimator.UD.size()<<std::endl;

@@ -420,7 +420,7 @@ public:
 //                            <<"\tgetConditionalBaseLK0:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 0)<<"\t"<<getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)<< std::endl;
                         }
 //                        std::cerr<<"baseLK:"<<baseLK;
-                        markerLK += exp(baseLK) * GF[geno1] * GF[geno2];
+                        markerLK += exp(baseLK) * GF[geno1] * GF2[geno2];
 //                        std::cerr<<"markerLK:"<<markerLK<<std::endl;
                     }
                 if (markerLK > 0)
@@ -579,7 +579,7 @@ public:
 //                            <<"\tgetConditionalBaseLK0:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 0)<<"\t"<<getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)<< std::endl;
                         }
 //                        std::cerr<<"baseLK:"<<baseLK;
-                        markerLK += exp(baseLK) * GF[geno1] * GF[geno2];
+                        markerLK += exp(baseLK) * GF[geno1] * GF2[geno2];
 //                        std::cerr<<"markerLK:"<<markerLK<<std::endl;
                     }
                 if (markerLK > 0)
@@ -701,7 +701,7 @@ public:
                         localPC[k]=ptr->PC[0][k];
                     }
                     for (int k = 0; k <localPC2.size(); ++k) {
-                        localPC[k]=ptr->PC[1][k];
+                        localPC2[k]=ptr->PC[1][k];
                     }
                     llk = (0 - computeMixLLKs_mix(localAlpha));
                 }
@@ -718,23 +718,19 @@ public:
             srand(ptr->seed);
 //            srand(static_cast<unsigned>(time(NULL)));
             for (int k = 0; k <localPC.size(); ++k) {
-                localPC[k]=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+                localPC[k]=0;//ptr->PC[0][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             }
             for (int k = 0; k <localPC2.size(); ++k) {
-                localPC2[k]=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+                localPC2[k]=0;//ptr->PC[1][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             }
-            localAlpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            localAlpha = ptr->alpha;//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
 
             if(!ptr->isHeter)
             {
                 if(ptr->isPCFixed) {
-                    for (int k = 0; k <localPC.size(); ++k) {
-                        localPC[k]=ptr->PC[0][k];
-                    }
                     llk = (0 - computeMixLLKs(localAlpha));
                 }
                 else if(ptr->isAlphaFixed) {
-                    localAlpha=ptr->alpha;
                     llk = (0 - computeMixLLKs(localPC));
                 }
                 else
@@ -743,16 +739,9 @@ public:
             else//contamination source from different population
             {
                 if(ptr->isPCFixed) {
-                    for (int k = 0; k <localPC.size(); ++k) {
-                        localPC[k]=ptr->PC[0][k];
-                    }
-                    for (int k = 0; k <localPC2.size(); ++k) {
-                        localPC[k]=ptr->PC[1][k];
-                    }
                     llk = (0 - computeMixLLKs_mix(localAlpha));
                 }
                 else if(ptr->isAlphaFixed) {
-                    localAlpha=ptr->alpha;
                     llk = (0 - computeMixLLKs(localPC, localPC2));
                 }
                 else
@@ -853,11 +842,14 @@ public:
                         localPC2 = tmpPC2;
                         localAlpha = tmpAlpha;
                     }
+		    std::cerr<< "tmpPC1:" << tmpPC[0] << "\ttmpPC2:" << tmpPC[1]
+			<< "\ttmpPC3:" << tmpPC2[0] << "\ttmpPC4:" << tmpPC2[1]
+			<< "\ttmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
                 }
             }
-            std::cerr << "tmpPC1:" << localPC[0] << "\ttmpPC2:" << localPC[1]
-                      << "\ttmpPC3:" << localPC2[0] << "\ttmpPC4:" << localPC2[1]
-                      << "\talpha:" << localAlpha << "\tllk:" << llk << std::endl;
+            std::cerr << "localPC1:" << localPC[0] << "\tlocaPC2:" << localPC[1]
+                      << "\tlocalPC3:" << localPC2[0] << "\tlocalPC4:" << localPC2[1]
+                      << "\tlocalAlpha:" << localAlpha << "\tllk:" << llk <<std::endl;
             return smLLK;
         }
     };
@@ -885,7 +877,7 @@ public:
 
     ContaminationEstimator();
 
-    ContaminationEstimator(const char *bamFile, const char *faiFile, const char *bedFile);
+    ContaminationEstimator(int nPC, const char *bamFile, const char *faiFile, const char *bedFile);
 
     /*Initialize from existed UD*/
     /*This assumes the markers are the same as the selected vcf*/
