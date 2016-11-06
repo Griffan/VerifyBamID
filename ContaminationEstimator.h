@@ -58,9 +58,9 @@ public:
         double max_af;
         double llk;
         ContaminationEstimator *ptr;
-        vector<double> localPC;
-        vector<double> localPC2;
-        double localAlpha;
+        vector<double> fixPC,globalPC;
+        vector<double> fixPC2,globalPC2;
+        double fixAlpha,globalAlpha;
         const char* Base;
         fullLLKFunc()
         {
@@ -69,17 +69,18 @@ public:
             max_af=0.9995;
             llk=0;
             ptr=nullptr;
-            localAlpha=0;
+            fixAlpha=0;
             std::cerr<<"Initializae from fullLLKFunc()"<<std::endl;
 
         }
-        fullLLKFunc(int dim, ContaminationEstimator* contPtr):localPC(dim,0.),localPC2(dim,0.) {
+        fullLLKFunc(int dim, ContaminationEstimator* contPtr):fixPC(dim,0.),fixPC2(dim,0.),globalPC(fixPC),globalPC2(fixPC2) {
             fullLLKFunc::Base = "actg";
             min_af = 0.0005;
             max_af = 0.9995;
-            llk = 0;
+            llk = 0.;
             ptr = contPtr;
-            localAlpha = 0;
+            fixAlpha = 0.;
+            globalAlpha =0.;
             std::cerr<<"Initializae from fullLLKFunc(int dim, ContaminationEstimator* contPtr)"<<std::endl;
         }
 
@@ -411,11 +412,11 @@ public:
                     for (int geno2 = 0; geno2 < 3; ++geno2) {
                         double baseLK(0);
                         for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log(((1. - localAlpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           localAlpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
+                            baseLK += log(((1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
+                                           fixAlpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
                                           Phred(tmpQual[j] - 33)
-                                          + ((1. - localAlpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             localAlpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
+                                          + ((1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
+                                             fixAlpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
                                             (1 - Phred(tmpQual[j] - 33)));
 //                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
 //                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
@@ -487,11 +488,11 @@ public:
                     for (int geno2 = 0; geno2 < 3; ++geno2) {
                         double baseLK(0);
                         for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log(((1. - localAlpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           localAlpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
+                            baseLK += log(((1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
+                                           fixAlpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
                                           Phred(tmpQual[j] - 33)
-                                          + ((1. - localAlpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             localAlpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
+                                          + ((1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
+                                             fixAlpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
                                             (1 - Phred(tmpQual[j] - 33)));
 //                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
 //                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
@@ -537,15 +538,15 @@ public:
                 else
                 {
                     ptr->AFs[i]=0.;
-                    for (int k = 0; k <localPC.size(); ++k) {
-                        ptr->AFs[i]+=ptr->UD[i][k] * localPC[k];
+                    for (int k = 0; k <fixPC.size(); ++k) {
+                        ptr->AFs[i]+=ptr->UD[i][k] * fixPC[k];
                     }
                     ptr->AFs[i] += ptr->means[i];
                     ptr->AFs[i] /= 2.0;
 
                     ptr->AF2s[i]=0.;
-                    for (int k = 0; k <localPC2.size(); ++k) {
-                        ptr->AF2s[i]+=ptr->UD[i][k] * localPC2[k];
+                    for (int k = 0; k <fixPC2.size(); ++k) {
+                        ptr->AF2s[i]+=ptr->UD[i][k] * fixPC2[k];
                     }
                     ptr->AF2s[i] += ptr->means[i];
                     ptr->AF2s[i] /= 2.0;
@@ -618,8 +619,8 @@ public:
                 else
                 {
                     ptr->AFs[i]=0.;
-                    for (int k = 0; k <localPC.size(); ++k) {
-                        ptr->AFs[i]+=ptr->UD[i][k] * localPC[k];
+                    for (int k = 0; k <fixPC.size(); ++k) {
+                        ptr->AFs[i]+=ptr->UD[i][k] * fixPC[k];
                     }
                     ptr->AFs[i] += ptr->means[i];
                     ptr->AFs[i] /= 2.0;
@@ -673,73 +674,73 @@ public:
             ptr = inPtr;
             srand(ptr->seed);
 //            srand(static_cast<unsigned>(time(NULL)));
-            for (int k = 0; k <localPC.size(); ++k) {
-                localPC[k]=ptr->PC[0][k];
+            for (int k = 0; k <fixPC.size(); ++k) {
+                fixPC[k]=ptr->PC[0][k];
             }
-            for (int k = 0; k <localPC2.size(); ++k) {
-                localPC2[k]=ptr->PC[1][k];
+            for (int k = 0; k <fixPC2.size(); ++k) {
+                fixPC2[k]=ptr->PC[1][k];
             }
-            localAlpha=ptr->alpha;
+            fixAlpha=ptr->alpha;
             if(!ptr->isHeter)
             {
                 if(ptr->isPCFixed) {
 
-                    llk = (0 - computeMixLLKs(localAlpha));
+                    llk = (0 - computeMixLLKs(fixAlpha));
                 }
                 else if(ptr->isAlphaFixed) {
 
-                    llk = (0 - computeMixLLKs(localPC));
+                    llk = (0 - computeMixLLKs(fixPC));
                 }
                 else
-                    llk = (0 - computeMixLLKs(localPC,localAlpha));
+                    llk = (0 - computeMixLLKs(fixPC,fixAlpha));
             }
             else//contamination source from different population
             {
                 if(ptr->isPCFixed) {
 
-                    llk = (0 - computeMixLLKs_mix(localAlpha));
+                    llk = (0 - computeMixLLKs_mix(fixAlpha));
                 }
                 else if(ptr->isAlphaFixed) {
 
-                    llk = (0 - computeMixLLKs(localPC, localPC2));
+                    llk = (0 - computeMixLLKs(fixPC, fixPC2));
                 }
                 else
-                    llk = (0 - computeMixLLKs(localPC,localPC2,localAlpha));
+                    llk = (0 - computeMixLLKs(fixPC,fixPC2,fixAlpha));
             }
         }
 
         int initialize() {
             srand(ptr->seed);
 //            srand(static_cast<unsigned>(time(NULL)));
-            for (int k = 0; k <localPC.size(); ++k) {
-                localPC[k] = ptr->PC[0][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            for (int k = 0; k <fixPC.size(); ++k) {
+                fixPC[k] = ptr->PC[0][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             }
-            for (int k = 0; k <localPC2.size(); ++k) {
-                localPC2[k] = ptr->PC[1][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            for (int k = 0; k <fixPC2.size(); ++k) {
+                fixPC2[k] = ptr->PC[1][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             }
-            localAlpha = ptr->alpha;//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            fixAlpha = ptr->alpha;//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
 
             if(!ptr->isHeter)
             {
                 if(ptr->isPCFixed) {
-                    llk = (0 - computeMixLLKs(localAlpha));
+                    llk = (0 - computeMixLLKs(fixAlpha));
                 }
                 else if(ptr->isAlphaFixed) {
-                    llk = (0 - computeMixLLKs(localPC));
+                    llk = (0 - computeMixLLKs(fixPC));
                 }
                 else
-                    llk = (0 - computeMixLLKs(localPC,localAlpha));
+                    llk = (0 - computeMixLLKs(fixPC,fixAlpha));
             }
             else//contamination source from different population
             {
                 if(ptr->isPCFixed) {
-                    llk = (0 - computeMixLLKs_mix(localAlpha));
+                    llk = (0 - computeMixLLKs_mix(fixAlpha));
                 }
                 else if(ptr->isAlphaFixed) {
-                    llk = (0 - computeMixLLKs(localPC, localPC2));
+                    llk = (0 - computeMixLLKs(fixPC, fixPC2));
                 }
                 else
-                    llk = (0 - computeMixLLKs(localPC,localPC2,localAlpha));
+                    llk = (0 - computeMixLLKs(fixPC,fixPC2,fixAlpha));
             }
             return 0;
         }
@@ -753,7 +754,7 @@ public:
                     smLLK = 0 - computeMixLLKs(tmpAlpha);
                     if (smLLK < llk) {
                         llk = smLLK;
-                        localAlpha = tmpAlpha;
+                        globalAlpha = tmpAlpha;
                     }
                 }
                 else if(ptr->isAlphaFixed) {
@@ -764,7 +765,7 @@ public:
                     smLLK = 0 - computeMixLLKs(tmpPC);
                     if (smLLK < llk) {
                         llk = smLLK;
-                        localPC = tmpPC;
+                        globalPC = tmpPC;
                     }
                 }
                 else {
@@ -777,8 +778,8 @@ public:
                     smLLK = 0 - computeMixLLKs(tmpPC, tmpAlpha);
                     if (smLLK < llk) {
                         llk = smLLK;
-                        localPC = tmpPC;
-                        localAlpha = tmpAlpha;
+                        globalPC = tmpPC;
+                        globalAlpha = tmpAlpha;
                     }
                 }
             }
@@ -786,10 +787,10 @@ public:
             {
                 if(ptr->isPCFixed) {
                     double tmpAlpha = invLogit(v[0]);
-                    smLLK = (0 - computeMixLLKs_mix(localAlpha));
+                    smLLK = (0 - computeMixLLKs_mix(fixAlpha));
                     if (smLLK < llk) {
                         llk = smLLK;
-                        localAlpha = tmpAlpha;
+                        globalAlpha = tmpAlpha;
                     }
                 }
                 else if(ptr->isAlphaFixed) {
@@ -809,8 +810,8 @@ public:
                     smLLK = (0 - computeMixLLKs(tmpPC, tmpPC2));
                     if (smLLK < llk) {
                         llk = smLLK;
-                        localPC = tmpPC;
-                        localPC2 = tmpPC2;
+                        globalPC = tmpPC;
+                        globalPC2 = tmpPC2;
                     }
                 }
                 else {
@@ -832,18 +833,18 @@ public:
                     smLLK = (0 - computeMixLLKs(tmpPC, tmpPC2, tmpAlpha));
                     if (smLLK < llk) {
                         llk = smLLK;
-                        localPC = tmpPC;
-                        localPC2 = tmpPC2;
-                        localAlpha = tmpAlpha;
+                        globalPC = tmpPC;
+                        globalPC2 = tmpPC2;
+                        globalAlpha = tmpAlpha;
                     }
 		    std::cerr<< "tmpPC1:" << tmpPC[0] << "\ttmpPC2:" << tmpPC[1]
 			<< "\ttmpPC3:" << tmpPC2[0] << "\ttmpPC4:" << tmpPC2[1]
 			<< "\ttmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
                 }
             }
-            std::cerr << "localPC1:" << localPC[0] << "\tlocaPC2:" << localPC[1]
-                      << "\tlocalPC3:" << localPC2[0] << "\tlocalPC4:" << localPC2[1]
-                      << "\tlocalAlpha:" << localAlpha << "\tllk:" << llk <<std::endl;
+            std::cerr << "globalPC:" << globalPC[0] << "\tglobalPC:" << globalPC[1]
+                      << "\tglobalPC2:" << globalPC2[0] << "\tglobalPC2:" << globalPC2[1]
+                      << "\tglobalAlpha:" << globalAlpha << "\tllk:" << llk <<std::endl;
             return smLLK;
         }
     };

@@ -58,34 +58,33 @@ int ContaminationEstimator::OptimizeLLK()
         }
         else
         {
-            for (int k = 0; k <numPC; ++k) {
-                PC[0][k]=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            }
-            for (int k = 0; k <numPC; ++k) {
-                PC[1][k]=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            }
-            alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-
-	        std::cout << "Estimation from OptimizeHeter:"<<std::endl;
-            isHeter=false;
             fn.initialize();
-            OptimizeHom(myMinimizer);
-	//	double lastAlpha=alpha;
-	//	std::vector<double> lastPC=PC[0];
-	        std::cerr << "PC1:" << PC[0][0] << "\tPC2:" << PC[0][1] << std::endl;
-   	        std::cerr << "PC3:" << PC[1][0] << "\tPC4:" << PC[1][1] << std::endl;
-	        std::cout << "testAlpha:" << (alpha<0.5?alpha:(1-alpha))<<std::endl;
-            PC[1]=PC[0];
-            isHeter=true;
-	        fn.initialize();
-            OptimizeHeter(myMinimizer);
-	    
+            for (int iter = 0; iter < 10; ++iter) {
+
+                for (int k = 0; k < numPC; ++k) {
+                    PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+                }
+                for (int k = 0; k < numPC; ++k) {
+                    PC[1][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+                }
+                alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+
+                std::cout << "Estimation from OptimizeHeter:" << std::endl;
+                isHeter = false;
+                OptimizeHom(myMinimizer);
+                std::cerr << "PC1:" << PC[0][0] << "\tPC2:" << PC[0][1] << std::endl;
+                std::cerr << "PC3:" << PC[1][0] << "\tPC4:" << PC[1][1] << std::endl;
+                std::cout << "testAlpha:" << (alpha < 0.5 ? alpha : (1 - alpha)) << std::endl;
+                PC[1] = PC[0];
+                isHeter = true;
+                OptimizeHeter(myMinimizer);
+            }
         }
-        std::cout << "PC1:" << PC[0][0] << "\tPC2:" << PC[0][1] << std::endl;
-        std::cout << "PC3:" << PC[1][0] << "\tPC4:" << PC[1][1] << std::endl;
+        std::cout << "PC1:" << fn.globalPC[0] << "\tPC2:" << fn.globalPC[1] << std::endl;
+        std::cout << "PC3:" << fn.globalPC2[0] << "\tPC4:" << fn.globalPC2[1] << std::endl;
     }
 
-    std::cout << "Alpha:" << (alpha<0.5?alpha:(1-alpha))<<std::endl;
+    std::cout << "Alpha:" << (fn.globalAlpha<0.5?fn.globalAlpha:(1-fn.globalAlpha))<<std::endl;
     return 0;
 }
 
@@ -143,6 +142,7 @@ void ContaminationEstimator::OptimizeHom(AmoebaMinimizer &myMinimizer) {
                 startingPoint[i] = PC[0][i];
             }
     startingPoint[numPC] = alpha;
+    std::cerr<<"start point:"<<PC[0][0]<<"\t"<<PC[0][1]<<"\t"<<PC[1][0]<<"\t"<<PC[1][1]<<"\t"<<std::endl;
     startingPoint.label = "startPoint";
     myMinimizer.func = &fn;
     myMinimizer.Reset(numPC + 1);
