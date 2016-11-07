@@ -23,16 +23,23 @@ ContaminationEstimator::~ContaminationEstimator() {
 int ContaminationEstimator::OptimizeLLK()
 {
     AmoebaMinimizer myMinimizer;
-
+	fn.initialize();
     if(!isHeter)
     {
         if(isPCFixed) {
             std::cout << "Estimation from OptimizeHomFixedPC:"<<std::endl;
-            OptimizeHomFixedPC(myMinimizer);
+//            for(int iter=0;iter!=10;++iter)
+	    {
+	    alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+	    OptimizeHomFixedPC(myMinimizer);
+	    }
         }
         else if(isAlphaFixed) {
             std::cout << "Estimation from OptimizeHomFixedAlpha:"<<std::endl;
-            OptimizeHomFixedAlpha(myMinimizer);
+		for (int k = 0; k <PC[0].size(); ++k) {
+			PC[0][k]=static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+		}
+	    OptimizeHomFixedAlpha(myMinimizer);
         }
         else
         {
@@ -44,22 +51,28 @@ int ContaminationEstimator::OptimizeLLK()
             std::cout << "Estimation from OptimizeHom:"<<std::endl;
             OptimizeHom(myMinimizer);
         }
-        std::cout << "PC1:" << PC[0][0] << "\tPC2:" << PC[0][1] << std::endl;
+        std::cout << "PC1:" << fn.globalPC[0] << "\tPC2:" << fn.globalPC[1] << std::endl;
     }
     else//contamination source from different population
     {
         if(isPCFixed) {
             std::cout << "Estimation from OptimizeHeterFixedPC:"<<std::endl;
+	    alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             OptimizeHeterFixedPC(myMinimizer);
         }
         else if(isAlphaFixed) {
+		for (int k = 0; k < numPC; ++k) {
+			PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+		}
+		for (int k = 0; k < numPC; ++k) {
+			PC[1][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+		}
             std::cout << "Estimation from OptimizeHeterFixedAlpha:"<<std::endl;
             OptimizeHeterFixedAlpha(myMinimizer);
         }
         else
         {
-            fn.initialize();
-            for (int iter = 0; iter < 10; ++iter) {
+//            for (int iter = 0; iter < 10; ++iter) {
 
                 for (int k = 0; k < numPC; ++k) {
                     PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
@@ -78,7 +91,7 @@ int ContaminationEstimator::OptimizeLLK()
                 PC[1] = PC[0];
                 isHeter = true;
                 OptimizeHeter(myMinimizer);
-            }
+  //          }
         }
         std::cout << "PC1:" << fn.globalPC[0] << "\tPC2:" << fn.globalPC[1] << std::endl;
         std::cout << "PC3:" << fn.globalPC2[0] << "\tPC4:" << fn.globalPC2[1] << std::endl;
@@ -197,7 +210,7 @@ ContaminationEstimator::ContaminationEstimator(int nPC, const char *bamFile, con
 
     ReadChooseBed(std::string(bedFile));
     viewer = SimplePileupViewer(&BedVec,bamFile,faiFile,bedFile,1);
-    alpha=0.99;
+    alpha=0.5;
     NumMarker=0;
 
 }

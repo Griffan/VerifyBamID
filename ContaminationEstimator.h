@@ -65,8 +65,8 @@ public:
         fullLLKFunc()
         {
             fullLLKFunc::Base = "actg";
-            min_af=0.0005;
-            max_af=0.9995;
+            min_af=0.00005;
+            max_af=0.99995;
             llk=0;
             ptr=nullptr;
             fixAlpha=0;
@@ -75,8 +75,8 @@ public:
         }
         fullLLKFunc(int dim, ContaminationEstimator* contPtr):fixPC(dim,0.),fixPC2(dim,0.),globalPC(fixPC),globalPC2(fixPC2) {
             fullLLKFunc::Base = "actg";
-            min_af = 0.0005;
-            max_af = 0.9995;
+            min_af = 0.00005;
+            max_af = 0.99995;
             llk = 0.;
             ptr = contPtr;
             fixAlpha = 0.;
@@ -675,12 +675,12 @@ public:
             srand(ptr->seed);
 //            srand(static_cast<unsigned>(time(NULL)));
             for (int k = 0; k <fixPC.size(); ++k) {
-                fixPC[k]=ptr->PC[0][k];
+                globalPC[k]=fixPC[k]=ptr->PC[0][k];
             }
             for (int k = 0; k <fixPC2.size(); ++k) {
-                fixPC2[k]=ptr->PC[1][k];
+                globalPC2[k]=fixPC2[k]=ptr->PC[1][k];
             }
-            fixAlpha=ptr->alpha;
+            globalAlpha=fixAlpha=ptr->alpha;
             if(!ptr->isHeter)
             {
                 if(ptr->isPCFixed) {
@@ -713,12 +713,12 @@ public:
             srand(ptr->seed);
 //            srand(static_cast<unsigned>(time(NULL)));
             for (int k = 0; k <fixPC.size(); ++k) {
-                fixPC[k] = ptr->PC[0][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+                globalPC[k]=fixPC[k] = ptr->PC[0][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             }
             for (int k = 0; k <fixPC2.size(); ++k) {
-                fixPC2[k] = ptr->PC[1][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+                globalPC2[k]=fixPC2[k] = ptr->PC[1][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             }
-            fixAlpha = ptr->alpha;//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            globalAlpha=fixAlpha = ptr->alpha;//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
 
             if(!ptr->isHeter)
             {
@@ -756,6 +756,7 @@ public:
                         llk = smLLK;
                         globalAlpha = tmpAlpha;
                     }
+		    std::cerr<< "tmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
                 }
                 else if(ptr->isAlphaFixed) {
                     vector<double> tmpPC(ptr->numPC,0.);
