@@ -7,7 +7,10 @@
 
 
 #include <vector>
+#include <map>
+#include "SimplePileupViewer.h"
 
+typedef std::map<std::string, std::map<int, std::pair<char, char> > > BED;
 class SVDcalculator {
 private:
     int numIndividual;
@@ -16,15 +19,24 @@ private:
 
     std::vector<std::vector<PCtype> > UD;
     std::vector<std::vector<PCtype> > PC;
+    std::vector<std::string> Samples;
     std::vector<PCtype> Mu;
+    BED chooseBed;
+    std::vector<region_t> BedVec;
 public:
     SVDcalculator();
     ~SVDcalculator();
-    int ReadVcf(const std::string& VcfPath);
-    int Decompose();
-    std::vector<std::vector<PCtype> >& GetUDMatrix();
-    std::vector<std::vector<PCtype> >& GetPCMatrix();
-    std::vector<PCtype>& GetMuArray();
+    void ProcessRefVCF(const std::string& VcfPath);
+    int ReadVcf(const std::string &VcfPath,
+                std::vector<std::vector<char> >& genotype,
+                int & nSamples, int& nMarkers);
+//    int Decompose();
+    std::vector<std::vector<double>> GetUDMatrix();//return the matrix
+    std::vector<std::vector<double>> GetPCMatrix();
+    std::vector<PCtype> GetMuArray();
+    BED GetchooseBed();
+    std::vector<region_t> GetBedVec();
+    void WriteSVD(const std::string &VcfPath);
 };
 
 

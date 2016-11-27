@@ -26,6 +26,7 @@
 #include <fstream>
 #include "ContaminationEstimator.h"
 #include "params.h"
+#include "SVDcalculator.h"
 
 using namespace std;
 
@@ -48,7 +49,7 @@ int main(int argc, char **argv) {
                                       "[String] Bed file for markers used in this analysis,1 based pos(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]")
                     LONG_STRING_PARAM("Reference", &RefPath,
                                       "[String] reference file[Required]")
-                    LONG_STRING_PARAM("efVCF", &RefVCF,
+                    LONG_STRING_PARAM("RefVCF", &RefVCF,
                                       "[String] VCF file from which to extract reference panel's genotype matrix")
                     LONG_STRING_PARAM("UDPath", &UDPath,
                                       "[String] UD matrix file from SVD result of genotype matrix")
@@ -80,17 +81,23 @@ int main(int argc, char **argv) {
             error("--MeanPath is required when --RefVCF is absent");
             exit(EXIT_FAILURE);
         }
+        if (BedPath == "Empty") {
+            error("--BedPath is required when --RefVCF is absent");
+            exit(EXIT_FAILURE);
+        }
     } else//SVD on the fly
     {
         notice("Specified reference panel VCF file, doing SVD on the fly...");
-        notice("This procedure will generate SVD matrices as [OutputPrefix].UD and [OutputPrefix].mu");
-        notice("You may specify --UDPath [OutputPrefix].UD and --MeanPath [OutputPrefix].mu in future use");
+        notice("This procedure will generate SVD matrices as [RefVCF path].UD and [RefVCF path].mu");
+        notice("You may specify --UDPath [RefVCF path].UD and --MeanPath [RefVCF path].mu in future use");
+        SVDcalculator calculator;
+        calculator.ProcessRefVCF(RefVCF);
+        UDPath = RefVCF+".UD";
+        MeanPath = RefVCF+".mu";
+        BedPath = RefVCF+".bed";
     }
 
-    if (BedPath == "Empty") {
-        error("--BedPath is required");
-        exit(EXIT_FAILURE);
-    }
+
     if (RefPath == "Empty") {
         error("--Reference is required");
         exit(EXIT_FAILURE);
@@ -110,7 +117,7 @@ int main(int argc, char **argv) {
     ContaminationEstimator Estimator(nPC, BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
     Estimator.seed = seed;
     Estimator.isHeter = asHeter;
-    Estimator.ReadSVDMatrix(UDPath, MeanPath, BedPath);
+    Estimator.ReadSVDMatrix(UDPath, MeanPath);
     //std::cerr<<"NumMarker:"<<Estimator.NumMarker<<" and UD size:"<<Estimator.UD.size()<<std::endl;
     if(fixPC)
         Estimator.isPCFixed = true;

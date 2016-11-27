@@ -193,7 +193,7 @@ void ContaminationEstimator::OptimizeHomFixedPC(AmoebaMinimizer &myMinimizer) {
     alpha = fullLLKFunc::invLogit(myMinimizer.point[0]);
 }
 
-int ContaminationEstimator::ReadSVDMatrix(const std::string UDpath, const std::string Mean, const std::string &Bed)
+int ContaminationEstimator::ReadSVDMatrix(const std::string UDpath, const std::string Mean)
 {
     ReadMatrixUD(UDpath);
     ReadMean(Mean);
@@ -227,7 +227,7 @@ int ContaminationEstimator::ReadMatrixUD(const std::string &path)
         //std::string chr;
         //int pos;
         //ss >> chr >> pos;
-	for(int index=0;index!=numPC;++index)
+	    for(int index=0;index!=numPC;++index)
         ss >> tmpUD[index];
         UD.push_back(tmpUD);
         //initialize arrays
@@ -258,7 +258,7 @@ int ContaminationEstimator::ReadChooseBed(const std::string &path)
 
         BedVec.push_back(region_t(chr,pos-1,pos));
         PosVec.push_back(make_pair(chr, pos));
-	ChooseBed[chr][pos] = std::make_pair(ref,alt);
+        ChooseBed[chr][pos] = std::make_pair(ref,alt);
     }
     fin.close();
     return 0;

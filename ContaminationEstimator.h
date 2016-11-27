@@ -867,7 +867,8 @@ public:
     std::vector<double> AFs;
     std::vector<double> AF2s;
 
-    std::unordered_map<std::string, std::unordered_map<int, std::pair<char, char> > > ChooseBed;
+    typedef std::unordered_map<std::string, std::unordered_map<int, std::pair<char, char> > > BED;
+    BED ChooseBed;
     std::vector<region_t> BedVec;
     std::vector<std::pair<std::string, int> > PosVec;
 
@@ -916,7 +917,7 @@ public:
                          const std::string &MPUpath, const std::string &Bed, const std::string &Prefix,
                          const std::string &ReadGroup);
     */
-    int ReadSVDMatrix(const std::string UDpath, const std::string Mean, const std::string &Bed);
+    int ReadSVDMatrix(const std::string UDpath, const std::string Mean);
     /*
     int FromBamtoPileup();
      */
