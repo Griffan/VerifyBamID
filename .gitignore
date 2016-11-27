@@ -7,7 +7,3 @@ build
 samtools/htslib/
 bin/
 result.selfSM
-SVDcalculator.h
-SVDcalculator.cpp
-Eigen/
-libVcf/
