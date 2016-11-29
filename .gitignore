@@ -7,3 +7,4 @@ build
 samtools/htslib/
 bin/
 result.selfSM
+cmake-build-debug/

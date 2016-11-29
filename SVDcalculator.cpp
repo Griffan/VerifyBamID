@@ -194,7 +194,7 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath)
     PC.resize(numIndividual,std::vector<double>(matrixUD.cols(),0.f));
     for (int sampleIdx = 0; sampleIdx < numIndividual ; ++sampleIdx) {
         for (int pcIdx = 0; pcIdx <matrixUD.cols() ; ++pcIdx) {
-            PC[sampleIdx][pcIdx] = matrixV(pcIdx,sampleIdx);
+            PC[sampleIdx][pcIdx] = matrixV(sampleIdx,pcIdx);
         }
     }
 
