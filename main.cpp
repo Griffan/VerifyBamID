@@ -25,6 +25,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <limits>
 #include "ContaminationEstimator.h"
 #include "params.h"
 #include "SVDcalculator.h"
