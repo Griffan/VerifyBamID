@@ -24,6 +24,7 @@
 */
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include "ContaminationEstimator.h"
 #include "params.h"
 #include "SVDcalculator.h"
@@ -37,7 +38,9 @@ int main(int argc, char **argv) {
             "Empty"), OutputPrefix("result");
     string knownAF("Empty");
     string RefVCF("Empty");
-    bool fixPC(false), fixAlpha(false), asHeter(false);
+    string fixPC("Empty");
+    double fixAlpha(0.);
+    bool asHeter(false);
     int nfiles(0),seed(12345),nPC(2);
     paramList pl;
     BEGIN_LONG_PARAMS(longParameters)
@@ -58,20 +61,21 @@ int main(int argc, char **argv) {
                     LONG_STRING_PARAM("Output", &OutputPrefix,
                                       "[String] OutputPrefix[optional]")
                     LONG_INT_PARAM("numPC", &nPC,
-                                      "[Int] number of PCs used to infer AF[optional]")
-                    LONG_INT_PARAM("Seed",&seed,"[INT] Random number seed[default:12345]")
-                    LONG_PARAM("fixPC", &fixPC, "[Bool] Fix PCs to estimate localAlpha[default:false]")
-                    LONG_PARAM("fixAlpha", &fixAlpha, "[Bool] fixAlpha to estimate PC coordinates[default:false]")
+                                   "[Int] number of PCs used to infer Allele Frequency[optional]")
+                    LONG_STRING_PARAM("fixPC", &fixPC, "[String] Input fixed PCs to estimate Alpha[format:PC1|PC2|PC3...]")
+                    LONG_DOUBLE_PARAM("fixAlpha", &fixAlpha, "[Double] Input fixed Alpha to estimate PC coordinates")
+//                    LONG_PARAM("fixPC", &fixPC, "[Bool] Fix PCs to estimate localAlpha[default:false]")
+//                    LONG_PARAM("fixAlpha", &fixAlpha, "[Bool] fixAlpha to estimate PC coordinates[default:false]")
                     LONG_PARAM("asHeter", &asHeter, "[Bool] Infer contamination level as if target sample and contamination source are from the different population[default:false]")
                     LONG_STRING_PARAM("knownAF", &knownAF, "[String] known allele frequency file (chr\tpos\tfreq)[Optional]")
-
-
+                    LONG_INT_PARAM("Seed",&seed,"[INT] Random number seed[default:12345]")
 
     END_LONG_PARAMS();
 
     pl.Add(new longParams("Available Options", longParameters));
     pl.Read(argc, argv);
     pl.Status();
+
     if (RefVCF == "Empty") {
         if (UDPath == "Empty") {
             error("--UDPath is required when --RefVCF is absent");
@@ -119,10 +123,28 @@ int main(int argc, char **argv) {
     Estimator.isHeter = asHeter;
     Estimator.ReadSVDMatrix(UDPath, MeanPath);
     //std::cerr<<"NumMarker:"<<Estimator.NumMarker<<" and UD size:"<<Estimator.UD.size()<<std::endl;
-    if(fixPC)
+    if(fixPC!="Empty") {// parse --fixPC
+        notice("you specified --fixPC, this will overide dynamic estimation of PCs");
+        notice("parsing the PCs");
+        stringstream ss(fixPC);
+        string token;
+        std::vector<PCtype> tmpPC;
+        while(std::getline(ss, token, '|')) {
+            tmpPC.push_back(atof(token.c_str()));
+        }
+        if(tmpPC.size() > nPC)
+        {
+            warning("parameter --fixPC provided larger dimension than parameter --numPC(default value 2) and hence will be truncated");
+            for (int i = 0; i < nPC; ++i) {
+                Estimator.PC[0][i]=tmpPC[i];
+            }
+        }
         Estimator.isPCFixed = true;
-    else if (fixAlpha)
+    }
+    else if((fixAlpha -0.)>std::numeric_limits<double>::epsilon()) {
+        Estimator.alpha = fixAlpha;
         Estimator.isAlphaFixed = true;
+    }
     if(knownAF!="Empty") {
         Estimator.isAFknown = true;
         Estimator.ReadAF(knownAF);
