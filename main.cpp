@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
         }
         Estimator.isPCFixed = true;
     }
-    else if(abs(fixAlpha - std::numeric_limits<double>::max())>std::numeric_limits<double>::epsilon()) {
+    else if(fabs(fixAlpha - std::numeric_limits<double>::max())>std::numeric_limits<double>::epsilon()) {
         notice("you specified --fixAlpha, this will overide dynamic estimation of alpha");
         Estimator.alpha = fixAlpha;
         Estimator.isAlphaFixed = true;
