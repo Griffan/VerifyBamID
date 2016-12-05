@@ -756,7 +756,7 @@ public:
                         llk = smLLK;
                         globalAlpha = tmpAlpha;
                     }
-		    std::cerr<< "tmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
+//		    std::cerr<< "tmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
                 }
                 else if(ptr->isAlphaFixed) {
                     vector<double> tmpPC(ptr->numPC,0.);

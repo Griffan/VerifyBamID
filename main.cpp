@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     string knownAF("Empty");
     string RefVCF("Empty");
     string fixPC("Empty");
-    double fixAlpha(0.);
+    double fixAlpha(std::numeric_limits<double>::max());
     bool asHeter(false);
     int nfiles(0),seed(12345),nPC(2);
     paramList pl;
@@ -142,7 +142,8 @@ int main(int argc, char **argv) {
         }
         Estimator.isPCFixed = true;
     }
-    else if((fixAlpha -0.)>std::numeric_limits<double>::epsilon()) {
+    else if(abs(fixAlpha - std::numeric_limits<double>::max())>std::numeric_limits<double>::epsilon()) {
+        notice("you specified --fixAlpha, this will overide dynamic estimation of alpha");
         Estimator.alpha = fixAlpha;
         Estimator.isAlphaFixed = true;
     }
