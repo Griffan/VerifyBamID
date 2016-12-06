@@ -268,11 +268,11 @@ public:
                     for (int geno2 = 0; geno2 < 3; ++geno2) {
                         double baseLK(0);
                         for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log(((1. - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
+                            baseLK += log(( alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
+                                            (1. - alpha)* getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
                                           Phred(tmpQual[j] - 33)
-                                          + ((1. - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
+                                          + ( alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
+                                             (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
                                             (1 - Phred(tmpQual[j] - 33)));
 //                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
 //                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
@@ -329,11 +329,11 @@ public:
                     for (int geno2 = 0; geno2 < 3; ++geno2) {
                         double baseLK(0);
                         for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log(((1. - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
+                            baseLK += log(( alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
+                                           (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
                                           Phred(tmpQual[j] - 33)
-                                          + ((1. - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
+                                          + (alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
+                                             (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
                                             (1 - Phred(tmpQual[j] - 33)));
 //                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
 //                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
@@ -412,11 +412,11 @@ public:
                     for (int geno2 = 0; geno2 < 3; ++geno2) {
                         double baseLK(0);
                         for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log(((1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           fixAlpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
+                            baseLK += log(( fixAlpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
+                                           (1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
                                           Phred(tmpQual[j] - 33)
-                                          + ((1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             fixAlpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
+                                          + (fixAlpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
+                                             (1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
                                             (1 - Phred(tmpQual[j] - 33)));
 //                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
 //                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
@@ -488,11 +488,11 @@ public:
                     for (int geno2 = 0; geno2 < 3; ++geno2) {
                         double baseLK(0);
                         for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log(((1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           fixAlpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
+                            baseLK += log((fixAlpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
+                                           (1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
                                           Phred(tmpQual[j] - 33)
-                                          + ((1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             fixAlpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
+                                          + (fixAlpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
+                                             (1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
                                             (1 - Phred(tmpQual[j] - 33)));
 //                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
 //                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
@@ -571,11 +571,11 @@ public:
                     for (int geno2 = 0; geno2 < 3; ++geno2) {
                         double baseLK(0);
                         for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log(((1. - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
+                            baseLK += log((alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
+                                           (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
                                           Phred(tmpQual[j] - 33)
-                                          + ((1. - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
+                                          + (alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
+                                             (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
                                             (1 - Phred(tmpQual[j] - 33)));
 //                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
 //                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
@@ -648,11 +648,11 @@ public:
                     for (int geno2 = 0; geno2 < 3; ++geno2) {
                         double baseLK(0);
                         for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log(((1. - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
+                            baseLK += log((alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
+                                           (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
                                           Phred(tmpQual[j] - 33)
-                                          + ((1. - alpha) * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             alpha * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
+                                          + (alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
+                                             (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
                                             (1 - Phred(tmpQual[j] - 33)));
 //                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
 //                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
@@ -838,9 +838,9 @@ public:
                         globalPC2 = tmpPC2;
                         globalAlpha = tmpAlpha;
                     }
-		    std::cerr<< "tmpPC1:" << tmpPC[0] << "\ttmpPC2:" << tmpPC[1]
-			<< "\ttmpPC3:" << tmpPC2[0] << "\ttmpPC4:" << tmpPC2[1]
-			<< "\ttmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
+//		    std::cerr<< "tmpPC1:" << tmpPC[0] << "\ttmpPC2:" << tmpPC[1]
+//			<< "\ttmpPC3:" << tmpPC2[0] << "\ttmpPC4:" << tmpPC2[1]
+//			<< "\ttmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
                 }
             }
             std::cerr << "globalPC:" << globalPC[0] << "\tglobalPC:" << globalPC[1]
