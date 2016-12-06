@@ -110,7 +110,7 @@ void ContaminationEstimator::OptimizeHeter(AmoebaMinimizer &myMinimizer) {
                 else
                     startingPoint[i] = PC[1][i-numPC];
             }
-    startingPoint[numPC * 2] = alpha;
+    startingPoint[numPC * 2] = fullLLKFunc::Logit(alpha);
     startingPoint.label = "startPoint";
     myMinimizer.func = &fn;
     myMinimizer.Reset(numPC * 2 + 1);
@@ -155,7 +155,7 @@ void ContaminationEstimator::OptimizeHom(AmoebaMinimizer &myMinimizer) {
     for (int i = 0; i < numPC; ++i) {
                 startingPoint[i] = PC[0][i];
             }
-    startingPoint[numPC] = alpha;
+    startingPoint[numPC] = fullLLKFunc::Logit(alpha);
     std::cerr<<"start point:"<<PC[0][0]<<"\t"<<PC[0][1]<<"\t"<<PC[1][0]<<"\t"<<PC[1][1]<<"\t"<<std::endl;
     startingPoint.label = "startPoint";
     myMinimizer.func = &fn;
@@ -185,7 +185,7 @@ void ContaminationEstimator::OptimizeHomFixedAlpha(AmoebaMinimizer &myMinimizer)
 
 void ContaminationEstimator::OptimizeHomFixedPC(AmoebaMinimizer &myMinimizer) {
     Vector startingPoint("TestPoint", 1);
-    startingPoint[0] = alpha;
+    startingPoint[0] = fullLLKFunc::Logit(alpha);
     startingPoint.label = "startPoint";
     myMinimizer.func = &fn;
     myMinimizer.Reset(1);

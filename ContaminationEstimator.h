@@ -90,6 +90,10 @@ public:
             double e = exp(x);
             return e / (1. + e);
         };
+        inline static double Logit(double &x) {
+
+            return log(x / (1 - x));
+        };
 /*
         inline double computeMixLLKs(double tPC1, double tPC2) {
             double min_af(0.5 / ptr->NumIndividual), max_af((ptr->NumIndividual - 0.5) / ptr->NumIndividual);
