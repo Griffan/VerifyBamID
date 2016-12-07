@@ -8,6 +8,7 @@
 #include "ContaminationEstimator.h"
 #include <fstream>
 #include <sstream>
+#include <cmath>
 
 #ifndef MPU_PATH
 #define MPU_PATH "mpuTools"
