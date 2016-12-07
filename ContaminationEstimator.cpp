@@ -93,15 +93,11 @@ int ContaminationEstimator::OptimizeLLK()
                 OptimizeHeter(myMinimizer);
   //          }
         }
-//        if(fn.globalAlpha<0.5)
-//        {
-//            std::cout << "Alpha:" << fn.globalAlpha<<std::endl;
-//        }
-//        else
-//        {
-//            std::cout << "Alpha:" << (1-fn.globalAlpha)<<std::endl;
-//            std::swap(fn.globalPC,fn.globalPC2);
-//        }
+
+        if(fn.globalPC[0] > fn.globalPC2[0])
+        {
+            std::swap(fn.globalPC,fn.globalPC2);
+        }
         std::cout << "PC1:" << fn.globalPC[0] << "\tPC2:" << fn.globalPC[1] << std::endl;
         std::cout << "PC3:" << fn.globalPC2[0] << "\tPC4:" << fn.globalPC2[1] << std::endl;
     }
