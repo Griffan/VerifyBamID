@@ -94,7 +94,7 @@ int ContaminationEstimator::OptimizeLLK()
   //          }
         }
 
-        if(fn.globalPC[0] > fn.globalPC2[0])
+        if(std::pow(fn.globalPC[0],2)+std::pow(fn.globalPC[1],2) > std::pow(fn.globalPC2[0],2)+std::pow(fn.globalPC2[1],2))
         {
             std::swap(fn.globalPC,fn.globalPC2);
         }
