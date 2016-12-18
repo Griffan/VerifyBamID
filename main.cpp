@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     string RefVCF("Empty");
     string fixPC("Empty");
     double fixAlpha(-1.);
-    bool asHeter(false);
+    bool asHeter(false),outputPileup(false);
     int nfiles(0),seed(12345),nPC(2);
     paramList pl;
     BEGIN_LONG_PARAMS(longParameters)
@@ -70,6 +70,9 @@ int main(int argc, char **argv) {
                     LONG_PARAM("asHeter", &asHeter, "[Bool] Infer contamination level as if target sample and contamination source are from the different population[default:false]")
                     LONG_STRING_PARAM("knownAF", &knownAF, "[String] known allele frequency file (chr\tpos\tfreq)[Optional]")
                     LONG_INT_PARAM("Seed",&seed,"[INT] Random number seed[default:12345]")
+                    LONG_PARAM("OutputPileup", &outputPileup, "[Bool] If output temp pileup file")
+
+
 
     END_LONG_PARAMS();
 
@@ -120,6 +123,26 @@ int main(int argc, char **argv) {
     }
 
     ContaminationEstimator Estimator(nPC, BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
+    if(outputPileup)
+    {
+        ofstream fout(OutputPrefix+".pileup");
+        for(auto item:Estimator.BedVec)
+        {
+            if(Estimator.viewer.posIndex.find(item.chr)==Estimator.viewer.posIndex.end())//chr existed
+                continue;
+            else if(Estimator.viewer.posIndex[item.chr].find(item.end)==Estimator.viewer.posIndex[item.chr].end())
+                continue;
+
+            fout<<item.chr<<"\t"<<item.end<<"\t"<<Estimator.ChooseBed[item.chr][item.end].first<<"\t";
+            for(auto base:Estimator.viewer.GetBaseInfoAt(item.chr,item.end))
+                fout<<base;
+            fout<<"\t";
+            for(auto qual:Estimator.viewer.GetQualInfoAt(item.chr,item.end))
+                fout<<qual;
+            fout<<endl;
+        }
+        fout.close();
+    }
     Estimator.seed = seed;
     Estimator.isHeter = asHeter;
     Estimator.ReadSVDMatrix(UDPath, MeanPath);
