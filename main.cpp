@@ -172,6 +172,7 @@ int main(int argc, char **argv) {
     }
     if(knownAF!="Empty") {
         Estimator.isAFknown = true;
+        Estimator.isPCFixed = true;
         Estimator.ReadAF(knownAF);
     }
 
