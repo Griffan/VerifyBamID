@@ -786,9 +786,9 @@ public:
                         globalPC = tmpPC;
                         globalAlpha = tmpAlpha;
                     }
-                    std::cerr<< "tmpPC1:" << tmpPC[0] << "\ttmpPC2:" << tmpPC[1]
-                             << "\ttmpPC3:" << tmpPC[2] << "\ttmpPC4:" << tmpPC[3]
-                             << "\ttmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
+//                    std::cerr<< "tmpPC1:" << tmpPC[0] << "\ttmpPC2:" << tmpPC[1]
+//                             << "\ttmpPC3:" << tmpPC[2] << "\ttmpPC4:" << tmpPC[3]
+//                             << "\ttmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
                 }
             }
             else//contamination source from different population

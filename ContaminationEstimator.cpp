@@ -163,7 +163,7 @@ void ContaminationEstimator::OptimizeHom(AmoebaMinimizer &myMinimizer) {
     myMinimizer.func = &fn;
     myMinimizer.Reset(numPC + 1);
     myMinimizer.point = startingPoint;
-    myMinimizer.Minimize(1e-6);
+    myMinimizer.Minimize(1e-10);
     alpha = fullLLKFunc::invLogit(myMinimizer.point[numPC]);
     for (int i = 0; i < numPC; ++i) {
         PC[0][i] = myMinimizer.point[i];
@@ -179,7 +179,7 @@ void ContaminationEstimator::OptimizeHomFixedAlpha(AmoebaMinimizer &myMinimizer)
     myMinimizer.func = &fn;
     myMinimizer.Reset(2);
     myMinimizer.point = startingPoint;
-    myMinimizer.Minimize(1e-6);
+    myMinimizer.Minimize(1e-10);
     for (int i = 0; i < numPC; ++i) {
         PC[0][i] = myMinimizer.point[i];
     }
@@ -192,7 +192,7 @@ void ContaminationEstimator::OptimizeHomFixedPC(AmoebaMinimizer &myMinimizer) {
     myMinimizer.func = &fn;
     myMinimizer.Reset(1);
     myMinimizer.point = startingPoint;
-    myMinimizer.Minimize(1e-6);
+    myMinimizer.Minimize(1e-10);
     alpha = fullLLKFunc::invLogit(myMinimizer.point[0]);
 }
 
