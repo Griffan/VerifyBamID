@@ -92,7 +92,7 @@ public:
         };
         inline static double Logit(double &x) {
 
-            return log(x / (1 - x));
+            return log(x / (1. - x));
         };
 /*
         inline double computeMixLLKs(double tPC1, double tPC2) {
@@ -262,8 +262,8 @@ public:
 
                 InitialGF(ptr->AFs[i], GF);
                 InitialGF(ptr->AF2s[i], GF2);
-                std::vector<char> tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char> tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
+                std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
+                std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
                 if (tmpBase.size() == 0) continue;
 
                 char altBase = ptr->ChooseBed[chr][pos].second;
@@ -323,8 +323,8 @@ public:
 
                 InitialGF(ptr->AFs[i], GF);
 
-                std::vector<char> tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char> tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
+                std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
+                std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
                 if (tmpBase.size() == 0) continue;
 
                 char altBase = ptr->ChooseBed[chr][pos].second;
@@ -400,8 +400,8 @@ public:
                 InitialGF(ptr->AFs[i], GF);
                 InitialGF(ptr->AF2s[i], GF2);
 
-                std::vector<char> tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char> tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
+                std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
+                std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
                 if (tmpBase.size() == 0) continue;
 //                std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<"\t";
 //                std::cerr<<"tmpBase:";
@@ -476,8 +476,8 @@ public:
                 GF[0] = (1 - ptr->AFs[i]) * (1 - ptr->AFs[i]);//genotype frequency
                 GF[1] = 2 * (ptr->AFs[i]) * (1 - ptr->AFs[i]);
                 GF[2] = (ptr->AFs[i]) * (ptr->AFs[i]);
-                std::vector<char> tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char> tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
+                std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
+                std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
                 if (tmpBase.size() == 0) continue;
 //                std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<"\t";
 //                std::cerr<<"tmpBase:";
@@ -559,8 +559,8 @@ public:
                 InitialGF(ptr->AFs[i], GF);
                 InitialGF(ptr->AF2s[i], GF2);
 
-                std::vector<char> tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char> tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
+                std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
+                std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
                 if (tmpBase.size() == 0) continue;
 //                std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<"\t";
 //                std::cerr<<"tmpBase:";
@@ -636,8 +636,8 @@ public:
                 GF[0] = (1 - ptr->AFs[i]) * (1 - ptr->AFs[i]);//genotype frequency
                 GF[1] = 2 * (ptr->AFs[i]) * (1 - ptr->AFs[i]);
                 GF[2] = (ptr->AFs[i]) * (ptr->AFs[i]);
-                std::vector<char> tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char> tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
+                std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
+                std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
                 if (tmpBase.size() == 0) continue;
 //                std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<"\t";
 //                std::cerr<<"tmpBase:";
@@ -786,6 +786,9 @@ public:
                         globalPC = tmpPC;
                         globalAlpha = tmpAlpha;
                     }
+                    std::cerr<< "tmpPC1:" << tmpPC[0] << "\ttmpPC2:" << tmpPC[1]
+                             << "\ttmpPC3:" << tmpPC[2] << "\ttmpPC4:" << tmpPC[3]
+                             << "\ttmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
                 }
             }
             else//contamination source from different population

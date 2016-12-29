@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
                     LONG_PARAM("asHeter", &asHeter, "[Bool] Infer contamination level as if target sample and contamination source are from the different population[default:false]")
                     LONG_STRING_PARAM("knownAF", &knownAF, "[String] known allele frequency file (chr\tpos\tfreq)[Optional]")
                     LONG_INT_PARAM("Seed",&seed,"[INT] Random number seed[default:12345]")
-                    LONG_PARAM("OutputPileup", &outputPileup, "[Bool] If output temp pileup file")
+//                    LONG_PARAM("OutputPileup", &outputPileup, "[Bool] If output temp pileup file")
 
 
 
