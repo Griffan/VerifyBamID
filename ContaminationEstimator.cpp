@@ -298,6 +298,7 @@ int ContaminationEstimator::ReadAF(const std::string &path) {
     uint32_t pos(0);
     double AF(0);
     std::string chr;
+    char ref(0),alt(0);
 //    int beg(0),end(0);
     if (!fin.is_open()) {
         std::cerr << "Open file:" << path << "\t failed, exit!";
@@ -307,7 +308,8 @@ int ContaminationEstimator::ReadAF(const std::string &path) {
 //        if(line[0]=='#'||line.find("INDEL")!=std::string::npos) continue;
         std::stringstream ss(line);
         ss >> chr;
-        ss >> pos;
+        ss >> pos >>pos;
+	ss >> ref >>alt;
 //        ss>>snpName>>snpName>>snpName>>snpName>>snpName>>snpName;
 //        beg=snpName.find("EUR_AF=");
 //        beg+=7;
