@@ -21,14 +21,14 @@
 #ifdef  __ZLIB_AVAILABLE__
 
 #if defined(_WIN32)
-#samtoolslib <stdio.h>  // for NULL!
+#include <stdio.h>  // for NULL!
 #endif
 
-#samtoolslib <stdlib.h>
-#samtoolslib <zlib.h>
-#samtoolslib "FileType.h"
+#include <stdlib.h>
+#include <zlib.h>
+#include "FileType.h"
 
-//#samtoolslib <iostream>
+//#include <iostream>
 
 class GzipFileType : public FileType
 {

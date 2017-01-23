@@ -31,7 +31,7 @@
 #include <stdexcept>
 
 #if defined(_WIN32)
-#samtoolslib <io.h>
+#include <io.h>
 #ifndef R_OK
 #define R_OK 4
 #endif

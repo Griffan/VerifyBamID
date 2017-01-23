@@ -5,4 +5,5 @@ file(GLOB SOURCE_FILES *.c)
 include_directories(${samtools_SOURCE_DIR}/htslib/include/)
 
 add_library(samtools ${SOURCE_FILES})
+add_dependencies(samtools HTSLIB)
 target_link_libraries(samtools ${samtools_SOURCE_DIR}/htslib/lib/libhts.a)

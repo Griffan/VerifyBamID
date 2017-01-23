@@ -1587,7 +1587,7 @@ SimplePileupViewer::SimplePileupViewer(std::vector<region_t>* BedPtr,const char 
         fn=new char* [1];
         fn[0]=strdup(bamFile);
         ret = SIMPLEmpileup(&mplp, nfiles, fn);
-        delete fn[0];
+        free(fn[0]);
         delete [] fn;
     }
     if (mplp.fai) fai_destroy(mplp.fai);

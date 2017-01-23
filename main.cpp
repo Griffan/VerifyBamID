@@ -24,8 +24,11 @@
 */
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <limits>
 #include "ContaminationEstimator.h"
 #include "params.h"
+#include "SVDcalculator.h"
 
 using namespace std;
 
@@ -35,28 +38,39 @@ int main(int argc, char **argv) {
     string UDPath("Empty"), MeanPath("Empty"), BedPath("Empty"), BamFileList("Empty"), BamFile("Empty"), RefPath(
             "Empty"), OutputPrefix("result");
     string knownAF("Empty");
-    bool fixPC(false), fixAlpha(false);
-    int nfiles(0),seed(12345);
+    string RefVCF("Empty");
+    string fixPC("Empty");
+    double fixAlpha(-1.);
+    bool asHeter(false),outputPileup(false);
+    int nfiles(0),seed(12345),nPC(2);
     paramList pl;
     BEGIN_LONG_PARAMS(longParameters)
                     LONG_PARAM_GROUP("Input/Output Files",
                                      "Input/Output files for the program[Complete Path Recommended]")
-                    LONG_STRING_PARAM("UDPath", &UDPath,
-                                      "[String] UD matrix file from SVD result of genotype matrix[Required]")
-                    LONG_STRING_PARAM("MeanPath", &MeanPath,
-                                      "[String] Mean matrix file of genotype matrix[Required]")
                     LONG_STRING_PARAM("BamFile", &BamFile,
                                       "[String] Bam or Cram file for the sample[Required]")
                     LONG_STRING_PARAM("BedPath", &BedPath,
-                                      "[String] Bed file for markers used in this analysis,(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]")
+                                      "[String] Bed file for markers used in this analysis,1 based pos(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]")
                     LONG_STRING_PARAM("Reference", &RefPath,
                                       "[String] reference file[Required]")
+                    LONG_STRING_PARAM("RefVCF", &RefVCF,
+                                      "[String] VCF file from which to extract reference panel's genotype matrix")
+                    LONG_STRING_PARAM("UDPath", &UDPath,
+                                      "[String] UD matrix file from SVD result of genotype matrix")
+                    LONG_STRING_PARAM("MeanPath", &MeanPath,
+                                      "[String] Mean matrix file of genotype matrix")
                     LONG_STRING_PARAM("Output", &OutputPrefix,
                                       "[String] OutputPrefix[optional]")
-                    LONG_INT_PARAM("Seed",&seed,"[INT] Random number seed(default:12345)")
-                    LONG_PARAM("fixPC", &fixPC, "[Bool] Fix PCs to estimate alpha[Optional]")
-                    LONG_PARAM("fixAlpha", &fixAlpha, "[Bool] fixAlpha to estimate PC coordinates[Optional]")
+                    LONG_INT_PARAM("numPC", &nPC,
+                                   "[Int] number of PCs used to infer Allele Frequency[optional]")
+                    LONG_STRING_PARAM("fixPC", &fixPC, "[String] Input fixed PCs to estimate Alpha[format:PC1|PC2|PC3...]")
+                    LONG_DOUBLE_PARAM("fixAlpha", &fixAlpha, "[Double] Input fixed Alpha to estimate PC coordinates")
+//                    LONG_PARAM("fixPC", &fixPC, "[Bool] Fix PCs to estimate localAlpha[default:false]")
+//                    LONG_PARAM("fixAlpha", &fixAlpha, "[Bool] fixAlpha to estimate PC coordinates[default:false]")
+                    LONG_PARAM("asHeter", &asHeter, "[Bool] Infer contamination level as if target sample and contamination source are from the different population[default:false]")
                     LONG_STRING_PARAM("knownAF", &knownAF, "[String] known allele frequency file (chr\tpos\tfreq)[Optional]")
+                    LONG_INT_PARAM("Seed",&seed,"[INT] Random number seed[default:12345]")
+//                    LONG_PARAM("OutputPileup", &outputPileup, "[Bool] If output temp pileup file")
 
 
 
@@ -65,18 +79,33 @@ int main(int argc, char **argv) {
     pl.Add(new longParams("Available Options", longParameters));
     pl.Read(argc, argv);
     pl.Status();
-    if (UDPath == "Empty") {
-        error("--UDPath is required");
-        exit(EXIT_FAILURE);
+
+    if (RefVCF == "Empty") {
+        if (UDPath == "Empty") {
+            error("--UDPath is required when --RefVCF is absent");
+            exit(EXIT_FAILURE);
+        }
+        if (MeanPath == "Empty") {
+            error("--MeanPath is required when --RefVCF is absent");
+            exit(EXIT_FAILURE);
+        }
+        if (BedPath == "Empty") {
+            error("--BedPath is required when --RefVCF is absent");
+            exit(EXIT_FAILURE);
+        }
+    } else//SVD on the fly
+    {
+        notice("Specified reference panel VCF file, doing SVD on the fly...");
+        notice("This procedure will generate SVD matrices as [RefVCF path].UD and [RefVCF path].mu");
+        notice("You may specify --UDPath [RefVCF path].UD and --MeanPath [RefVCF path].mu in future use");
+        SVDcalculator calculator;
+        calculator.ProcessRefVCF(RefVCF);
+        UDPath = RefVCF+".UD";
+        MeanPath = RefVCF+".mu";
+        BedPath = RefVCF+".bed";
     }
-    if (BedPath == "Empty") {
-        error("--BedPath is required");
-        exit(EXIT_FAILURE);
-    }
-    if (MeanPath == "Empty") {
-        error("--MeanPath is required");
-        exit(EXIT_FAILURE);
-    }
+
+
     if (RefPath == "Empty") {
         error("--Reference is required");
         exit(EXIT_FAILURE);
@@ -93,16 +122,57 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    ContaminationEstimator Estimator(BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
+    ContaminationEstimator Estimator(nPC, BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
+    if(outputPileup)
+    {
+        ofstream fout(OutputPrefix+".pileup");
+        for(auto item:Estimator.BedVec)
+        {
+            if(Estimator.viewer.posIndex.find(item.chr)==Estimator.viewer.posIndex.end())//chr existed
+                continue;
+            else if(Estimator.viewer.posIndex[item.chr].find(item.end)==Estimator.viewer.posIndex[item.chr].end())
+                continue;
+
+            fout<<item.chr<<"\t"<<item.end<<"\t"<<Estimator.ChooseBed[item.chr][item.end].first<<"\t";
+            for(auto base:Estimator.viewer.GetBaseInfoAt(item.chr,item.end))
+                fout<<base;
+            fout<<"\t";
+            for(auto qual:Estimator.viewer.GetQualInfoAt(item.chr,item.end))
+                fout<<qual;
+            fout<<endl;
+        }
+        fout.close();
+    }
     Estimator.seed = seed;
-    Estimator.ReadSVDMatrix(UDPath, MeanPath, BedPath);
+    Estimator.isHeter = asHeter;
+    Estimator.ReadSVDMatrix(UDPath, MeanPath);
     //std::cerr<<"NumMarker:"<<Estimator.NumMarker<<" and UD size:"<<Estimator.UD.size()<<std::endl;
-    if(fixPC)
+    if(fixPC!="Empty") {// parse --fixPC
+        notice("you specified --fixPC, this will overide dynamic estimation of PCs");
+        notice("parsing the PCs");
+        stringstream ss(fixPC);
+        string token;
+        std::vector<PCtype> tmpPC;
+        while(std::getline(ss, token, '|')) {
+            tmpPC.push_back(atof(token.c_str()));
+        }
+        if(tmpPC.size() > nPC)
+        {
+            warning("parameter --fixPC provided larger dimension than parameter --numPC(default value 2) and hence will be truncated");
+            for (int i = 0; i < nPC; ++i) {
+                Estimator.PC[0][i]=tmpPC[i];
+            }
+        }
         Estimator.isPCFixed = true;
-    else if (fixAlpha)
+    }
+    else if(fabs(fixAlpha + 1.)>std::numeric_limits<double>::epsilon()) {
+        notice("you specified --fixAlpha, this will overide dynamic estimation of alpha");
+        Estimator.alpha = fixAlpha;
         Estimator.isAlphaFixed = true;
+    }
     if(knownAF!="Empty") {
         Estimator.isAFknown = true;
+        Estimator.isPCFixed = true;
         Estimator.ReadAF(knownAF);
     }
 

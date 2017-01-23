@@ -29,6 +29,7 @@ typedef std::vector<std::vector<char> >BaseInfo;
 typedef std::vector<std::vector<char> >QualInfo;
 
 class ContaminationEstimator;
+class SVDcalculator;
 struct region_t{
     std::string chr;
     int beg;
