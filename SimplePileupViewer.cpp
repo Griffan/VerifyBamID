@@ -1549,8 +1549,9 @@ SimplePileupViewer::SimplePileupViewer(std::vector<region_t>* BedPtr,const char 
 //    int nfiles = 0, use_orphan = 0;
 //    mplp_conf_t mplp;
     memset(&mplp, 0, sizeof(mplp_conf_t));
-    mplp.min_baseQ = 13;
-    mplp.capQ_thres = 0;
+    mplp.min_mq = 13;
+    mplp.min_baseQ = 2;
+    mplp.capQ_thres = 40;
     mplp.max_depth = 250; mplp.max_indel_depth = 250;
     mplp.openQ = 40; mplp.extQ = 20; mplp.tandemQ = 100;
     mplp.min_frac = 0.002; mplp.min_support = 1;
