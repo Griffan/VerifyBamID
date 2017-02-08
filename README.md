@@ -24,14 +24,14 @@ VerifyBamID --UDPath ./resource/hapmap_3.3.b37.dat.UD --BamFile ./resource/test.
 --UDPath    [String] .UD matrix file from SVD result of genotype matrix[Required]
 --MeanPath  [String] .Mean matrix file of genotype matrix[Required]
 --BedPath   [String] .Bed file for markers used in this analysis,format(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]
---RefVCF    [String] Reference panel VCF with genotype information, for generation of .UD .Mean .Bed files[Rptinal]
+--RefVCF    [String] Reference panel VCF with genotype information, for generation of .UD .Mean .Bed files[Optional]
 --BamFile   [String] Bam or Cram file for the sample[Required]
 --Reference [String] reference file[Required]
 --Seed      [INT] Random number seed(default:12345)
 --numPC     [INT] Number of Principal Components used in estimation
 --fixPC     [String] Specify known PC coordinates for the sample, format(x.xxx|x.xxx)
 --fixAlpha  [Float] Specify known contamination level
---asHeter   [Bool] Enable using hetergeneous model, in which intended sample and contaminating sample have different ancestries.
+--asHeter   [Bool] Enable using hetergeneous model, in which intended sample and contaminating sample have different ancestries.(Recommended)
 --knownAF   [String] A Bed file that provide known allele frequency for each marker, similar behaviour with VerifyBamID 1.0
 ```
 For auxilary files(RefVCF.UD,RefVCF.Mean,RefVCF.Bed) generation:
