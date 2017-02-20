@@ -70,9 +70,9 @@ int ContaminationEstimator::OptimizeLLK() {
             for (int k = 0; k < numPC; ++k) {
                 PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             }
-            for (int k = 0; k < numPC; ++k) {
-                PC[1][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            }
+//            for (int k = 0; k < numPC; ++k) {
+//               PC[1][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+//            }
             alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
 
             std::cout << "Estimation from OptimizeHeter:" << std::endl;
