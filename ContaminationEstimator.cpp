@@ -55,6 +55,7 @@ int ContaminationEstimator::OptimizeLLK() {
             std::cout << "Estimation from OptimizeHeterFixedPC:" << std::endl;
             alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             OptimizeHeterFixedPC(myMinimizer);
+
         } else if (isAlphaFixed) {
             for (int k = 0; k < numPC; ++k) {
                 PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
@@ -86,13 +87,13 @@ int ContaminationEstimator::OptimizeLLK() {
             OptimizeHeter(myMinimizer);
             //          }
         }
-
-        if (std::pow(fn.globalPC[0], 2) + std::pow(fn.globalPC[1], 2) >
-            std::pow(fn.globalPC2[0], 2) + std::pow(fn.globalPC2[1], 2)) {
-            std::swap(fn.globalPC, fn.globalPC2);
-        }
-        std::cout << "PC1:" << fn.globalPC[0] << "\tPC2:" << fn.globalPC[1] << std::endl;
-        std::cout << "PC3:" << fn.globalPC2[0] << "\tPC4:" << fn.globalPC2[1] << std::endl;
+	if(fn.globalAlpha >= 0.5)
+	{
+		std::swap(fn.globalPC[0],fn.globalPC2[0]);
+		std::swap(fn.globalPC[1],fn.globalPC2[1]);
+	}
+        std::cout << "Contaminating Sample PC1:" << fn.globalPC[0] << "\tPC2:" << fn.globalPC[1] << std::endl;
+        std::cout << "Intended Sample  PC3:" << fn.globalPC2[0] << "\tPC4:" << fn.globalPC2[1] << std::endl;
     }
 
     std::cout << "Alpha:" << (fn.globalAlpha < 0.5 ? fn.globalAlpha : (1 - fn.globalAlpha)) << std::endl;
