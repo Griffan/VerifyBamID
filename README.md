@@ -29,7 +29,7 @@ $(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --UDPath $(VERIFY_BAM_ID_HOME)/resource/10
   --Reference [/path/to/human_g1k_v37.fasta(.gz)]
 ```
 
-### For GRCh38
+### For BAM/CRAMs aligned to GRCh38
 (Note that GRCh38 assumes ***with chr prefix*** 1000 Genomes version of human genome build 38, which is available at ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/reference/GRCh38_reference_genome ). Use the following commands for the BAM/CRAM files mapped to GRCh37.
 
 ```
