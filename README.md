@@ -14,11 +14,35 @@
   - cmake ..
   - make
   - make test
+  
+## Guide for beginners
+
+If you are unfamiliar with detailed arguments of verifyBamID2, use the resources provided in the repository as input files. More specifically try to run the following commands
+
+### For BAM/CRAMs aligned to GRCh37 
+(Note that GRCh37 assumes ***without chr prefix*** 1000 Genomes version - not UCSC - of human genome build 37, which is available at ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/reference/human_g1k_v37.fasta.gz ). Use the following commands for the BAM/CRAM files mapped to GRCh37.
+
+```
+$(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --UDPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b37.vcf.gz.dat.UD \
+  --BamFile [/path/to/bam/or/cram/file] --BedPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b37.vcf.gz.dat.bed \
+  --MeanPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b37.vcf.gz.dat.mu \
+  --Reference [/path/to/human_g1k_v37.fasta(.gz)]
+```
+
+### For GRCh38
+(Note that GRCh38 assumes ***with chr prefix*** 1000 Genomes version of human genome build 38, which is available at ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/reference/GRCh38_reference_genome ). Use the following commands for the BAM/CRAM files mapped to GRCh37.
+
+```
+$(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --UDPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b38.vcf.gz.dat.UD \
+   --BamFile [/path/to/bam/or/cram/file] --BedPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b38.vcf.gz.dat.bed \
+   --MeanPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b38.vcf.gz.dat.mu \
+   --Reference [/path/to//GRCh38_full_analysis_set_plus_decoy_hla.fa]
+```
 
 ## Usage
 For regular estimation:
 ```
-VerifyBamID --UDPath ./resource/hapmap_3.3.b37.dat.UD --BamFile ./resource/test.bam --BedPath ./resource/choose.bed --MeanPath ./resource/hapmap_3.3.b37.dat.mu --Reference ./resource/chr20.fa.gz
+$(VERIFY_BAM_ID_HOME)/binVerifyBamID --UDPath [/path/to/UD/file] --BamFile [/path/to/bam/or/cram/file] --BedPath [/path/to/bed/file] --MeanPath [/path/to/mu/file] --Reference [/path/to/fasta/file]
 ```
 ```
 --UDPath    [String] .UD matrix file from SVD result of genotype matrix[Required]
@@ -34,10 +58,17 @@ VerifyBamID --UDPath ./resource/hapmap_3.3.b37.dat.UD --BamFile ./resource/test.
 --asHeter   [Bool] Enable using hetergeneous model, in which intended sample and contaminating sample have different ancestries.(Recommended)
 --knownAF   [String] A Bed file that provide known allele frequency for each marker, similar behaviour with VerifyBamID 1.0
 ```
-For auxilary files(RefVCF.UD,RefVCF.Mean,RefVCF.Bed) generation:
+
+## Generating your own resource files.
+
+For producing customized resource files to be used as the input argument of verifyBamID2 generation, you need to start with a VCF file and FASTA formatted reference files. Please refer to the example below.
 ```
 VerifyBamID --RefVCF ReferencePanel.vcf.gz --BamFile ./resource/test.bam --Reference ./resource/chr20.fa.gz
+
 ```
+
+In the example above, the expected output file names will be ``ReferencePanel.vcf.gz.UD, ReferencePanel.vcf.gz.Mean, ReferencePanel.vcf.gz.Bed``
+
 ## Contributing
 
 1. Fork it!
