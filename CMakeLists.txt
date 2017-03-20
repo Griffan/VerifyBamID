@@ -39,13 +39,27 @@ include_directories(statgen ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/include/
 add_executable(VerifyBamID ${SOURCE_FILES})
 
 find_library(ZLIB z HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
+if(NOT ZLIB)
+    message(FATAL_ERROR "libz library not found")
+endif()
 find_library(CURLLIB curl HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
+if(NOT CURLLIB)
+    message(FATAL_ERROR "libcurl library not found")
+endif()
 find_library(BZ2LIB bz2 HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
+if(NOT BZ2LIB)
+    message(FATAL_ERROR "libbz2 library not found")
+endif()
+find_library(SSLLIB ssl HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
+if(NOT SSLLIB)
+    message(FATAL_ERROR "libssl library not found")
+endif()
+find_library(CRYPTOLIB crypto HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
+if(NOT CRYPTOLIB)
+    message(FATAL_ERROR "libcrypto library not found")
+endif()
 
-
-#find_library(HITSLIB hts HINTS  ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/ /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
-
-target_link_libraries(VerifyBamID statgen Vcf samtools ${ZLIB} ${CURLLIB} ${BZ2LIB})
+target_link_libraries(VerifyBamID statgen Vcf samtools ${ZLIB} ${BZ2LIB} ${CURLLIB} ${SSLLIB} ${CRYPTOLIB})
 add_dependencies(VerifyBamID HTSLIB)
 enable_testing()
 add_test( NAME myTest
