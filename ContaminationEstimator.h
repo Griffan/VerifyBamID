@@ -232,7 +232,7 @@ public:
 
             double sumLLK(0);
 #ifdef _OPENMP
-            omp_set_num_threads(numThread);
+            omp_set_num_threads(ptr->numThread);
 #pragma omp parallel for reduction (+:sumLLK)
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
@@ -299,7 +299,7 @@ public:
 
             double sumLLK(0);
 #ifdef _OPENMP
-            omp_set_num_threads(numThread);
+            omp_set_num_threads(ptr->numThread);
 #pragma omp parallel for reduction (+:sumLLK)
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
@@ -362,7 +362,7 @@ public:
             double sumLLK(0);
 
 #ifdef _OPENMP
-            omp_set_num_threads(numThread);
+            omp_set_num_threads(ptr->numThread);
 #pragma omp parallel for reduction (+:sumLLK)
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
@@ -444,7 +444,7 @@ public:
             double sumLLK(0);
 
 #ifdef _OPENMP
-            omp_set_num_threads(numThread);
+            omp_set_num_threads(ptr->numThread);
 #pragma omp parallel for reduction (+:sumLLK)
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
@@ -520,7 +520,7 @@ public:
 
             double sumLLK(0);
 #ifdef _OPENMP
-            omp_set_num_threads(numThread);
+            omp_set_num_threads(ptr->numThread);
 #pragma omp parallel for reduction (+:sumLLK)
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
@@ -602,7 +602,7 @@ public:
 
             double sumLLK(0);
 #ifdef _OPENMP
-            omp_set_num_threads(numThread);
+            omp_set_num_threads(ptr->numThread);
 #pragma omp parallel for reduction (+:sumLLK)
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
