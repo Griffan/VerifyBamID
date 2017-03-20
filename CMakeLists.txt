@@ -59,8 +59,8 @@ if(NOT CRYPTOLIB)
     message(FATAL_ERROR "libcrypto library not found")
 endif()
 
-add_dependencies(VerifyBamID HTSLIB)
-target_link_libraries(VerifyBamID statgen Vcf samtools ${ZLIB} ${BZ2LIB} ${CURLLIB} ${SSLLIB} ${CRYPTOLIB})
+#add_dependencies(VerifyBamID HTSLIB)
+target_link_libraries(VerifyBamID statgen Vcf samtools ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/libhts.a ${ZLIB} ${BZ2LIB} ${CURLLIB} ${SSLLIB} ${CRYPTOLIB})
 
 enable_testing()
 add_test( NAME myTest
