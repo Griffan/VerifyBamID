@@ -44,6 +44,7 @@ public:
     bool isAFknown;
     bool isHeter;
     int numPC;
+    int numThread;
     int seed;
 #define PCtype double
 
@@ -231,7 +232,7 @@ public:
 
             double sumLLK(0);
 #ifdef _OPENMP
-            omp_set_num_threads(16);
+            omp_set_num_threads(numThread);
 #pragma omp parallel for reduction (+:sumLLK)
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
@@ -298,7 +299,7 @@ public:
 
             double sumLLK(0);
 #ifdef _OPENMP
-            omp_set_num_threads(16);
+            omp_set_num_threads(numThread);
 #pragma omp parallel for reduction (+:sumLLK)
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
@@ -361,7 +362,7 @@ public:
             double sumLLK(0);
 
 #ifdef _OPENMP
-            omp_set_num_threads(16);
+            omp_set_num_threads(numThread);
 #pragma omp parallel for reduction (+:sumLLK)
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
@@ -443,7 +444,7 @@ public:
             double sumLLK(0);
 
 #ifdef _OPENMP
-            omp_set_num_threads(16);
+            omp_set_num_threads(numThread);
 #pragma omp parallel for reduction (+:sumLLK)
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
@@ -519,7 +520,7 @@ public:
 
             double sumLLK(0);
 #ifdef _OPENMP
-            omp_set_num_threads(16);
+            omp_set_num_threads(numThread);
 #pragma omp parallel for reduction (+:sumLLK)
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
@@ -601,7 +602,7 @@ public:
 
             double sumLLK(0);
 #ifdef _OPENMP
-            omp_set_num_threads(16);
+            omp_set_num_threads(numThread);
 #pragma omp parallel for reduction (+:sumLLK)
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
@@ -881,7 +882,7 @@ public:
 
     ContaminationEstimator();
 
-    ContaminationEstimator(int nPC, const char *bamFile, const char *faiFile, const char *bedFile);
+    ContaminationEstimator(int nPC, const char *bamFile, const char *faiFile, const char *bedFile, int nThread);
 
     /*Initialize from existed UD*/
     /*This assumes the markers are the same as the selected vcf*/
@@ -907,7 +908,7 @@ public:
     int FormatMarkerIntersection();
     */
     /*Optimize*/
-    int OptimizeLLK();
+    int OptimizeLLK(const std::string &OutputPrefix);
     /*
     int RunMapping();
 

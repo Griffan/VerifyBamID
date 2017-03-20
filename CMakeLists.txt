@@ -46,4 +46,4 @@ add_dependencies(VerifyBamID HTSLIB)
 enable_testing()
 add_test( NAME myTest
           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-          COMMAND VerifyBamID --UDPath ./resource/hapmap_3.3.b37.dat.UD --BamFile ./resource/test.bam --BedPath ./resource/choose.bed --MeanPath ./resource/hapmap_3.3.b37.dat.mu --Reference ./resource/chr20.fa.gz )
+          COMMAND VerifyBamID --UDPath ./resource/test/hapmap_3.3.b37.dat.UD --BamFile ./resource/test/test.bam --BedPath resource/test/hapmap_3.3.b37.dat.bed --MeanPath ./resource/test/hapmap_3.3.b37.dat.mu --Reference ./resource/test/chr20.fa.gz )

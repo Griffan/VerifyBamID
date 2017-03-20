@@ -22,12 +22,14 @@ ContaminationEstimator::~ContaminationEstimator() {
 }
 
 
-int ContaminationEstimator::OptimizeLLK() {
+int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
     AmoebaMinimizer myMinimizer;
+    std::ofstream fout(OutputPrefix+".out");
     fn.initialize();
     if (!isHeter) {
         if (isPCFixed) {
             std::cout << "Estimation from OptimizeHomFixedPC:" << std::endl;
+            fout<< "Estimation from OptimizeHomFixedPC:" << std::endl;
 //            for(int iter=0;iter!=10;++iter)
             {
                 alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
@@ -35,6 +37,7 @@ int ContaminationEstimator::OptimizeLLK() {
             }
         } else if (isAlphaFixed) {
             std::cout << "Estimation from OptimizeHomFixedAlpha:" << std::endl;
+            fout<< "Estimation from OptimizeHomFixedAlpha:" << std::endl;
             for (int k = 0; k < PC[0].size(); ++k) {
                 PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             }
@@ -46,13 +49,16 @@ int ContaminationEstimator::OptimizeLLK() {
             alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
 
             std::cout << "Estimation from OptimizeHom:" << std::endl;
+            fout<< "Estimation from OptimizeHom:" << std::endl;
             OptimizeHom(myMinimizer);
         }
         std::cout << "PC1:" << fn.globalPC[0] << "\tPC2:" << fn.globalPC[1] << std::endl;
+        fout<< "PC1:" << fn.globalPC[0] << "\tPC2:" << fn.globalPC[1] << std::endl;
     } else//contamination source from different population
     {
         if (isPCFixed) {
             std::cout << "Estimation from OptimizeHeterFixedPC:" << std::endl;
+            fout<< "Estimation from OptimizeHeterFixedPC:" << std::endl;
             alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             OptimizeHeterFixedPC(myMinimizer);
 
@@ -64,6 +70,7 @@ int ContaminationEstimator::OptimizeLLK() {
                 PC[1][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             }
             std::cout << "Estimation from OptimizeHeterFixedAlpha:" << std::endl;
+            fout<< "Estimation from OptimizeHeterFixedAlpha:" << std::endl;
             OptimizeHeterFixedAlpha(myMinimizer);
         } else {
 //            for (int iter = 0; iter < 10; ++iter) {
@@ -77,6 +84,7 @@ int ContaminationEstimator::OptimizeLLK() {
             alpha = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
 
             std::cout << "Estimation from OptimizeHeter:" << std::endl;
+            fout<< "Estimation from OptimizeHeter:" << std::endl;
             isHeter = false;
             OptimizeHom(myMinimizer);
 //                std::cerr << "PC1:" << PC[0][0] << "\tPC2:" << PC[0][1] << std::endl;
@@ -93,11 +101,14 @@ int ContaminationEstimator::OptimizeLLK() {
 		std::swap(fn.globalPC[1],fn.globalPC2[1]);
 	}
         std::cout << "Contaminating Sample PC1:" << fn.globalPC[0] << "\tPC2:" << fn.globalPC[1] << std::endl;
+        fout<< "Contaminating Sample PC1:" << fn.globalPC[0] << "\tPC2:" << fn.globalPC[1] << std::endl;
         std::cout << "Intended Sample  PC3:" << fn.globalPC2[0] << "\tPC4:" << fn.globalPC2[1] << std::endl;
+        fout<< "Intended Sample  PC3:" << fn.globalPC2[0] << "\tPC4:" << fn.globalPC2[1] << std::endl;
     }
 
     std::cout << "Alpha:" << (fn.globalAlpha < 0.5 ? fn.globalAlpha : (1 - fn.globalAlpha)) << std::endl;
-
+    fout<< "Alpha:" << (fn.globalAlpha < 0.5 ? fn.globalAlpha : (1 - fn.globalAlpha)) << std::endl;
+    fout.close();
     return 0;
 }
 
@@ -204,8 +215,9 @@ int ContaminationEstimator::ReadSVDMatrix(const std::string UDpath, const std::s
     return 0;
 }
 
-ContaminationEstimator::ContaminationEstimator(int nPC, const char *bamFile, const char *faiFile, const char *bedFile) :
-        numPC(nPC), PC(2, std::vector<PCtype>(nPC, 0.)), fn(nPC, this) {
+ContaminationEstimator::ContaminationEstimator(int nPC, const char *bamFile, const char *faiFile, const char *bedFile, int nThread)
+        :
+        numPC(nPC), PC(2, std::vector<PCtype>(nPC, 0.)), fn(nPC, this),numThread(nThread) {
     isAFknown = false;
     isPCFixed = false;
     isAlphaFixed = false;

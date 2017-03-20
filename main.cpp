@@ -36,13 +36,13 @@ int main(int argc, char **argv) {
     cout << "Hello, World!" << endl;
 
     string UDPath("Empty"), MeanPath("Empty"), BedPath("Empty"), BamFileList("Empty"), BamFile("Empty"), RefPath(
-            "Empty"), OutputPrefix("result");
+            "Empty"), outputPrefix("result");
     string knownAF("Empty");
     string RefVCF("Empty");
     string fixPC("Empty");
     double fixAlpha(-1.);
-    bool asHeter(false),outputPileup(false);
-    int nfiles(0),seed(12345),nPC(2);
+    bool withinAncestry(false),outputPileup(false);
+    int nfiles(0),seed(12345),nPC(2),nthread(4);
     paramList pl;
     BEGIN_LONG_PARAMS(longParameters)
                     LONG_PARAM_GROUP("Input/Output Files",
@@ -59,18 +59,21 @@ int main(int argc, char **argv) {
                                       "[String] UD matrix file from SVD result of genotype matrix")
                     LONG_STRING_PARAM("MeanPath", &MeanPath,
                                       "[String] Mean matrix file of genotype matrix")
-                    LONG_STRING_PARAM("Output", &OutputPrefix,
-                                      "[String] OutputPrefix[optional]")
+                    LONG_STRING_PARAM("Output", &outputPrefix,
+                                      "[String] outputPrefix[optional]")
                     LONG_INT_PARAM("numPC", &nPC,
-                                   "[Int] number of PCs used to infer Allele Frequency[optional]")
+                                   "[Int] Set number of PCs to infer Allele Frequency[optional]")
+                    LONG_INT_PARAM("numThread", &nthread,
+                                   "[Int] Set number of threads in likelihood calculation[default:4]")
                     LONG_STRING_PARAM("fixPC", &fixPC, "[String] Input fixed PCs to estimate Alpha[format:PC1|PC2|PC3...]")
                     LONG_DOUBLE_PARAM("fixAlpha", &fixAlpha, "[Double] Input fixed Alpha to estimate PC coordinates")
 //                    LONG_PARAM("fixPC", &fixPC, "[Bool] Fix PCs to estimate localAlpha[default:false]")
 //                    LONG_PARAM("fixAlpha", &fixAlpha, "[Bool] fixAlpha to estimate PC coordinates[default:false]")
-                    LONG_PARAM("asHeter", &asHeter, "[Bool] Infer contamination level as if target sample and contamination source are from the different population[default:false]")
+                    //LONG_PARAM("betweenAncestry", &betweenAncestry, "[Bool] Infer contamination level as if target sample and contamination source are from the different population[default:false]")
+                    LONG_PARAM("withinAncestry", &withinAncestry, "[Bool] Enabling withinAncestry assume target sample and contamination source are from the same populations,[default:betweenAncestry] otherwise")
                     LONG_STRING_PARAM("knownAF", &knownAF, "[String] known allele frequency file (chr\tpos\tfreq)[Optional]")
                     LONG_INT_PARAM("Seed",&seed,"[INT] Random number seed[default:12345]")
-//                    LONG_PARAM("OutputPileup", &outputPileup, "[Bool] If output temp pileup file")
+                    LONG_PARAM("OutputPileup", &outputPileup, "[Bool] If output temp pileup file")
 
 
 
@@ -122,10 +125,10 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    ContaminationEstimator Estimator(nPC, BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
+    ContaminationEstimator Estimator(nPC, BamFile.c_str(), RefPath.c_str(), BedPath.c_str(), 0);
     if(outputPileup)
     {
-        ofstream fout(OutputPrefix+".pileup");
+        ofstream fout(outputPrefix+".pileup");
         for(auto item:Estimator.BedVec)
         {
             if(Estimator.viewer.posIndex.find(item.chr)==Estimator.viewer.posIndex.end())//chr existed
@@ -144,7 +147,7 @@ int main(int argc, char **argv) {
         fout.close();
     }
     Estimator.seed = seed;
-    Estimator.isHeter = asHeter;
+    Estimator.isHeter = !withinAncestry;
     Estimator.ReadSVDMatrix(UDPath, MeanPath);
     //std::cerr<<"NumMarker:"<<Estimator.NumMarker<<" and UD size:"<<Estimator.UD.size()<<std::endl;
     if(fixPC!="Empty") {// parse --fixPC
@@ -176,11 +179,11 @@ int main(int argc, char **argv) {
         Estimator.ReadAF(knownAF);
     }
 
-    Estimator.OptimizeLLK();
+    Estimator.OptimizeLLK(outputPrefix);
 
-    const char* headers[] = {"#SEQ_ID","RG","CHIP_ID","#SNPS","#READS","AVG_DP","FREEMIX","FREELK1","FREELK0","FREE_RH","FREE_RA","CHIPMIX","CHIPLK1","CHIPLK0","CHIP_RH","CHIP_RA","DPREF","RDPHET","RDPALT"};
-    std::ofstream fout(OutputPrefix+".selfSM");
-    fout<<headers<<std::endl;
+    //const char* headers[] = {"#SEQ_ID","RG","CHIP_ID","#SNPS","#READS","AVG_DP","FREEMIX","FREELK1","FREELK0","FREE_RH","FREE_RA","CHIPMIX","CHIPLK1","CHIPLK0","CHIP_RH","CHIP_RA","DPREF","RDPHET","RDPALT"};
+    //std::ofstream fout(outputPrefix+".selfSM");
+    //fout<<headers<<std::endl;
 
 
     return 0;
