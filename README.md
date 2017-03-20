@@ -45,17 +45,18 @@ For regular estimation:
 $(VERIFY_BAM_ID_HOME)/binVerifyBamID --UDPath [/path/to/UD/file] --BamFile [/path/to/bam/or/cram/file] --BedPath [/path/to/bed/file] --MeanPath [/path/to/mu/file] --Reference [/path/to/fasta/file]
 ```
 ```
---UDPath    [String] .UD matrix file from SVD result of genotype matrix[Required]
---MeanPath  [String] .Mean matrix file of genotype matrix[Required]
---BedPath   [String] .Bed file for markers used in this analysis,format(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]
---RefVCF    [String] Reference panel VCF with genotype information, for generation of .UD .Mean .Bed files[Optional]
---BamFile   [String] Bam or Cram file for the sample[Required]
---Reference [String] reference file[Required]
---Seed      [INT] Random number seed(default:12345)
---numPC     [INT] Number of Principal Components used in estimation
---fixPC     [String] Specify known PC coordinates for the sample, format(x.xxx|x.xxx)
---fixAlpha  [Float] Specify known contamination level
---asHeter   [Bool] Enable using hetergeneous model, in which intended sample and contaminating sample have different ancestries.(Recommended)
+--UDPath         [String] .UD matrix file from SVD result of genotype matrix[Required]
+--MeanPath       [String] .Mean matrix file of genotype matrix[Required]
+--BedPath        [String] .Bed file for markers used in this analysis,format(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]
+--RefVCF         [String] Reference panel VCF with genotype information, for generation of .UD .Mean .Bed files[Optional]
+--BamFile        [String] Bam or Cram file for the sample[Required]
+--Reference      [String] reference file[Required]
+--Seed           [INT] Random number seed(default:12345)
+--numPC          [INT] Number of Principal Components used in estimation
+--numThread      [Int] Set number of threads in likelihood calculation[default:4]
+--fixPC          [String] Specify known PC coordinates for the sample, format(x.xxx|x.xxx)
+--fixAlpha       [Float] Specify known contamination level
+--withinAncestry [Bool] Enabling withinAncestry assume target sample and contamination source are from the same populations,[default:betweenAncestry] otherwise")
 --knownAF   [String] A Bed file that provide known allele frequency for each marker, similar behaviour with VerifyBamID 1.0
 ```
 
@@ -63,11 +64,18 @@ $(VERIFY_BAM_ID_HOME)/binVerifyBamID --UDPath [/path/to/UD/file] --BamFile [/pat
 
 For producing customized resource files to be used as the input argument of verifyBamID2 generation, you need to start with a VCF file and FASTA formatted reference files. Please refer to the example below.
 ```
-VerifyBamID --RefVCF ReferencePanel.vcf.gz --BamFile ./resource/test.bam --Reference ./resource/chr20.fa.gz
+VerifyBamID --RefVCF ReferencePanel.vcf.gz --BamFile ./resource/test/test.bam --Reference ./resource/test/chr20.fa.gz
 
 ```
 
 In the example above, the expected output file names will be ``ReferencePanel.vcf.gz.UD, ReferencePanel.vcf.gz.Mean, ReferencePanel.vcf.gz.Bed``
+
+
+## Generating PC plot
+
+After each run, you will get the contamination Alpha estimation, as well as ancestry PC coordinates for both intended sample and contaminating sample.
+You may want to visualize these information, in that case, the PC coordinates in $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b38.vcf.gz.dat.V might help you by
+providing background PC points of 1000 Genomes Project samples.
 
 ## Contributing
 
