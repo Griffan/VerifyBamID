@@ -16,7 +16,7 @@ ExternalProject_Add(HTSLIB
         UPDATE_COMMAND ""
 
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib
-        CONFIGURE_COMMAND autoheader && autoconf && ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/configure --prefix=${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib
+        CONFIGURE_COMMAND autoheader && autoconf && ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/configure --prefix=${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib --disable-lzma
         BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib
         BUILD_COMMAND make && make test
 )
@@ -39,9 +39,13 @@ include_directories(statgen ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/include/
 add_executable(VerifyBamID ${SOURCE_FILES})
 
 find_library(ZLIB z HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
+find_library(CURLLIB curl HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
+find_library(BZ2LIB bz2 HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
+
+
 #find_library(HITSLIB hts HINTS  ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/ /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
 
-target_link_libraries(VerifyBamID statgen Vcf samtools ${ZLIB})
+target_link_libraries(VerifyBamID statgen Vcf samtools ${ZLIB} ${CURLLIB} ${BZ2LIB})
 add_dependencies(VerifyBamID HTSLIB)
 enable_testing()
 add_test( NAME myTest

@@ -25,7 +25,7 @@
 #include <sample.h>
 //#include <sam.h>
 #include "htslib/vcf.h"
-#include "bam2bcf.h"
+//#include "bam2bcf.h"
 #include "sample.h"
 
 
@@ -207,8 +207,8 @@ extern "C" {
 extern int bam_realn(bam1_t *b, const char *ref);
 extern int bam_prob_realn_core(bam1_t *b, const char *ref, int ref_len, int flag);
 extern int bam_cap_mapQ(bam1_t *b, char *ref, int ref_len, int thres);
-extern void *bcf_call_add_rg(void *rghash, const char *hdtext, const char *list);
-extern void bcf_call_del_rghash(void *rghash);
+//extern void *bcf_call_add_rg(void *rghash, const char *hdtext, const char *list);
+//extern void bcf_call_del_rghash(void *rghash);
 
 #ifdef __cplusplus
 }
@@ -321,9 +321,9 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
     void *rghash = NULL;
     FILE *pileup_fp = NULL;
 
-    bcf_callaux_t *bca = NULL;
-    bcf_callret1_t *bcr = NULL;
-    bcf_call_t bc;
+//    bcf_callaux_t *bca = NULL;
+//    bcf_callret1_t *bcr = NULL;
+//    bcf_call_t bc;
     htsFile *bcf_fp = NULL;
     bcf_hdr_t *bcf_hdr = NULL;
 
@@ -333,7 +333,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
 
     memset(&gplp, 0, sizeof(mplp_pileup_t));
     memset(&buf, 0, sizeof(kstring_t));
-    memset(&bc, 0, sizeof(bcf_call_t));
+//    memset(&bc, 0, sizeof(bcf_call_t));
     data = (mplp_aux_t**)calloc(n, sizeof(mplp_aux_t*));
     plp = (const bam_pileup1_t**)calloc(n, sizeof(bam_pileup1_t*));
     n_plp = (int*)calloc(n, sizeof(int));
@@ -377,7 +377,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
         SEQ_SM=std::string(h_tmp->text).substr(tmp_pos+4,tmp_end-tmp_pos-4);
 
         // Collect read group IDs with PL (platform) listed in pl_list (note: fragile, strstr search)
-        rghash = bcf_call_add_rg(rghash, h_tmp->text, conf->pl_list);
+//        rghash = bcf_call_add_rg(rghash, h_tmp->text, conf->pl_list);
 
 
         idx = sam_index_load(data[i]->fp, fn[i]);
@@ -490,33 +490,34 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
 
         mplp_get_ref(data[0], tid, &ref, &ref_len);
         //printf("tid=%d len=%d ref=%p/%s\n", tid, ref_len, ref, ref);
-        if (conf->flag & MPLP_BCF) {
-            int total_depth, _ref0, ref16;
-            for (i = total_depth = 0; i < n; ++i) total_depth += n_plp[i];
-            group_smpl(&gplp, sm, &buf, n, fn, n_plp, plp, conf->flag & MPLP_IGNORE_RG);
-            _ref0 = (ref && pos < ref_len)? ref[pos] : 'N';
-            ref16 = seq_nt16_table[_ref0];
-            bcf_callaux_clean(bca, &bc);
-            for (i = 0; i < gplp.n; ++i)
-                bcf_call_glfgen(gplp.n_plp[i], gplp.plp[i], ref16, bca, bcr + i);
-            bc.tid = tid; bc.pos = pos;
-            bcf_call_combine(gplp.n, bcr, bca, ref16, &bc);
-            bcf_clear1(bcf_rec);
-            bcf_call2bcf(&bc, bcf_rec, bcr, conf->fmt_flag, 0, 0);
-            bcf_write1(bcf_fp, bcf_hdr, bcf_rec);
-            // call indels; todo: subsampling with total_depth>max_indel_depth instead of ignoring?
-            if (!(conf->flag&MPLP_NO_INDEL) && total_depth < max_indel_depth && bcf_call_gap_prep(gplp.n, gplp.n_plp, gplp.plp, pos, bca, ref, rghash) >= 0)
-            {
-                bcf_callaux_clean(bca, &bc);
-                for (i = 0; i < gplp.n; ++i)
-                    bcf_call_glfgen(gplp.n_plp[i], gplp.plp[i], -1, bca, bcr + i);
-                if (bcf_call_combine(gplp.n, bcr, bca, -1, &bc) >= 0) {
-                    bcf_clear1(bcf_rec);
-                    bcf_call2bcf(&bc, bcf_rec, bcr, conf->fmt_flag, bca, ref);
-                    bcf_write1(bcf_fp, bcf_hdr, bcf_rec);
-                }
-            }
-        } else {
+//        if (conf->flag & MPLP_BCF) {
+//            int total_depth, _ref0, ref16;
+//            for (i = total_depth = 0; i < n; ++i) total_depth += n_plp[i];
+//            group_smpl(&gplp, sm, &buf, n, fn, n_plp, plp, conf->flag & MPLP_IGNORE_RG);
+//            _ref0 = (ref && pos < ref_len)? ref[pos] : 'N';
+//            ref16 = seq_nt16_table[_ref0];
+//            bcf_callaux_clean(bca, &bc);
+//            for (i = 0; i < gplp.n; ++i)
+//                bcf_call_glfgen(gplp.n_plp[i], gplp.plp[i], ref16, bca, bcr + i);
+//            bc.tid = tid; bc.pos = pos;
+//            bcf_call_combine(gplp.n, bcr, bca, ref16, &bc);
+//            bcf_clear1(bcf_rec);
+//            bcf_call2bcf(&bc, bcf_rec, bcr, conf->fmt_flag, 0, 0);
+//            bcf_write1(bcf_fp, bcf_hdr, bcf_rec);
+//            // call indels; todo: subsampling with total_depth>max_indel_depth instead of ignoring?
+//            if (!(conf->flag&MPLP_NO_INDEL) && total_depth < max_indel_depth && bcf_call_gap_prep(gplp.n, gplp.n_plp, gplp.plp, pos, bca, ref, rghash) >= 0)
+//            {
+//                bcf_callaux_clean(bca, &bc);
+//                for (i = 0; i < gplp.n; ++i)
+//                    bcf_call_glfgen(gplp.n_plp[i], gplp.plp[i], -1, bca, bcr + i);
+//                if (bcf_call_combine(gplp.n, bcr, bca, -1, &bc) >= 0) {
+//                    bcf_clear1(bcf_rec);
+//                    bcf_call2bcf(&bc, bcf_rec, bcr, conf->fmt_flag, bca, ref);
+//                    bcf_write1(bcf_fp, bcf_hdr, bcf_rec);
+//                }
+//            }
+//        } else
+ {
             //fprintf(pileup_fp, "%s\t%d\t%c", h->target_name[tid], pos + 1, (ref && pos < ref_len)? ref[pos] : 'N');
 
             std::string chr=h->target_name[tid];
@@ -626,25 +627,25 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
     hts_idx_destroy(idx);
 
     // clean up
-    free(bc.tmp.s);
+//    free(bc.tmp.s);
     bcf_destroy1(bcf_rec);
     if (bcf_fp)
     {
         hts_close(bcf_fp);
         bcf_hdr_destroy(bcf_hdr);
-        bcf_call_destroy(bca);
-        free(bc.PL);
-        free(bc.DP4);
-        free(bc.ADR);
-        free(bc.ADF);
-        free(bc.fmt_arr);
-        free(bcr);
+//        bcf_call_destroy(bca);
+//        free(bc.PL);
+//        free(bc.DP4);
+//        free(bc.ADR);
+//        free(bc.ADF);
+//        free(bc.fmt_arr);
+//        free(bcr);
     }
     //if (pileup_fp && conf->output_fname) fclose(pileup_fp);
     bam_smpl_destroy(sm); free(buf.s);
     for (i = 0; i < gplp.n; ++i) free(gplp.plp[i]);
     free(gplp.plp); free(gplp.n_plp); free(gplp.m_plp);
-    bcf_call_del_rghash(rghash);
+//    bcf_call_del_rghash(rghash);
     bam_mplp_destroy(iter);
     bam_hdr_destroy(h);
     for (i = 0; i < n; ++i) {
@@ -657,6 +658,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
     free(mp_ref.ref[1]);
     return ret;
 }
+/*
 int mpileup(mplp_conf_t *conf, int n, char **fn)
 {
 
@@ -665,7 +667,7 @@ int mpileup(mplp_conf_t *conf, int n, char **fn)
     const bam_pileup1_t **plp;
     mplp_ref_t mp_ref = MPLP_REF_INIT;
     bam_mplp_t iter;
-    bam_hdr_t *h = NULL; /* header of first file in input list */
+    bam_hdr_t *h = NULL; //header of first file in input list
     char *ref;
     void *rghash = NULL;
     FILE *pileup_fp = NULL;
@@ -1050,6 +1052,7 @@ int mpileup(mplp_conf_t *conf, int n, char **fn)
     free(mp_ref.ref[1]);
     return ret;
 }
+*/
 #define MAX_PATH_LEN 1024
 int read_file_list(const char *file_list,int *n,char **argv[])
 {
@@ -1107,7 +1110,7 @@ int read_file_list(const char *file_list,int *n,char **argv[])
     return 0;
 }
 #undef MAX_PATH_LEN
-
+/*
 int parse_format_flag(const char *str)
 {
     int i, flag = 0, n_tags;
@@ -1136,7 +1139,7 @@ int parse_format_flag(const char *str)
     if (n_tags) free(tags);
     return flag;
 }
-
+*/
 static void print_usage(FILE *fp, const mplp_conf_t *mplp)
 {
     char *tmp_require = bam_flag2str(mplp->rflag_require);
@@ -1213,7 +1216,7 @@ static void print_usage(FILE *fp, const mplp_conf_t *mplp)
     free(tmp_require);
     free(tmp_filter);
 }
-
+/*
 int bam_mpileup(int argc, char *argv[])
 {
     int c;
@@ -1359,7 +1362,7 @@ int bam_mpileup(int argc, char *argv[])
             case 't': mplp.fmt_flag |= parse_format_flag(optarg); break;
             default:
                 if (parse_sam_global_opt(c, optarg, lopts, &mplp.ga) == 0) break;
-                /* else fall-through */
+                // else fall-through
             case '?':
                 print_usage(stderr, &mplp);
                 return 1;
@@ -1397,7 +1400,7 @@ int bam_mpileup(int argc, char *argv[])
     if (mplp.bed) bed_destroy(mplp.bed);
     return ret;
 }
-
+*/
 #include <iostream>
 SimplePileupViewer::SimplePileupViewer() {
 
