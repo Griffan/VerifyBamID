@@ -91,6 +91,7 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
 //                std::cerr << "PC3:" << PC[1][0] << "\tPC4:" << PC[1][1] << std::endl;
 //                std::cout << "testAlpha:" << (alpha < 0.5 ? alpha : (1 - alpha)) << std::endl;
             PC[1] = PC[0];
+	    fn.globalPC2=fn.globalPC;
             isHeter = true;
             OptimizeHeter(myMinimizer);
             //          }
