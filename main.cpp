@@ -176,6 +176,7 @@ int main(int argc, char **argv) {
     if(knownAF!="Empty") {
         Estimator.isAFknown = true;
         Estimator.isPCFixed = true;
+        Estimator.isHeter =false; //under --knownAF condition, we assume WithinAncestry model
         Estimator.ReadAF(knownAF);
     }
 
