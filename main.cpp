@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    ContaminationEstimator Estimator(nPC, BamFile.c_str(), RefPath.c_str(), BedPath.c_str(), 0);
+    ContaminationEstimator Estimator(nPC, BamFile.c_str(), RefPath.c_str(), BedPath.c_str(), nthread);
     if(outputPileup)
     {
         ofstream fout(outputPrefix+".pileup");
