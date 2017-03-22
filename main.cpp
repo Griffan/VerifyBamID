@@ -61,17 +61,17 @@ int main(int argc, char **argv) {
                                       "[String] Mean matrix file of genotype matrix")
                     LONG_STRING_PARAM("Output", &outputPrefix,
                                       "[String] outputPrefix[optional]")
-                    LONG_INT_PARAM("numPC", &nPC,
+                    LONG_INT_PARAM("NumPC", &nPC,
                                    "[Int] Set number of PCs to infer Allele Frequency[optional]")
-                    LONG_INT_PARAM("numThread", &nthread,
+                    LONG_INT_PARAM("NumThread", &nthread,
                                    "[Int] Set number of threads in likelihood calculation[default:4]")
-                    LONG_STRING_PARAM("fixPC", &fixPC, "[String] Input fixed PCs to estimate Alpha[format:PC1|PC2|PC3...]")
-                    LONG_DOUBLE_PARAM("fixAlpha", &fixAlpha, "[Double] Input fixed Alpha to estimate PC coordinates")
+                    LONG_STRING_PARAM("FixPC", &fixPC, "[String] Input fixed PCs to estimate Alpha[format:PC1|PC2|PC3...]")
+                    LONG_DOUBLE_PARAM("FixAlpha", &fixAlpha, "[Double] Input fixed Alpha to estimate PC coordinates")
 //                    LONG_PARAM("fixPC", &fixPC, "[Bool] Fix PCs to estimate localAlpha[default:false]")
 //                    LONG_PARAM("fixAlpha", &fixAlpha, "[Bool] fixAlpha to estimate PC coordinates[default:false]")
                     //LONG_PARAM("betweenAncestry", &betweenAncestry, "[Bool] Infer contamination level as if target sample and contamination source are from the different population[default:false]")
-                    LONG_PARAM("withinAncestry", &withinAncestry, "[Bool] Enabling withinAncestry assume target sample and contamination source are from the same populations,[default:betweenAncestry] otherwise")
-                    LONG_STRING_PARAM("knownAF", &knownAF, "[String] known allele frequency file (chr\tpos\tfreq)[Optional]")
+                    LONG_PARAM("WithinAncestry", &withinAncestry, "[Bool] Enabling withinAncestry assume target sample and contamination source are from the same populations,[default:betweenAncestry] otherwise")
+                    LONG_STRING_PARAM("KnownAF", &knownAF, "[String] known allele frequency file (chr\tpos\tfreq)[Optional]")
                     LONG_INT_PARAM("Seed",&seed,"[INT] Random number seed[default:12345]")
                     LONG_PARAM("OutputPileup", &outputPileup, "[Bool] If output temp pileup file")
 
