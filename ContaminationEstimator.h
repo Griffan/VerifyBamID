@@ -43,6 +43,7 @@ public:
     bool isAlphaFixed;
     bool isAFknown;
     bool isHeter;
+    bool verbose;
     int numPC;
     int numThread;
     int seed;
@@ -851,6 +852,7 @@ public:
 //			<< "\ttmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
                 }
             }
+            if(ptr->verbose)
             std::cerr << "globalPC:" << globalPC[0] << "\tglobalPC:" << globalPC[1]
                       << "\tglobalPC2:" << globalPC2[0] << "\tglobalPC2:" << globalPC2[1]
                       << "\tglobalAlpha:" << globalAlpha << "\tllk:" << llk <<std::endl;

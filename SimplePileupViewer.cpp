@@ -310,6 +310,8 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
 {
     bool BedEOF;
     hts_idx_t *idx=NULL;
+    numReads=0;
+    avgDepth=0;
 
     mplp_aux_t **data;
     int i(0), tid(0), pos(0), *n_plp(0), beg0 = 0, end0 = INT_MAX, ref_len(0), max_depth(0), max_indel_depth(0);
@@ -490,33 +492,6 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
 
         mplp_get_ref(data[0], tid, &ref, &ref_len);
         //printf("tid=%d len=%d ref=%p/%s\n", tid, ref_len, ref, ref);
-//        if (conf->flag & MPLP_BCF) {
-//            int total_depth, _ref0, ref16;
-//            for (i = total_depth = 0; i < n; ++i) total_depth += n_plp[i];
-//            group_smpl(&gplp, sm, &buf, n, fn, n_plp, plp, conf->flag & MPLP_IGNORE_RG);
-//            _ref0 = (ref && pos < ref_len)? ref[pos] : 'N';
-//            ref16 = seq_nt16_table[_ref0];
-//            bcf_callaux_clean(bca, &bc);
-//            for (i = 0; i < gplp.n; ++i)
-//                bcf_call_glfgen(gplp.n_plp[i], gplp.plp[i], ref16, bca, bcr + i);
-//            bc.tid = tid; bc.pos = pos;
-//            bcf_call_combine(gplp.n, bcr, bca, ref16, &bc);
-//            bcf_clear1(bcf_rec);
-//            bcf_call2bcf(&bc, bcf_rec, bcr, conf->fmt_flag, 0, 0);
-//            bcf_write1(bcf_fp, bcf_hdr, bcf_rec);
-//            // call indels; todo: subsampling with total_depth>max_indel_depth instead of ignoring?
-//            if (!(conf->flag&MPLP_NO_INDEL) && total_depth < max_indel_depth && bcf_call_gap_prep(gplp.n, gplp.n_plp, gplp.plp, pos, bca, ref, rghash) >= 0)
-//            {
-//                bcf_callaux_clean(bca, &bc);
-//                for (i = 0; i < gplp.n; ++i)
-//                    bcf_call_glfgen(gplp.n_plp[i], gplp.plp[i], -1, bca, bcr + i);
-//                if (bcf_call_combine(gplp.n, bcr, bca, -1, &bc) >= 0) {
-//                    bcf_clear1(bcf_rec);
-//                    bcf_call2bcf(&bc, bcf_rec, bcr, conf->fmt_flag, bca, ref);
-//                    bcf_write1(bcf_fp, bcf_hdr, bcf_rec);
-//                }
-//            }
-//        } else
  {
             //fprintf(pileup_fp, "%s\t%d\t%c", h->target_name[tid], pos + 1, (ref && pos < ref_len)? ref[pos] : 'N');
 
@@ -566,6 +541,8 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
                     //if (conf->flag & MPLP_PRINT_POS) fputs("\t*", pileup_fp);
                     continue;
                 } else {
+                    /*calculate number of reads covering snps*/
+                    numReads+=n_plp[i];
                     for (j = 0; j < n_plp[i]; ++j) {//each covered read in ith bam file
                         const bam_pileup1_t *p = plp[i] + j;
                         int c = p->qpos < p->b->core.l_qseq
@@ -623,7 +600,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn)
         }
 
     }
-
+    avgDepth=double(numReads)/GetNumMarker();
     hts_idx_destroy(idx);
 
     // clean up

@@ -87,6 +87,11 @@ public:
         }
     }
 
+    int GetNumMarker()
+    {
+        return BedVec->size();
+    }
+
     inline std::vector<char>& GetBaseInfoAt(std::string& chr, int32_t pos)
     {
         return baseInfo[posIndex[chr][pos]];

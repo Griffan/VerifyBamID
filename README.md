@@ -52,12 +52,15 @@ $(VERIFY_BAM_ID_HOME)/binVerifyBamID --UDPath [/path/to/UD/file] --BamFile [/pat
 --BamFile        [String] Bam or Cram file for the sample[Required]
 --Reference      [String] reference file[Required]
 --Seed           [INT] Random number seed(default:12345)
---numPC          [INT] Number of Principal Components used in estimation
---numThread      [Int] Set number of threads in likelihood calculation[default:4]
---fixPC          [String] Specify known PC coordinates for the sample, format(x.xxx|x.xxx)
---fixAlpha       [Float] Specify known contamination level
---withinAncestry [Bool] Enabling withinAncestry assume target sample and contamination source are from the same populations,[default:betweenAncestry] otherwise")
---knownAF   [String] A Bed file that provide known allele frequency for each marker, similar behaviour with VerifyBamID 1.0
+--NumPC          [INT] Number of Principal Components used in estimation
+--NumThread      [Int] Set number of threads in likelihood calculation[default:4]
+--FixPC          [String] Specify known PC coordinates for the sample, format(x.xxx|x.xxx)
+--FixAlpha       [Float] Specify known contamination level
+--WithinAncestry [Bool] Enabling withinAncestry assume target sample and contamination source are from the same populations,[default:betweenAncestry] otherwise")
+--KnownAF        [String] A Bed file that provide known allele frequency for each marker, similar behaviour with VerifyBamID 1.0
+--Seed           [INT] Random number seed[default:12345]
+--OutputPileup   [Bool] If output temp pileup file
+--Verbose        [Bool] If print the progress of the method on the screen
 ```
 
 ## Generating your own resource files.

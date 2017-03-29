@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     string RefVCF("Empty");
     string fixPC("Empty");
     double fixAlpha(-1.);
-    bool withinAncestry(false),outputPileup(false);
+    bool withinAncestry(false),outputPileup(false),verbose(false);
     int nfiles(0),seed(12345),nPC(2),nthread(4);
     paramList pl;
     BEGIN_LONG_PARAMS(longParameters)
@@ -67,13 +67,12 @@ int main(int argc, char **argv) {
                                    "[Int] Set number of threads in likelihood calculation[default:4]")
                     LONG_STRING_PARAM("FixPC", &fixPC, "[String] Input fixed PCs to estimate Alpha[format:PC1|PC2|PC3...]")
                     LONG_DOUBLE_PARAM("FixAlpha", &fixAlpha, "[Double] Input fixed Alpha to estimate PC coordinates")
-//                    LONG_PARAM("fixPC", &fixPC, "[Bool] Fix PCs to estimate localAlpha[default:false]")
-//                    LONG_PARAM("fixAlpha", &fixAlpha, "[Bool] fixAlpha to estimate PC coordinates[default:false]")
-                    //LONG_PARAM("betweenAncestry", &betweenAncestry, "[Bool] Infer contamination level as if target sample and contamination source are from the different population[default:false]")
+
                     LONG_PARAM("WithinAncestry", &withinAncestry, "[Bool] Enabling withinAncestry assume target sample and contamination source are from the same populations,[default:betweenAncestry] otherwise")
                     LONG_STRING_PARAM("KnownAF", &knownAF, "[String] known allele frequency file (chr\tpos\tfreq)[Optional]")
                     LONG_INT_PARAM("Seed",&seed,"[INT] Random number seed[default:12345]")
                     LONG_PARAM("OutputPileup", &outputPileup, "[Bool] If output temp pileup file")
+                    LONG_PARAM("Verbose", &verbose, "[Bool] If print the progress of the method on the screen")
 
 
 
@@ -146,6 +145,8 @@ int main(int argc, char **argv) {
         }
         fout.close();
     }
+    if(verbose)
+        Estimator.verbose=verbose;
     Estimator.seed = seed;
     Estimator.isHeter = !withinAncestry;
     Estimator.ReadSVDMatrix(UDPath, MeanPath);
@@ -182,9 +183,13 @@ int main(int argc, char **argv) {
 
     Estimator.OptimizeLLK(outputPrefix);
 
-    //const char* headers[] = {"#SEQ_ID","RG","CHIP_ID","#SNPS","#READS","AVG_DP","FREEMIX","FREELK1","FREELK0","FREE_RH","FREE_RA","CHIPMIX","CHIPLK1","CHIPLK0","CHIP_RH","CHIP_RA","DPREF","RDPHET","RDPALT"};
-    //std::ofstream fout(outputPrefix+".selfSM");
-    //fout<<headers<<std::endl;
+    const char* headers = "#SEQ_ID\tRG\tCHIP_ID\t#SNPS\t#READS\tAVG_DP\tFREEMIX\tFREELK1\tFREELK0\tFREE_RH\tFREE_RA\tCHIPMIX\tCHIPLK1\tCHIPLK0\tCHIP_RH\tCHIP_RA\tDPREF\tRDPHET\tRDPALT";
+    std::ofstream fout(outputPrefix+".selfSM");
+    fout<<headers<<std::endl;
+    fout<<Estimator.viewer.SEQ_SM<<"\tNA\tNA\t"<<Estimator.NumMarker<<"\t"<<Estimator.viewer.numReads<<"\t"<<Estimator.viewer.avgDepth<<"\t"
+        <<Estimator.fn.globalAlpha<<"\t"<<Estimator.fn.llk<<"\tNA\t"<<"NA\tNA\t"
+        <<"NA\tNA\tNA\tNA\tNA\t"
+        <<"NA\tNA\tNA"<<std::endl;
 
 
     return 0;
