@@ -933,7 +933,7 @@ public:
      */
     void OptimizeHomFixedPC(AmoebaMinimizer &myMinimizer);
 
-    void OptimizeHomFixedAlpha(AmoebaMinimizer &myMinimizer);
+    void OptimizeHomoFixedAlpha(AmoebaMinimizer &myMinimizer);
 
     void OptimizeHom(AmoebaMinimizer &myMinimizer);
 
