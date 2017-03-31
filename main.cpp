@@ -33,7 +33,6 @@
 using namespace std;
 
 int main(int argc, char **argv) {
-    cout << "Hello, World!" << endl;
 
     string UDPath("Empty"), MeanPath("Empty"), BedPath("Empty"), BamFileList("Empty"), BamFile("Empty"), RefPath(
             "Empty"), outputPrefix("result");
@@ -145,8 +144,8 @@ int main(int argc, char **argv) {
         }
         fout.close();
     }
-    if(verbose)
-        Estimator.verbose=verbose;
+
+    Estimator.verbose=verbose;
     Estimator.seed = seed;
     Estimator.isHeter = !withinAncestry;
     Estimator.ReadSVDMatrix(UDPath, MeanPath);

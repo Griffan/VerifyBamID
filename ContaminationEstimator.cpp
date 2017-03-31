@@ -167,11 +167,13 @@ void ContaminationEstimator::OptimizeHom(AmoebaMinimizer &myMinimizer) {
         startingPoint[i] = PC[0][i];
     }
     startingPoint[numPC] = fullLLKFunc::Logit(alpha);
-    std::cerr << "start point:";
-    for (int i = 0; i < numPC; ++i) {
-        std::cerr<<startingPoint[i]<<"\t";
+    if(verbose) {
+        std::cerr << "start point:";
+        for (int i = 0; i < numPC; ++i) {
+            std::cerr << startingPoint[i] << "\t";
+        }
+        std::cerr << "and alpha:\t" << startingPoint[numPC] << std::endl;
     }
-    std::cerr<<"and alpha:\t"<<startingPoint[numPC]<<std::endl;
     startingPoint.label = "startPoint";
     myMinimizer.func = &fn;
     myMinimizer.Reset(numPC + 1);
