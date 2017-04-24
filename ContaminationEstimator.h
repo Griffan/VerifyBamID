@@ -60,8 +60,8 @@ public:
         double max_af;
         double llk;
         ContaminationEstimator *ptr;
-        vector<double> fixPC,globalPC;
-        vector<double> fixPC2,globalPC2;
+        std::vector<double> fixPC,globalPC;
+        std::vector<double> fixPC2,globalPC2;
         double fixAlpha,globalAlpha;
         const char* Base;
         fullLLKFunc()
@@ -83,7 +83,7 @@ public:
             ptr = contPtr;
             fixAlpha = 0.;
             globalAlpha =0.;
-            std::cerr<<"Initializae from fullLLKFunc(int dim, ContaminationEstimator* contPtr)"<<std::endl;
+            std::cerr<<"Initialize from fullLLKFunc(int dim, ContaminationEstimator* contPtr)"<<std::endl;
         }
 
         ~fullLLKFunc() { };
@@ -228,140 +228,10 @@ public:
             GF[2] = AF * AF;
         }
 
-        inline double computeMixLLKs(const vector<double> & tPC1,const vector<double> & tPC2,const double alpha)
+        inline double computeMixLLKs(const std::vector<double> & tPC1,const std::vector<double> & tPC2,const double alpha)
         {
 
             double sumLLK(0);
-#ifdef _OPENMP
-            omp_set_num_threads(ptr->numThread);
-#pragma omp parallel for reduction (+:sumLLK)
-#endif
-            for (size_t i = 0; i < ptr->NumMarker; ++i) {
-                double markerLK(0);
-                double GF[3];
-                double GF2[3];
-                std::string chr = ptr->PosVec[i].first;
-                int pos = ptr->PosVec[i].second;
-                if (ptr->viewer.posIndex.find(chr) == ptr->viewer.posIndex.end()) {
-                    continue;
-                }
-                else if (ptr->viewer.posIndex[chr].find(pos) == ptr->viewer.posIndex[chr].end()) {
-                    continue;
-                }
-                ptr->AFs[i]=0.;
-                for (int k = 0; k <tPC1.size(); ++k) {
-                    ptr->AFs[i]+=ptr->UD[i][k] * tPC1[k];
-                }
-                ptr->AFs[i] += ptr->means[i];
-                ptr->AFs[i] /= 2.0;
-                ptr->AF2s[i]=0.;
-                for (int k = 0; k <tPC2.size(); ++k) {
-                    ptr->AF2s[i]+=ptr->UD[i][k] * tPC2[k];
-                }
-                ptr->AF2s[i] += ptr->means[i];
-                ptr->AF2s[i] /= 2.0;
-
-
-                InitialGF(ptr->AFs[i], GF);
-                InitialGF(ptr->AF2s[i], GF2);
-                std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
-                if (tmpBase.size() == 0) continue;
-
-                char altBase = ptr->ChooseBed[chr][pos].second;
-
-                for (int geno1 = 0; geno1 < 3; ++geno1)
-                    for (int geno2 = 0; geno2 < 3; ++geno2) {
-                        double baseLK(0);
-                        for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log(( alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                            (1. - alpha)* getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
-                                          Phred(tmpQual[j] - 33)
-                                          + ( alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
-                                            (1 - Phred(tmpQual[j] - 33)));
-//                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
-//                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
-//                            <<"\tgetConditionalBaseLK0:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 0)<<"\t"<<getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)<< std::endl;
-                        }
-//                        std::cerr<<"baseLK:"<<baseLK;
-                        markerLK += exp(baseLK) * GF[geno1] * GF2[geno2];
-//                        std::cerr<<"markerLK:"<<markerLK<<std::endl;
-                    }
-                if (markerLK > 0)
-                    sumLLK += log(markerLK);
-//                std::cerr << "sumLLK:" << sumLLK << std::endl;
-            }
-//            std::cerr << "sumLLK:" << sumLLK << std::endl;
-            return sumLLK;
-        }
-        inline double computeMixLLKs(const vector<double> & tPC, const double alpha)
-        {
-
-            double sumLLK(0);
-#ifdef _OPENMP
-            omp_set_num_threads(ptr->numThread);
-#pragma omp parallel for reduction (+:sumLLK)
-#endif
-            for (size_t i = 0; i < ptr->NumMarker; ++i) {
-                double markerLK(0);
-                double GF[3];
-                std::string chr = ptr->PosVec[i].first;
-                int pos = ptr->PosVec[i].second;
-                if (ptr->viewer.posIndex.find(chr) == ptr->viewer.posIndex.end()) {
-                    continue;
-                }
-                else if (ptr->viewer.posIndex[chr].find(pos) == ptr->viewer.posIndex[chr].end()) {
-                    continue;
-                }
-
-                ptr->AFs[i]=0.;
-                for (int k = 0; k <tPC.size(); ++k) {
-                    ptr->AFs[i]+=ptr->UD[i][k] * tPC[k];
-                }
-                ptr->AFs[i] += ptr->means[i];
-                ptr->AFs[i] /= 2.0;
-
-
-                InitialGF(ptr->AFs[i], GF);
-
-                std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
-                if (tmpBase.size() == 0) continue;
-
-                char altBase = ptr->ChooseBed[chr][pos].second;
-
-                for (int geno1 = 0; geno1 < 3; ++geno1)
-                    for (int geno2 = 0; geno2 < 3; ++geno2) {
-                        double baseLK(0);
-                        for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log(( alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
-                                          Phred(tmpQual[j] - 33)
-                                          + (alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
-                                            (1 - Phred(tmpQual[j] - 33)));
-//                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
-//                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
-//                            <<"\tgetConditionalBaseLK0:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 0)<<"\t"<<getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)<< std::endl;
-                        }
-//                        std::cerr<<"baseLK:"<<baseLK;
-                        markerLK += exp(baseLK) * GF[geno1] * GF[geno2];
-//                        std::cerr<<"markerLK:"<<markerLK<<std::endl;
-                    }
-                if (markerLK > 0)
-                    sumLLK += log(markerLK);
-//                std::cerr << "sumLLK:" << sumLLK << std::endl;
-            }
-//            std::cerr << "sumLLK:" << sumLLK << std::endl;
-            return sumLLK;
-        }
-
-        inline double computeMixLLKs(const vector<double> & tPC1, const vector<double> & tPC2)//fix localAlpha
-        {
-
-            double sumLLK(0);
-
 #ifdef _OPENMP
             omp_set_num_threads(ptr->numThread);
 #pragma omp parallel for reduction (+:sumLLK)
@@ -399,175 +269,23 @@ public:
                     ptr->AF2s[i] /= 2.0;
                 }
 
-                InitialGF(ptr->AFs[i], GF);
-                InitialGF(ptr->AF2s[i], GF2);
-
-                std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
-                if (tmpBase.size() == 0) continue;
-
-                char altBase = ptr->ChooseBed[chr][pos].second;
-
-                for (int geno1 = 0; geno1 < 3; ++geno1)
-                    for (int geno2 = 0; geno2 < 3; ++geno2) {
-                        double baseLK(0);
-                        for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log(( fixAlpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           (1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
-                                          Phred(tmpQual[j] - 33)
-                                          + (fixAlpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             (1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
-                                            (1 - Phred(tmpQual[j] - 33)));
-                        }
-                        markerLK += exp(baseLK) * GF[geno1] * GF2[geno2];
-                    }
-                if (markerLK > 0)
-                    sumLLK += log(markerLK);
-            }
-            return sumLLK;
-        }
-        inline double computeMixLLKs(const vector<double> & tPC)//fix localAlpha
-        {
-
-            double sumLLK(0);
-
-#ifdef _OPENMP
-            omp_set_num_threads(ptr->numThread);
-#pragma omp parallel for reduction (+:sumLLK)
-#endif
-            for (size_t i = 0; i < ptr->NumMarker; ++i) {
-                double markerLK(0);
-                double GF[3];
-                std::string chr = ptr->PosVec[i].first;
-                int pos = ptr->PosVec[i].second;
-                if (ptr->viewer.posIndex.find(chr) == ptr->viewer.posIndex.end()) {
-                    continue;
-                }
-                else if (ptr->viewer.posIndex[chr].find(pos) == ptr->viewer.posIndex[chr].end()) {
-                    continue;
-                }
-                if(ptr->isAFknown)
-                {
-                    ptr->AFs[i]=ptr->knownAF[chr][pos];
-                }
-                else
-                {
-                    ptr->AFs[i]=0.;
-                    for (int k = 0; k <tPC.size(); ++k) {
-                        ptr->AFs[i]+=ptr->UD[i][k] * tPC[k];
-                    }
-                    ptr->AFs[i] += ptr->means[i];
-                    ptr->AFs[i] /= 2.0;
-                }
-
-                if (ptr->AFs[i] < min_af) ptr->AFs[i] = min_af;
-                if (ptr->AFs[i] > max_af) ptr->AFs[i] = max_af;
-                GF[0] = (1 - ptr->AFs[i]) * (1 - ptr->AFs[i]);//genotype frequency
-                GF[1] = 2 * (ptr->AFs[i]) * (1 - ptr->AFs[i]);
-                GF[2] = (ptr->AFs[i]) * (ptr->AFs[i]);
-                std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
-                if (tmpBase.size() == 0) continue;
-//                std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<"\t";
-//                std::cerr<<"tmpBase:";
-//                for (int k = 0; k <tmpBase.size() ; ++k) {
-//                    std::cerr<<tmpBase[k];
-//                }
-//                std::cerr<<"\t";
-                //char altBase=findAlt(tmpBase);
-                char altBase = ptr->ChooseBed[chr][pos].second;
-
-                for (int geno1 = 0; geno1 < 3; ++geno1)
-                    for (int geno2 = 0; geno2 < 3; ++geno2) {
-                        double baseLK(0);
-                        for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log((fixAlpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           (1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
-                                          Phred(tmpQual[j] - 33)
-                                          + (fixAlpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             (1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
-                                            (1 - Phred(tmpQual[j] - 33)));
-//                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
-//                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
-//                            <<"\tgetConditionalBaseLK0:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 0)<<"\t"<<getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)<< std::endl;
-                        }
-//                        std::cerr<<"baseLK:"<<baseLK;
-                        markerLK += exp(baseLK) * GF[geno1] * GF[geno2];
-//                        std::cerr<<"markerLK:"<<markerLK<<std::endl;
-                    }
-                if (markerLK > 0)
-                    sumLLK += log(markerLK);
-//                std::cerr << "sumLLK:" << sumLLK << std::endl;
-            }
-//            std::cerr << "sumLLK:" << sumLLK << std::endl;
-            return sumLLK;
-        }
-
-        inline double computeMixLLKs_mix(const double alpha)//fix PCs for two populations mixture
-        {
-
-            double sumLLK(0);
-#ifdef _OPENMP
-            omp_set_num_threads(ptr->numThread);
-#pragma omp parallel for reduction (+:sumLLK)
-#endif
-            for (size_t i = 0; i < ptr->NumMarker; ++i) {
-                double markerLK(0);
-                double GF[3];
-                double GF2[3];
-                std::string chr = ptr->PosVec[i].first;
-                int pos = ptr->PosVec[i].second;
-                if (ptr->viewer.posIndex.find(chr) == ptr->viewer.posIndex.end()) {
-                    continue;
-                }
-                else if (ptr->viewer.posIndex[chr].find(pos) == ptr->viewer.posIndex[chr].end()) {
-                    continue;
-                }
-
-                if(ptr->isAFknown)
-                {
-                    ptr->AFs[i]=ptr->knownAF[chr][pos];
-                }
-                else
-                {
-                    ptr->AFs[i]=0.;
-                    for (int k = 0; k <fixPC.size(); ++k) {
-                        ptr->AFs[i]+=ptr->UD[i][k] * fixPC[k];
-                    }
-                    ptr->AFs[i] += ptr->means[i];
-                    ptr->AFs[i] /= 2.0;
-
-                    ptr->AF2s[i]=0.;
-                    for (int k = 0; k <fixPC2.size(); ++k) {
-                        ptr->AF2s[i]+=ptr->UD[i][k] * fixPC2[k];
-                    }
-                    ptr->AF2s[i] += ptr->means[i];
-                    ptr->AF2s[i] /= 2.0;
-                }
 
                 InitialGF(ptr->AFs[i], GF);
                 InitialGF(ptr->AF2s[i], GF2);
-
                 std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
                 std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
                 if (tmpBase.size() == 0) continue;
-//                std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<"\t";
-//                std::cerr<<"tmpBase:";
-//                for (int k = 0; k <tmpBase.size() ; ++k) {
-//                    std::cerr<<tmpBase[k];
-//                }
-//                std::cerr<<"\t";
-                //char altBase=findAlt(tmpBase);
+
                 char altBase = ptr->ChooseBed[chr][pos].second;
 
                 for (int geno1 = 0; geno1 < 3; ++geno1)
                     for (int geno2 = 0; geno2 < 3; ++geno2) {
                         double baseLK(0);
                         for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log((alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
+                            baseLK += log(( alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
+                                            (1. - alpha)* getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
                                           Phred(tmpQual[j] - 33)
-                                          + (alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
+                                          + ( alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
                                              (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
                                             (1 - Phred(tmpQual[j] - 33)));
 //                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
@@ -586,219 +304,11 @@ public:
             return sumLLK;
         }
 
-        inline double
-        computeMixLLKs_mix(const vector<double> &tPC, const double alpha)//fix PCs for Intended Sample mixture
-        {
-            double sumLLK(0);
-#ifdef _OPENMP
-            omp_set_num_threads(ptr->numThread);
-#pragma omp parallel for reduction (+:sumLLK)
-#endif
-            for (size_t i = 0; i < ptr->NumMarker; ++i) {
-                double markerLK(0);
-                double GF[3];
-                double GF2[3];
-                std::string chr = ptr->PosVec[i].first;
-                int pos = ptr->PosVec[i].second;
-                if (ptr->viewer.posIndex.find(chr) == ptr->viewer.posIndex.end()) {
-                    continue;
-                } else if (ptr->viewer.posIndex[chr].find(pos) == ptr->viewer.posIndex[chr].end()) {
-                    continue;
-                }
-                if (ptr->isAFknown) {
-                    ptr->AFs[i] = ptr->knownAF[chr][pos];
-                } else {
-                    ptr->AFs[i] = 0.;
-                    for (int k = 0; k < fixPC.size(); ++k) {
-                        ptr->AFs[i] += ptr->UD[i][k] * tPC[k];
-                    }
-                    ptr->AFs[i] += ptr->means[i];
-                    ptr->AFs[i] /= 2.0;
-                    ptr->AF2s[i] = 0.;
-                    for (int k = 0; k < fixPC2.size(); ++k) {
-                        ptr->AF2s[i] += ptr->UD[i][k] * fixPC2[k];
-                    }
-                    ptr->AF2s[i] += ptr->means[i];
-                    ptr->AF2s[i] /= 2.0;
-                }
-                InitialGF(ptr->AFs[i], GF);
-                InitialGF(ptr->AF2s[i], GF2);
-                std::vector<char> &tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char> &tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
-                if (tmpBase.size() == 0) continue;
-                char altBase = ptr->ChooseBed[chr][pos].second;
-                for (int geno1 = 0; geno1 < 3; ++geno1)
-                    for (int geno2 = 0; geno2 < 3; ++geno2) {
-                        double baseLK(0);
-                        for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log((alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
-                                          Phred(tmpQual[j] - 33)
-                                          + (alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
-                                            (1 - Phred(tmpQual[j] - 33)));
-                        }
-                        markerLK += exp(baseLK) * GF[geno1] * GF2[geno2];
-                    }
-                if (markerLK > 0)
-                    sumLLK += log(markerLK);
-            }
-            return sumLLK;
-        }
-
-
-        inline double computeMixLLKs(const double alpha)//fix PCs
-        {
-
-            double sumLLK(0);
-#ifdef _OPENMP
-            omp_set_num_threads(ptr->numThread);
-#pragma omp parallel for reduction (+:sumLLK)
-#endif
-            for (size_t i = 0; i < ptr->NumMarker; ++i) {
-                double markerLK(0);
-                double GF[3];
-                std::string chr = ptr->PosVec[i].first;
-                int pos = ptr->PosVec[i].second;
-                if (ptr->viewer.posIndex.find(chr) == ptr->viewer.posIndex.end()) {
-                    continue;
-                }
-                else if (ptr->viewer.posIndex[chr].find(pos) == ptr->viewer.posIndex[chr].end()) {
-                    continue;
-                }
-
-                if(ptr->isAFknown)
-                {
-                    ptr->AFs[i]=ptr->knownAF[chr][pos];
-                }
-                else
-                {
-                    ptr->AFs[i]=0.;
-                    for (int k = 0; k <fixPC.size(); ++k) {
-                        ptr->AFs[i]+=ptr->UD[i][k] * fixPC[k];
-                    }
-                    ptr->AFs[i] += ptr->means[i];
-                    ptr->AFs[i] /= 2.0;
-                }
-
-
-                if (ptr->AFs[i] < min_af) ptr->AFs[i] = min_af;
-                if (ptr->AFs[i] > max_af) ptr->AFs[i] = max_af;
-                GF[0] = (1 - ptr->AFs[i]) * (1 - ptr->AFs[i]);//genotype frequency
-                GF[1] = 2 * (ptr->AFs[i]) * (1 - ptr->AFs[i]);
-                GF[2] = (ptr->AFs[i]) * (ptr->AFs[i]);
-                std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
-                if (tmpBase.size() == 0) continue;
-//                std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<"\t";
-//                std::cerr<<"tmpBase:";
-//                for (int k = 0; k <tmpBase.size() ; ++k) {
-//                    std::cerr<<tmpBase[k];
-//                }
-//                std::cerr<<"\t";
-                //char altBase=findAlt(tmpBase);
-                char altBase = ptr->ChooseBed[chr][pos].second;
-
-                for (int geno1 = 0; geno1 < 3; ++geno1)
-                    for (int geno2 = 0; geno2 < 3; ++geno2) {
-                        double baseLK(0);
-                        for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log((alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
-                                          Phred(tmpQual[j] - 33)
-                                          + (alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
-                                            (1 - Phred(tmpQual[j] - 33)));
-//                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
-//                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
-//                            <<"\tgetConditionalBaseLK0:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 0)<<"\t"<<getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)<< std::endl;
-                        }
-//                        std::cerr<<"baseLK:"<<baseLK;
-                        markerLK += exp(baseLK) * GF[geno1] * GF[geno2];
-//                        std::cerr<<"markerLK:"<<markerLK<<std::endl;
-                    }
-                if (markerLK > 0)
-                    sumLLK += log(markerLK);
-//                std::cerr << "sumLLK:" << sumLLK << std::endl;
-            }
-//            std::cerr << "sumLLK:" << sumLLK << std::endl;
-            return sumLLK;
-        }
-
-        fullLLKFunc(ContaminationEstimator *inPtr) {
-            ptr = inPtr;
-            srand(ptr->seed);
-//            srand(static_cast<unsigned>(time(NULL)));
-            for (int k = 0; k <fixPC.size(); ++k) {
-                globalPC[k]=fixPC[k]=ptr->PC[0][k];
-            }
-            for (int k = 0; k <fixPC2.size(); ++k) {
-                globalPC2[k]=fixPC2[k]=ptr->PC[1][k];
-            }
-
-            globalAlpha=fixAlpha=ptr->alpha;
-            if(!ptr->isHeter)
-            {
-                if(ptr->isPCFixed) {
-
-                    llk = (0 - computeMixLLKs(fixAlpha));
-                }
-                else if(ptr->isAlphaFixed) {
-
-                    llk = (0 - computeMixLLKs(fixPC));
-                }
-                else
-                    llk = (0 - computeMixLLKs(fixPC,fixAlpha));
-            }
-            else//contamination source from different population
-            {
-                if(ptr->isPCFixed) {
-
-                    llk = (0 - computeMixLLKs_mix(fixPC, fixAlpha));
-                }
-                else if(ptr->isAlphaFixed) {
-
-                    llk = (0 - computeMixLLKs(fixPC, fixPC2));
-                }
-                else
-                    llk = (0 - computeMixLLKs(fixPC,fixPC2,fixAlpha));
-            }
-        }
 
         int initialize() {
-            srand(ptr->seed);
-//            srand(static_cast<unsigned>(time(NULL)));
-            for (int k = 0; k <fixPC.size(); ++k) {
-                globalPC[k]=fixPC[k] = ptr->PC[0][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            }
-            for (int k = 0; k <fixPC2.size(); ++k) {
-                globalPC2[k]=fixPC2[k] = ptr->PC[1][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            }
-            fprintf(stderr,"gloablPC2:%f\t%f\t\t%f\t%f\n",globalPC2[0],globalPC2[1],ptr->PC[1][0],ptr->PC[1][1]);
-            globalAlpha=fixAlpha = ptr->alpha;//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-
-            if(!ptr->isHeter)
-            {
-                if(ptr->isPCFixed) {
-                    llk = (0 - computeMixLLKs(fixAlpha));
-                }
-                else if(ptr->isAlphaFixed) {
-                    llk = (0 - computeMixLLKs(fixPC));
-                }
-                else
-                    llk = (0 - computeMixLLKs(fixPC,fixAlpha));
-            }
-            else//contamination source from different population
-            {
-                if(ptr->isPCFixed) {
-                    llk = (0 - computeMixLLKs_mix(fixPC, fixAlpha));
-                }
-                else if(ptr->isAlphaFixed) {
-                    llk = (0 - computeMixLLKs(fixPC, fixPC2));
-                }
-                else
-                    llk = (0 - computeMixLLKs(fixPC,fixPC2,fixAlpha));
-            }
+            globalPC=fixPC=globalPC2=fixPC2=ptr->PC[1];//only intended smaple has pre defined PCs
+            globalAlpha=fixAlpha = ptr->alpha;
+            llk = (0 - computeMixLLKs(fixPC,fixPC2,fixAlpha));
             return 0;
         }
 
@@ -808,51 +318,48 @@ public:
             {
                 if(ptr->isPCFixed) {
                     double tmpAlpha = invLogit(v[0]);
-                    smLLK = 0 - computeMixLLKs(tmpAlpha);
+                    smLLK = 0 - computeMixLLKs(fixPC, fixPC2, tmpAlpha);
                     if (smLLK < llk) {
                         llk = smLLK;
                         globalAlpha = tmpAlpha;
                     }
-//		    std::cerr<< "tmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
                 }
                 else if(ptr->isAlphaFixed) {
                     vector<double> tmpPC(ptr->numPC,0.);
                     for (int i = 0; i <ptr->numPC ; ++i) {
                         tmpPC[i]=v[i];
                     }
-                    smLLK = 0 - computeMixLLKs(tmpPC);
+                    smLLK = 0 - computeMixLLKs(tmpPC, tmpPC, fixAlpha);
                     if (smLLK < llk) {
                         llk = smLLK;
                         globalPC = tmpPC;
+                        globalPC2 = tmpPC;
                     }
                 }
                 else {
-//                    std::cerr<<"evaluate from hom dynamic"<<std::endl;
                     vector<double> tmpPC(ptr->numPC,0.);
                     for (int i = 0; i <ptr->numPC ; ++i) {
                         tmpPC[i]=v[i];
                     }
                     double tmpAlpha=invLogit(v[ptr->numPC]);
-                    smLLK = 0 - computeMixLLKs(tmpPC, tmpAlpha);
+                    smLLK = 0 - computeMixLLKs(tmpPC, tmpPC, tmpAlpha);
                     if (smLLK < llk) {
                         llk = smLLK;
                         globalPC = tmpPC;
+                        globalPC2 = tmpPC;
                         globalAlpha = tmpAlpha;
                     }
-//                    std::cerr<< "tmpPC1:" << tmpPC[0] << "\ttmpPC2:" << tmpPC[1]
-//                             << "\ttmpPC3:" << tmpPC[2] << "\ttmpPC4:" << tmpPC[3]
-//                             << "\ttmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
                 }
             }
             else//contamination source from different population
             {
-                if(ptr->isPCFixed) {
+                if(ptr->isPCFixed) {//only fixed for intended sample
                     vector<double> tmpPC(ptr->numPC,0.);
                     for (int i = 0; i <ptr->numPC ; ++i) {
                         tmpPC[i]=v[i];
                         }
                     double tmpAlpha = invLogit(v[ptr->numPC]);
-                    smLLK = (0 - computeMixLLKs_mix(tmpPC, fixAlpha));
+                    smLLK = 0 - computeMixLLKs(tmpPC, fixPC2, tmpAlpha);
 
                     if (smLLK < llk) {
                         llk = smLLK;
@@ -874,7 +381,7 @@ public:
                             exit(EXIT_FAILURE);
                         }
                     }
-                    smLLK = (0 - computeMixLLKs(tmpPC, tmpPC2));
+                    smLLK = 0 - computeMixLLKs(tmpPC, tmpPC2, fixAlpha);
                     if (smLLK < llk) {
                         llk = smLLK;
                         globalPC = tmpPC;
@@ -904,9 +411,6 @@ public:
                         globalPC2 = tmpPC2;
                         globalAlpha = tmpAlpha;
                     }
-//		    std::cerr<< "tmpPC1:" << tmpPC[0] << "\ttmpPC2:" << tmpPC[1]
-//			<< "\ttmpPC3:" << tmpPC2[0] << "\ttmpPC4:" << tmpPC2[1]
-//			<< "\ttmpAlpha:" << tmpAlpha << "\tsmLLK:" << smLLK <<std::endl;
                 }
             }
             if(ptr->verbose)
@@ -990,11 +494,11 @@ public:
     /*
     int FromBamtoPileup();
      */
-    void OptimizeHomFixedPC(AmoebaMinimizer &myMinimizer);
+    void OptimizeHomoFixedPC(AmoebaMinimizer &myMinimizer);
 
     void OptimizeHomoFixedAlpha(AmoebaMinimizer &myMinimizer);
 
-    void OptimizeHom(AmoebaMinimizer &myMinimizer);
+    void OptimizeHomo(AmoebaMinimizer &myMinimizer);
 
     void OptimizeHeterFixedPC(AmoebaMinimizer &myMinimizer);
 

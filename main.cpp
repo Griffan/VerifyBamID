@@ -30,9 +30,6 @@
 #include "SVDcalculator.h"
 #include "PhoneHome.h"
 
-using namespace std;
-
-
 int execute(int argc, char** argv);
 
 // main function of verifyBamID
@@ -60,11 +57,11 @@ int main(int argc, char** argv) {
 
 int execute(int argc, char **argv) {
 
-    string UDPath("Empty"), MeanPath("Empty"), BedPath("Empty"), BamFileList("Empty"), BamFile("Empty"), RefPath(
+    std::string UDPath("Empty"), MeanPath("Empty"), BedPath("Empty"), BamFileList("Empty"), BamFile("Empty"), RefPath(
             "Empty"), outputPrefix("result");
-    string knownAF("Empty");
-    string RefVCF("Empty");
-    string fixPC("Empty");
+    std::string knownAF("Empty");
+    std::string RefVCF("Empty");
+    std::string fixPC("Empty");
     double fixAlpha(-1.);
     bool withinAncestry(false),outputPileup(false),verbose(false);
     int nfiles(0),seed(12345),nPC(2),nthread(4);
@@ -159,8 +156,8 @@ int execute(int argc, char **argv) {
     if(fixPC!="Empty") {// parse --fixPC
         notice("you specified --fixPC, this will overide dynamic estimation of PCs");
         notice("parsing the PCs");
-        stringstream ss(fixPC);
-        string token;
+        std::stringstream ss(fixPC);
+        std::string token;
         std::vector<PCtype> tmpPC;
         while(std::getline(ss, token, ':')) {
             tmpPC.push_back(atof(token.c_str()));
@@ -191,7 +188,7 @@ int execute(int argc, char **argv) {
 
     if(outputPileup)
     {
-        ofstream fout(outputPrefix+".pileup");
+        std::ofstream fout(outputPrefix+".pileup");
         for(auto item:Estimator.BedVec)
         {
             if(Estimator.viewer.posIndex.find(item.chr)==Estimator.viewer.posIndex.end())//chr existed
@@ -205,7 +202,7 @@ int execute(int argc, char **argv) {
             fout<<"\t";
             for(auto qual:Estimator.viewer.GetQualInfoAt(item.chr,item.end))
                 fout<<qual;
-            fout<<endl;
+            fout<<std::endl;
         }
         fout.close();
     }
