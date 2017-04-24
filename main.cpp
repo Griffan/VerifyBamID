@@ -25,14 +25,40 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <limits>
 #include "ContaminationEstimator.h"
 #include "params.h"
 #include "SVDcalculator.h"
+#include "PhoneHome.h"
 
 using namespace std;
 
-int main(int argc, char **argv) {
+
+int execute(int argc, char** argv);
+
+// main function of verifyBamID
+int main(int argc, char** argv) {
+    int returnVal = 0;
+    String compStatus;
+    try
+    {
+        returnVal = execute(argc, argv);
+    }
+    catch(std::runtime_error e)
+    {
+        returnVal = -1;
+        compStatus = "Exception";
+        PhoneHome::completionStatus(compStatus.c_str(),"VerifyBamID2");
+        std::string errorMsg = "Exiting due to ERROR:\n\t";
+        errorMsg += e.what();
+        std::cerr << errorMsg << std::endl;
+        return(-1);
+    }
+    compStatus = returnVal;
+    PhoneHome::completionStatus(compStatus.c_str(),"VerifyBamID2");
+    return(returnVal);
+}
+
+int execute(int argc, char **argv) {
 
     string UDPath("Empty"), MeanPath("Empty"), BedPath("Empty"), BamFileList("Empty"), BamFile("Empty"), RefPath(
             "Empty"), outputPrefix("result");
@@ -64,7 +90,7 @@ int main(int argc, char **argv) {
                                    "[Int] Set number of PCs to infer Allele Frequency[optional]")
                     LONG_INT_PARAM("NumThread", &nthread,
                                    "[Int] Set number of threads in likelihood calculation[default:4]")
-                    LONG_STRING_PARAM("FixPC", &fixPC, "[String] Input fixed PCs to estimate Alpha[format:PC1|PC2|PC3...]")
+                    LONG_STRING_PARAM("FixPC", &fixPC, "[String] Input fixed PCs to estimate Alpha[format PC1:PC2:PC3...]")
                     LONG_DOUBLE_PARAM("FixAlpha", &fixAlpha, "[Double] Input fixed Alpha to estimate PC coordinates")
 
                     LONG_PARAM("WithinAncestry", &withinAncestry, "[Bool] Enabling withinAncestry assume target sample and contamination source are from the same populations,[default:betweenAncestry] otherwise")
@@ -123,7 +149,46 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    ContaminationEstimator Estimator(nPC, BamFile.c_str(), RefPath.c_str(), BedPath.c_str(), nthread);
+    ContaminationEstimator Estimator(nPC, BedPath.c_str(), nthread);
+
+    Estimator.verbose=verbose;
+    Estimator.seed = seed;
+    Estimator.isHeter = !withinAncestry;
+
+    //std::cerr<<"NumMarker:"<<Estimator.NumMarker<<" and UD size:"<<Estimator.UD.size()<<std::endl;
+    if(fixPC!="Empty") {// parse --fixPC
+        notice("you specified --fixPC, this will overide dynamic estimation of PCs");
+        notice("parsing the PCs");
+        stringstream ss(fixPC);
+        string token;
+        std::vector<PCtype> tmpPC;
+        while(std::getline(ss, token, ':')) {
+            tmpPC.push_back(atof(token.c_str()));
+        }
+        if(tmpPC.size() > nPC)
+            warning("parameter --fixPC provided larger dimension than parameter --numPC(default value 2) and hence will be truncated");
+        if(tmpPC.size() < nPC)
+            error("parameter --fixPC provided smaller dimension than parameter --numPC(default value 2)");
+        for (int i = 0; i < nPC; ++i) {
+            Estimator.PC[1][i]=tmpPC[i];
+        }
+        Estimator.isPCFixed = true;
+    }
+    else if(fabs(fixAlpha + 1.)>std::numeric_limits<double>::epsilon()) {
+        notice("you specified --fixAlpha, this will overide dynamic estimation of alpha");
+        Estimator.alpha = fixAlpha;
+        Estimator.isAlphaFixed = true;
+    }
+    if(knownAF!="Empty") {
+        Estimator.isAFknown = true;
+        Estimator.isPCFixed = true;
+        Estimator.isHeter =false; //under --knownAF condition, we assume WithinAncestry model
+        Estimator.ReadAF(knownAF);
+    }
+
+    Estimator.ReadSVDMatrix(UDPath, MeanPath);
+    Estimator.ReadBam(BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
+
     if(outputPileup)
     {
         ofstream fout(outputPrefix+".pileup");
@@ -143,41 +208,6 @@ int main(int argc, char **argv) {
             fout<<endl;
         }
         fout.close();
-    }
-
-    Estimator.verbose=verbose;
-    Estimator.seed = seed;
-    Estimator.isHeter = !withinAncestry;
-    Estimator.ReadSVDMatrix(UDPath, MeanPath);
-    //std::cerr<<"NumMarker:"<<Estimator.NumMarker<<" and UD size:"<<Estimator.UD.size()<<std::endl;
-    if(fixPC!="Empty") {// parse --fixPC
-        notice("you specified --fixPC, this will overide dynamic estimation of PCs");
-        notice("parsing the PCs");
-        stringstream ss(fixPC);
-        string token;
-        std::vector<PCtype> tmpPC;
-        while(std::getline(ss, token, '|')) {
-            tmpPC.push_back(atof(token.c_str()));
-        }
-        if(tmpPC.size() > nPC)
-        {
-            warning("parameter --fixPC provided larger dimension than parameter --numPC(default value 2) and hence will be truncated");
-            for (int i = 0; i < nPC; ++i) {
-                Estimator.PC[0][i]=tmpPC[i];
-            }
-        }
-        Estimator.isPCFixed = true;
-    }
-    else if(fabs(fixAlpha + 1.)>std::numeric_limits<double>::epsilon()) {
-        notice("you specified --fixAlpha, this will overide dynamic estimation of alpha");
-        Estimator.alpha = fixAlpha;
-        Estimator.isAlphaFixed = true;
-    }
-    if(knownAF!="Empty") {
-        Estimator.isAFknown = true;
-        Estimator.isPCFixed = true;
-        Estimator.isHeter =false; //under --knownAF condition, we assume WithinAncestry model
-        Estimator.ReadAF(knownAF);
     }
 
     Estimator.OptimizeLLK(outputPrefix);

@@ -405,13 +405,7 @@ public:
                 std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
                 std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
                 if (tmpBase.size() == 0) continue;
-//                std::cerr<<"chr:"<<chr<<"\tpos:"<<pos<<"\t";
-//                std::cerr<<"tmpBase:";
-//                for (int k = 0; k <tmpBase.size() ; ++k) {
-//                    std::cerr<<tmpBase[k];
-//                }
-//                std::cerr<<"\t";
-                //char altBase=findAlt(tmpBase);
+
                 char altBase = ptr->ChooseBed[chr][pos].second;
 
                 for (int geno1 = 0; geno1 < 3; ++geno1)
@@ -424,19 +418,12 @@ public:
                                           + (fixAlpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
                                              (1. - fixAlpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
                                             (1 - Phred(tmpQual[j] - 33)));
-//                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
-//                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
-//                            <<"\tgetConditionalBaseLK0:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 0)<<"\t"<<getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)<< std::endl;
                         }
-//                        std::cerr<<"baseLK:"<<baseLK;
                         markerLK += exp(baseLK) * GF[geno1] * GF2[geno2];
-//                        std::cerr<<"markerLK:"<<markerLK<<std::endl;
                     }
                 if (markerLK > 0)
                     sumLLK += log(markerLK);
-//                std::cerr << "sumLLK:" << sumLLK << std::endl;
             }
-//            std::cerr << "sumLLK:" << sumLLK << std::endl;
             return sumLLK;
         }
         inline double computeMixLLKs(const vector<double> & tPC)//fix localAlpha
@@ -598,6 +585,68 @@ public:
 //            std::cerr << "sumLLK:" << sumLLK << std::endl;
             return sumLLK;
         }
+
+        inline double
+        computeMixLLKs_mix(const vector<double> &tPC, const double alpha)//fix PCs for Intended Sample mixture
+        {
+            double sumLLK(0);
+#ifdef _OPENMP
+            omp_set_num_threads(ptr->numThread);
+#pragma omp parallel for reduction (+:sumLLK)
+#endif
+            for (size_t i = 0; i < ptr->NumMarker; ++i) {
+                double markerLK(0);
+                double GF[3];
+                double GF2[3];
+                std::string chr = ptr->PosVec[i].first;
+                int pos = ptr->PosVec[i].second;
+                if (ptr->viewer.posIndex.find(chr) == ptr->viewer.posIndex.end()) {
+                    continue;
+                } else if (ptr->viewer.posIndex[chr].find(pos) == ptr->viewer.posIndex[chr].end()) {
+                    continue;
+                }
+                if (ptr->isAFknown) {
+                    ptr->AFs[i] = ptr->knownAF[chr][pos];
+                } else {
+                    ptr->AFs[i] = 0.;
+                    for (int k = 0; k < fixPC.size(); ++k) {
+                        ptr->AFs[i] += ptr->UD[i][k] * tPC[k];
+                    }
+                    ptr->AFs[i] += ptr->means[i];
+                    ptr->AFs[i] /= 2.0;
+                    ptr->AF2s[i] = 0.;
+                    for (int k = 0; k < fixPC2.size(); ++k) {
+                        ptr->AF2s[i] += ptr->UD[i][k] * fixPC2[k];
+                    }
+                    ptr->AF2s[i] += ptr->means[i];
+                    ptr->AF2s[i] /= 2.0;
+                }
+                InitialGF(ptr->AFs[i], GF);
+                InitialGF(ptr->AF2s[i], GF2);
+                std::vector<char> &tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
+                std::vector<char> &tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
+                if (tmpBase.size() == 0) continue;
+                char altBase = ptr->ChooseBed[chr][pos].second;
+                for (int geno1 = 0; geno1 < 3; ++geno1)
+                    for (int geno2 = 0; geno2 < 3; ++geno2) {
+                        double baseLK(0);
+                        for (int j = 0; j < tmpBase.size(); ++j) {
+                            baseLK += log((alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
+                                           (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
+                                          Phred(tmpQual[j] - 33)
+                                          + (alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
+                                             (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
+                                            (1 - Phred(tmpQual[j] - 33)));
+                        }
+                        markerLK += exp(baseLK) * GF[geno1] * GF2[geno2];
+                    }
+                if (markerLK > 0)
+                    sumLLK += log(markerLK);
+            }
+            return sumLLK;
+        }
+
+
         inline double computeMixLLKs(const double alpha)//fix PCs
         {
 
@@ -686,6 +735,7 @@ public:
             for (int k = 0; k <fixPC2.size(); ++k) {
                 globalPC2[k]=fixPC2[k]=ptr->PC[1][k];
             }
+
             globalAlpha=fixAlpha=ptr->alpha;
             if(!ptr->isHeter)
             {
@@ -704,7 +754,7 @@ public:
             {
                 if(ptr->isPCFixed) {
 
-                    llk = (0 - computeMixLLKs_mix(fixAlpha));
+                    llk = (0 - computeMixLLKs_mix(fixPC, fixAlpha));
                 }
                 else if(ptr->isAlphaFixed) {
 
@@ -724,6 +774,7 @@ public:
             for (int k = 0; k <fixPC2.size(); ++k) {
                 globalPC2[k]=fixPC2[k] = ptr->PC[1][k];//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
             }
+            fprintf(stderr,"gloablPC2:%f\t%f\t\t%f\t%f\n",globalPC2[0],globalPC2[1],ptr->PC[1][0],ptr->PC[1][1]);
             globalAlpha=fixAlpha = ptr->alpha;//static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
 
             if(!ptr->isHeter)
@@ -740,7 +791,7 @@ public:
             else//contamination source from different population
             {
                 if(ptr->isPCFixed) {
-                    llk = (0 - computeMixLLKs_mix(fixAlpha));
+                    llk = (0 - computeMixLLKs_mix(fixPC, fixAlpha));
                 }
                 else if(ptr->isAlphaFixed) {
                     llk = (0 - computeMixLLKs(fixPC, fixPC2));
@@ -796,10 +847,16 @@ public:
             else//contamination source from different population
             {
                 if(ptr->isPCFixed) {
-                    double tmpAlpha = invLogit(v[0]);
-                    smLLK = (0 - computeMixLLKs_mix(fixAlpha));
+                    vector<double> tmpPC(ptr->numPC,0.);
+                    for (int i = 0; i <ptr->numPC ; ++i) {
+                        tmpPC[i]=v[i];
+                        }
+                    double tmpAlpha = invLogit(v[ptr->numPC]);
+                    smLLK = (0 - computeMixLLKs_mix(tmpPC, fixAlpha));
+
                     if (smLLK < llk) {
                         llk = smLLK;
+                        globalPC = tmpPC;
                         globalAlpha = tmpAlpha;
                     }
                 }
@@ -884,7 +941,7 @@ public:
 
     ContaminationEstimator();
 
-    ContaminationEstimator(int nPC, const char *bamFile, const char *faiFile, const char *bedFile, int nThread);
+    ContaminationEstimator(int nPC, const char *bedFile, int nThread);
 
     /*Initialize from existed UD*/
     /*This assumes the markers are the same as the selected vcf*/
@@ -904,6 +961,8 @@ public:
     int ReadMean(const std::string &path);
 
     int ReadAF(const std::string & path);
+
+    int ReadBam(const char *bamFile, const char *faiFile, const char *bedFile);
     /*
     int CheckMarkerSetConsistency();
 

@@ -60,6 +60,7 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
             std::cout << "Estimation from OptimizeHeterFixedPC:" << std::endl;
             fout<< "Estimation from OptimizeHeterFixedPC:" << std::endl;
             alpha = fabs(static_cast <double> (rand()) / static_cast <double> (RAND_MAX));
+            PC[0] = PC[1];//we have got PC[1] from parameters
             OptimizeHeterFixedPC(myMinimizer);
 
         } else if (isAlphaFixed) {
@@ -101,15 +102,32 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
             OptimizeHeter(myMinimizer);
             //          }
         }
-	if(fn.globalAlpha >= 0.5)
-	{
-		std::swap(fn.globalPC[0],fn.globalPC2[0]);
-		std::swap(fn.globalPC[1],fn.globalPC2[1]);
-	}
-        std::cout << "Contaminating Sample PC1:" << fn.globalPC[0] << "\tPC2:" << fn.globalPC[1] << std::endl;
-        fout<< "Contaminating Sample PC1:" << fn.globalPC[0] << "\tPC2:" << fn.globalPC[1] << std::endl;
-        std::cout << "Intended Sample  PC3:" << fn.globalPC2[0] << "\tPC4:" << fn.globalPC2[1] << std::endl;
-        fout<< "Intended Sample  PC3:" << fn.globalPC2[0] << "\tPC4:" << fn.globalPC2[1] << std::endl;
+	    if(fn.globalAlpha >= 0.5)
+	    {
+		    std::swap(fn.globalPC[0],fn.globalPC2[0]);
+		    std::swap(fn.globalPC[1],fn.globalPC2[1]);
+	    }
+
+        std::cout << "Contaminating Sample ";
+        fout<< "Contaminating Sample ";
+        for(int i =0; i < numPC; ++i)
+        {
+            std::cout <<"PC"<<i+1<<":" << fn.globalPC[i]<<"\t";
+            fout<< "PC"<<i+1<<":" << fn.globalPC[i]<<"\t";
+        }
+        std::cout <<std::endl;
+        fout<<std::endl;
+
+        std::cout << "Intended Sample ";
+        fout<< "Intended Sample ";
+        for(int i =0; i < numPC; ++i)
+        {
+            std::cout <<"PC"<<i+1<<":" << fn.globalPC2[i]<<"\t";
+            fout<<"PC"<<i+1<<":" << fn.globalPC2[i]<<"\t";
+        }
+        std::cout<< std::endl;
+        fout<<std::endl;
+
     }
 
     std::cout << "Alpha:" << (fn.globalAlpha < 0.5 ? fn.globalAlpha : (1 - fn.globalAlpha)) << std::endl;
@@ -131,7 +149,7 @@ void ContaminationEstimator::OptimizeHeter(AmoebaMinimizer &myMinimizer) {
     myMinimizer.func = &fn;
     myMinimizer.Reset(numPC * 2 + 1);
     myMinimizer.point = startingPoint;
-    myMinimizer.Minimize(1e-6);
+    myMinimizer.Minimize(1e-10);
     alpha = fullLLKFunc::invLogit(myMinimizer.point[numPC * 2]);
     for (int i = 0; i < numPC; ++i) {
         PC[0][i] = myMinimizer.point[i];
@@ -153,7 +171,7 @@ void ContaminationEstimator::OptimizeHeterFixedAlpha(AmoebaMinimizer &myMinimize
     myMinimizer.func = &fn;
     myMinimizer.Reset(numPC * 2);
     myMinimizer.point = startingPoint;
-    myMinimizer.Minimize(1e-6);
+    myMinimizer.Minimize(1e-10);
     for (int i = 0; i < numPC; ++i) {
         PC[0][i] = myMinimizer.point[i];
     }
@@ -163,7 +181,26 @@ void ContaminationEstimator::OptimizeHeterFixedAlpha(AmoebaMinimizer &myMinimize
 }
 
 void ContaminationEstimator::OptimizeHeterFixedPC(AmoebaMinimizer &myMinimizer) {
-    OptimizeHomFixedPC(myMinimizer);
+    //    OptimizeHomFixedPC(myMinimizer);
+    Vector startingPoint("TestPoint", numPC + 1);
+    for (int i = 0; i < numPC; ++i) {
+               startingPoint[i] = PC[0][i];
+    }
+    startingPoint[numPC] = fullLLKFunc::Logit(alpha);
+    std::cerr << "start point:";
+    for (int i = 0; i < numPC; ++i) {
+          std::cerr<<startingPoint[i]<<"\t";
+    }
+    std::cerr<<"and alpha:\t"<<startingPoint[numPC]<<std::endl;
+    startingPoint.label = "startPoint";
+    myMinimizer.func = &fn;
+    myMinimizer.Reset(numPC + 1);
+    myMinimizer.point = startingPoint;
+    myMinimizer.Minimize(1e-10);
+    alpha = fullLLKFunc::invLogit(myMinimizer.point[numPC]);
+    for (int i = 0; i < numPC; ++i) {
+        PC[0][i] = myMinimizer.point[i];
+    }
 }
 
 void ContaminationEstimator::OptimizeHom(AmoebaMinimizer &myMinimizer) {
@@ -197,7 +234,7 @@ void ContaminationEstimator::OptimizeHomoFixedAlpha(AmoebaMinimizer &myMinimizer
     }
     startingPoint.label = "startPoint";
     myMinimizer.func = &fn;
-    myMinimizer.Reset(2);
+    myMinimizer.Reset(numPC);
     myMinimizer.point = startingPoint;
     myMinimizer.Minimize(1e-10);
     for (int i = 0; i < numPC; ++i) {
@@ -219,20 +256,17 @@ void ContaminationEstimator::OptimizeHomFixedPC(AmoebaMinimizer &myMinimizer) {
 int ContaminationEstimator::ReadSVDMatrix(const std::string UDpath, const std::string Mean) {
     ReadMatrixUD(UDpath);
     ReadMean(Mean);
-    fn.initialize();
     return 0;
 }
 
-ContaminationEstimator::ContaminationEstimator(int nPC, const char *bamFile, const char *faiFile, const char *bedFile, int nThread)
+ContaminationEstimator::ContaminationEstimator(int nPC, const char *bedFile, int nThread)
         :
         numPC(nPC), PC(2, std::vector<PCtype>(nPC, 0.)), fn(nPC, this),numThread(nThread) {
     isAFknown = false;
     isPCFixed = false;
     isAlphaFixed = false;
     isHeter = true;
-
     ReadChooseBed(std::string(bedFile));
-    viewer = SimplePileupViewer(&BedVec, bamFile, faiFile, bedFile, 1);
     alpha = 0.5;
     NumMarker = 0;
 
@@ -339,4 +373,9 @@ int ContaminationEstimator::ReadAF(const std::string &path) {
         knownAF[chr][pos] = AF;
     }
     return 0;
+}
+
+int ContaminationEstimator::ReadBam(const char *bamFile, const char *faiFile, const char *bedFile)
+{
+    viewer = SimplePileupViewer(&BedVec, bamFile, faiFile, bedFile, 1);
 }

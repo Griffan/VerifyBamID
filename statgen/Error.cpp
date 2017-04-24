@@ -36,7 +36,7 @@ void error(const char * msg, ...)
   va_end(ap);
 
   throw pexception;
-  //exit(EXIT_FAILURE);
+  exit(EXIT_FAILURE);
 }
 
 void warning(const char * msg, ...)
