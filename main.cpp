@@ -29,6 +29,7 @@
 #include "params.h"
 #include "SVDcalculator.h"
 #include "PhoneHome.h"
+#include <stdexcept>
 
 
 int execute(int argc, char** argv);
@@ -49,7 +50,7 @@ int main(int argc, char** argv) {
         std::string errorMsg = "Exiting due to ERROR:\n\t";
         errorMsg += e.what();
         std::cerr << errorMsg << std::endl;
-        return(-1);
+        return returnVal;
     }
     compStatus = returnVal;
     PhoneHome::completionStatus(compStatus.c_str(),"VerifyBamID2");
