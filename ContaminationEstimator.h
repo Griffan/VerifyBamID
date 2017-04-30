@@ -47,6 +47,7 @@ public:
     int numPC;
     int numThread;
     int seed;
+    double epsilon;
 #define PCtype double
 
 //#define PHRED(x)    pow(10.0,x/-10.0)
@@ -60,9 +61,12 @@ public:
         double max_af;
         double llk;
         ContaminationEstimator *ptr;
-        std::vector<double> fixPC,globalPC;
-        std::vector<double> fixPC2,globalPC2;
-        double fixAlpha,globalAlpha;
+        std::vector<double> fixPC;
+        std::vector<double> fixPC2;
+        double fixAlpha;
+        std::vector<double> globalPC;//best result holder
+        std::vector<double> globalPC2;//best result holder
+        double globalAlpha;//best result holder
         const char* Base;
         fullLLKFunc()
         {
@@ -325,7 +329,7 @@ public:
                     }
                 }
                 else if(ptr->isAlphaFixed) {
-                    vector<double> tmpPC(ptr->numPC,0.);
+                    std::vector<double> tmpPC(ptr->numPC,0.);
                     for (int i = 0; i <ptr->numPC ; ++i) {
                         tmpPC[i]=v[i];
                     }
@@ -337,7 +341,7 @@ public:
                     }
                 }
                 else {
-                    vector<double> tmpPC(ptr->numPC,0.);
+                    std::vector<double> tmpPC(ptr->numPC,0.);
                     for (int i = 0; i <ptr->numPC ; ++i) {
                         tmpPC[i]=v[i];
                     }
@@ -354,7 +358,7 @@ public:
             else//contamination source from different population
             {
                 if(ptr->isPCFixed) {//only fixed for intended sample
-                    vector<double> tmpPC(ptr->numPC,0.);
+                    std::vector<double> tmpPC(ptr->numPC,0.);
                     for (int i = 0; i <ptr->numPC ; ++i) {
                         tmpPC[i]=v[i];
                         }
@@ -368,8 +372,8 @@ public:
                     }
                 }
                 else if(ptr->isAlphaFixed) {
-                    vector<double> tmpPC(ptr->numPC,0.);
-                    vector<double> tmpPC2(ptr->numPC,0.);
+                    std::vector<double> tmpPC(ptr->numPC,0.);
+                    std::vector<double> tmpPC2(ptr->numPC,0.);
 
                     for (int k = 0; k <v.Length(); ++k) {
                         if(k < ptr->numPC)
@@ -389,8 +393,8 @@ public:
                     }
                 }
                 else {
-                    vector<double> tmpPC(ptr->numPC,0.);
-                    vector<double> tmpPC2(ptr->numPC,0.);
+                    std::vector<double> tmpPC(ptr->numPC,0.);
+                    std::vector<double> tmpPC2(ptr->numPC,0.);
                     double tmpAlpha(0.);
                     for (int k = 0; k <v.Length(); ++k) {
                         if(k < ptr->numPC)
@@ -422,18 +426,14 @@ public:
     };
 
     SimplePileupViewer viewer;
-    double alpha;
     uint32_t NumMarker;
-    //uint32_t NumIndividual;
     fullLLKFunc fn;
 
-    //std::unordered_map<std::string, std::unordered_map<uint32_t, uint32_t> > MarkerIndex;
     std::unordered_map<std::string, std::unordered_map<uint32_t, double> > knownAF;
-    //std::unordered_map<std::string, uint32_t> IndividualIndex;
 
-    std::vector<std::vector<PCtype> > UD;
-    std::vector<std::vector<PCtype> > PC;
-    //std::vector<std::vector<double> > GL;
+    double alpha;//input alpha
+    std::vector<std::vector<PCtype> > UD;//input UD
+    std::vector<std::vector<PCtype> > PC;//input PC
     std::vector<PCtype> means;
     std::vector<double> AFs;
     std::vector<double> AF2s;
@@ -445,7 +445,7 @@ public:
 
     ContaminationEstimator();
 
-    ContaminationEstimator(int nPC, const char *bedFile, int nThread);
+    ContaminationEstimator(int nPC, const char *bedFile, int nThread, double ep);
 
     /*Initialize from existed UD*/
     /*This assumes the markers are the same as the selected vcf*/
@@ -494,17 +494,17 @@ public:
     /*
     int FromBamtoPileup();
      */
-    void OptimizeHomoFixedPC(AmoebaMinimizer &myMinimizer);
+    bool OptimizeHomoFixedPC(AmoebaMinimizer &myMinimizer);
 
-    void OptimizeHomoFixedAlpha(AmoebaMinimizer &myMinimizer);
+    bool OptimizeHomoFixedAlpha(AmoebaMinimizer &myMinimizer);
 
-    void OptimizeHomo(AmoebaMinimizer &myMinimizer);
+    bool OptimizeHomo(AmoebaMinimizer &myMinimizer);
 
-    void OptimizeHeterFixedPC(AmoebaMinimizer &myMinimizer);
+    bool OptimizeHeterFixedPC(AmoebaMinimizer &myMinimizer);
 
-    void OptimizeHeterFixedAlpha(AmoebaMinimizer &myMinimizer);
+    bool OptimizeHeterFixedAlpha(AmoebaMinimizer &myMinimizer);
 
-    void OptimizeHeter(AmoebaMinimizer &myMinimizer);
+    bool OptimizeHeter(AmoebaMinimizer &myMinimizer);
 };
 
 #endif /* CONTAMINATIONESTIMATOR_H_ */

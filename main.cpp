@@ -63,7 +63,7 @@ int execute(int argc, char **argv) {
     std::string knownAF("Empty");
     std::string RefVCF("Empty");
     std::string fixPC("Empty");
-    double fixAlpha(-1.);
+    double fixAlpha(-1.),epsilon(1e-10);
     bool withinAncestry(false),outputPileup(false),verbose(false);
     int nfiles(0),seed(12345),nPC(2),nthread(4);
     paramList pl;
@@ -93,7 +93,8 @@ int execute(int argc, char **argv) {
 
                     LONG_PARAM("WithinAncestry", &withinAncestry, "[Bool] Enabling withinAncestry assume target sample and contamination source are from the same populations,[default:betweenAncestry] otherwise")
                     LONG_STRING_PARAM("KnownAF", &knownAF, "[String] known allele frequency file (chr\tpos\tfreq)[Optional]")
-                    LONG_INT_PARAM("Seed",&seed,"[INT] Random number seed[default:12345]")
+                    LONG_INT_PARAM("Seed",&seed,"[Int] Random number seed[default:12345]")
+                    LONG_DOUBLE_PARAM("Epsilon",&epsilon,"[Double] Minimization procedure convergence threshold, usually a trade-off bettween accuracy and running time[default:1e-10]")
                     LONG_PARAM("OutputPileup", &outputPileup, "[Bool] If output temp pileup file")
                     LONG_PARAM("Verbose", &verbose, "[Bool] If print the progress of the method on the screen")
 
@@ -147,7 +148,7 @@ int execute(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    ContaminationEstimator Estimator(nPC, BedPath.c_str(), nthread);
+    ContaminationEstimator Estimator(nPC, BedPath.c_str(), nthread, epsilon);
 
     Estimator.verbose=verbose;
     Estimator.seed = seed;

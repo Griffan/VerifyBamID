@@ -376,8 +376,10 @@ double AmoebaMinimizer::Minimize(double ftol)
          return fmin = y[ilo];
          }
 
-      if (cycleCount > cycleMax)
-         error("Amoeba.Minimize - Couldn't converge in %d cycles", cycleMax);
+      if (cycleCount > cycleMax) {
+         warning("Amoeba.Minimize - Couldn't converge in %d cycles", cycleMax);
+         return std::numeric_limits<double>::max();
+      }
 
       // begin a new iteration...
       // first extrapolate by a factor of -1 through the face of the simplex
