@@ -64,7 +64,7 @@ int execute(int argc, char **argv) {
     std::string knownAF("Empty");
     std::string RefVCF("Empty");
     std::string fixPC("Empty");
-    double fixAlpha(-1.),epsilon(1e-10);
+    double fixAlpha(-1.),epsilon(1e-8);
     bool withinAncestry(false),outputPileup(false),verbose(false);
     int nfiles(0),seed(12345),nPC(2),nthread(4);
     paramList pl;
