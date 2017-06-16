@@ -216,7 +216,7 @@ int execute(int argc, char **argv) {
     std::ofstream fout(outputPrefix+".selfSM");
     fout<<headers<<std::endl;
     fout<<Estimator.viewer.SEQ_SM<<"\tNA\tNA\t"<<Estimator.NumMarker<<"\t"<<Estimator.viewer.numReads<<"\t"<<Estimator.viewer.avgDepth<<"\t"
-        <<Estimator.fn.globalAlpha<<"\t"<<Estimator.fn.llk<<"\tNA\t"<<"NA\tNA\t"
+        <<((Estimator.fn.globalAlpha < 0.5) ? Estimator.fn.globalAlpha:(1.f-Estimator.fn.globalAlpha))<<"\t"<<-Estimator.fn.llk1<<"\t"<<-Estimator.fn.llk0<<"\t"<<"NA\tNA\t"
         <<"NA\tNA\tNA\tNA\tNA\t"
         <<"NA\tNA\tNA"<<std::endl;
 

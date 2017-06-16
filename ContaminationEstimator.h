@@ -60,7 +60,8 @@ public:
     public:
         double min_af;
         double max_af;
-        double llk;
+        double llk1;
+        double llk0;
         ContaminationEstimator *ptr;
         std::vector<double> fixPC;
         std::vector<double> fixPC2;
@@ -74,7 +75,7 @@ public:
             fullLLKFunc::Base = "actg";
             min_af=0.00005;
             max_af=0.99995;
-            llk=0;
+            llk1=0;
             ptr=nullptr;
             fixAlpha=0;
             std::cerr<<"Initializae from fullLLKFunc()"<<std::endl;
@@ -84,7 +85,7 @@ public:
             fullLLKFunc::Base = "actg";
             min_af = 0.00005;
             max_af = 0.99995;
-            llk = 0.;
+            llk1 = 0.;
             ptr = contPtr;
             fixAlpha = 0.;
             globalAlpha =0.;
@@ -313,7 +314,12 @@ public:
         int initialize() {
             globalPC=fixPC=globalPC2=fixPC2=ptr->PC[1];//only intended smaple has pre defined PCs
             globalAlpha=fixAlpha = ptr->alpha;
-            llk = (0 - computeMixLLKs(fixPC,fixPC2,fixAlpha));
+            llk1 = (0 - computeMixLLKs(fixPC,fixPC2,fixAlpha));
+            return 0;
+        }
+
+        int calculateLLK0() {
+            llk0 = (0 - computeMixLLKs(globalPC,globalPC,0));
             return 0;
         }
 
@@ -324,8 +330,8 @@ public:
                 if(ptr->isPCFixed) {
                     double tmpAlpha = invLogit(v[0]);
                     smLLK = 0 - computeMixLLKs(fixPC, fixPC2, tmpAlpha);
-                    if (smLLK < llk) {
-                        llk = smLLK;
+                    if (smLLK < llk1) {
+                        llk1 = smLLK;
                         globalAlpha = tmpAlpha;
                     }
                 }
@@ -335,8 +341,8 @@ public:
                         tmpPC[i]=v[i];
                     }
                     smLLK = 0 - computeMixLLKs(tmpPC, tmpPC, fixAlpha);
-                    if (smLLK < llk) {
-                        llk = smLLK;
+                    if (smLLK < llk1) {
+                        llk1 = smLLK;
                         globalPC = tmpPC;
                         globalPC2 = tmpPC;
                     }
@@ -348,8 +354,8 @@ public:
                     }
                     double tmpAlpha=invLogit(v[ptr->numPC]);
                     smLLK = 0 - computeMixLLKs(tmpPC, tmpPC, tmpAlpha);
-                    if (smLLK < llk) {
-                        llk = smLLK;
+                    if (smLLK < llk1) {
+                        llk1 = smLLK;
                         globalPC = tmpPC;
                         globalPC2 = tmpPC;
                         globalAlpha = tmpAlpha;
@@ -366,8 +372,8 @@ public:
                     double tmpAlpha = invLogit(v[ptr->numPC]);
                     smLLK = 0 - computeMixLLKs(tmpPC, fixPC2, tmpAlpha);
 
-                    if (smLLK < llk) {
-                        llk = smLLK;
+                    if (smLLK < llk1) {
+                        llk1 = smLLK;
                         globalPC = tmpPC;
                         globalAlpha = tmpAlpha;
                     }
@@ -387,8 +393,8 @@ public:
                         }
                     }
                     smLLK = 0 - computeMixLLKs(tmpPC, tmpPC2, fixAlpha);
-                    if (smLLK < llk) {
-                        llk = smLLK;
+                    if (smLLK < llk1) {
+                        llk1 = smLLK;
                         globalPC = tmpPC;
                         globalPC2 = tmpPC2;
                     }
@@ -410,8 +416,8 @@ public:
                         }
                     }
                     smLLK = (0 - computeMixLLKs(tmpPC, tmpPC2, tmpAlpha));
-                    if (smLLK < llk) {
-                        llk = smLLK;
+                    if (smLLK < llk1) {
+                        llk1 = smLLK;
                         globalPC = tmpPC;
                         globalPC2 = tmpPC2;
                         globalAlpha = tmpAlpha;
@@ -421,7 +427,7 @@ public:
             if(ptr->verbose)
             std::cerr << "globalPC:" << globalPC[0] << "\tglobalPC:" << globalPC[1]
                       << "\tglobalPC2:" << globalPC2[0] << "\tglobalPC2:" << globalPC2[1]
-                      << "\tglobalAlpha:" << globalAlpha << "\tllk:" << llk <<std::endl;
+                      << "\tglobalAlpha:" << globalAlpha << "\tllk:" << llk1 <<std::endl;
             return smLLK;
         }
     };

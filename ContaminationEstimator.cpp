@@ -127,7 +127,7 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
 		    std::swap(fn.globalPC[1],fn.globalPC2[1]);
 	    }
     }
-
+    fn.calculateLLK0();
     std::cout << "Contaminating Sample ";
     fout<< "Contaminating Sample ";
     for(int i =0; i < numPC; ++i)
