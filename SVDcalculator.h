@@ -1,7 +1,3 @@
-//
-// Created by Fan Zhang on 11/2/16.
-//
-
 #ifndef VERIFYBAMID_SVDCALCULATOR_H
 #define VERIFYBAMID_SVDCALCULATOR_H
 

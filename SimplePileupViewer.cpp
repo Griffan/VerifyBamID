@@ -1,9 +1,3 @@
-/*
- * ContaminationEstimator.cpp
- *
- *  Created on: Oct 30, 2015
- *      Author: fanzhang
- */
 #include "SimplePileupViewer.h"
 #include <math.h>
 #include <stdio.h>

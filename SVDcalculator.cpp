@@ -1,7 +1,3 @@
-//
-// Created by Fan Zhang on 11/2/16.
-//
-
 #include <unordered_map>
 #include <fstream>
 #include <Error.h>

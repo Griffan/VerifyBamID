@@ -1,27 +1,25 @@
-/* The MIT License
+/*The MIT License (MIT)
 
-   Copyright (c) 2009 Genome Research Ltd (GRL), 2010 Broad Institute
+Copyright (c) 2017 Fan Zhang, Hyun Min Kang
 
-   Permission is hereby granted, free of charge, to any person obtaining
-   a copy of this software and associated documentation files (the
-   "Software"), to deal in the Software without restriction, including
-   without limitation the rights to use, copy, modify, merge, publish,
-   distribute, sublicense, and/or sell copies of the Software, and to
-   permit persons to whom the Software is furnished to do so, subject to
-   the following conditions:
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-   The above copyright notice and this permission notice shall be
-   included in all copies or substantial portions of the Software.
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
 
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-   NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
-   BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
-   ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-   SOFTWARE.
-*/
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+ */
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -31,35 +29,9 @@
 #include "PhoneHome.h"
 #include <stdexcept>
 
-
-int execute(int argc, char** argv);
-
-// main function of verifyBamID
-int main(int argc, char** argv) {
-    int returnVal = 0;
-    String compStatus;
-    try
-    {
-        returnVal = execute(argc, argv);
-    }
-    catch(std::runtime_error e)
-    {
-        returnVal = -1;
-        compStatus = "Exception";
-        PhoneHome::completionStatus(compStatus.c_str(),"VerifyBamID2");
-        std::string errorMsg = "Exiting due to ERROR:\n\t";
-        errorMsg += e.what();
-        std::cerr << errorMsg << std::endl;
-        return returnVal;
-    }
-    compStatus = returnVal;
-    PhoneHome::completionStatus(compStatus.c_str(),"VerifyBamID2");
-    return(returnVal);
-}
-
 int execute(int argc, char **argv) {
 
-    std::string UDPath("Empty"), MeanPath("Empty"), BedPath("Empty"), BamFileList("Empty"), BamFile("Empty"), RefPath(
+    std::string UDPath("Empty"), PCPath("Empty"), MeanPath("Empty"), BedPath("Empty"), BamFileList("Empty"), BamFile("Empty"), RefPath(
             "Empty"), outputPrefix("result");
     std::string knownAF("Empty");
     std::string RefVCF("Empty");
@@ -132,6 +104,9 @@ int execute(int argc, char **argv) {
         BedPath = RefVCF+".bed";
     }
 
+    ////patch to PC path
+    PCPath=UDPath.substr(0,UDPath.size()-3)+".V";
+    ////
 
     if (RefPath == "Empty") {
         error("--Reference is required");
@@ -186,7 +161,7 @@ int execute(int argc, char **argv) {
         Estimator.ReadAF(knownAF);
     }
 
-    Estimator.ReadSVDMatrix(UDPath, MeanPath);
+    Estimator.ReadSVDMatrix(UDPath, PCPath, MeanPath);
     Estimator.ReadBam(BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
 
     if(outputPileup)
@@ -222,4 +197,27 @@ int execute(int argc, char **argv) {
 
 
     return 0;
+}
+
+// main function of verifyBamID
+int main(int argc, char** argv) {
+    int returnVal = 0;
+    String compStatus;
+    try
+    {
+        returnVal = execute(argc, argv);
+    }
+    catch(std::runtime_error e)
+    {
+        returnVal = -1;
+        compStatus = "Exception";
+        PhoneHome::completionStatus(compStatus.c_str(),"VerifyBamID2");
+        std::string errorMsg = "Exiting due to ERROR:\n\t";
+        errorMsg += e.what();
+        std::cerr << errorMsg << std::endl;
+        return returnVal;
+    }
+    compStatus = returnVal;
+    PhoneHome::completionStatus(compStatus.c_str(),"VerifyBamID2");
+    return(returnVal);
 }

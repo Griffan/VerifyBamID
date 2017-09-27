@@ -1,7 +1,3 @@
-//
-// Created by Fan Zhang on 2/5/16.
-//
-
 #ifndef CONTAMINATIONFINDER_SIMPLEPILEUP_H
 #define CONTAMINATIONFINDER_SIMPLEPILEUP_H
 #include "sam_opts.h"
