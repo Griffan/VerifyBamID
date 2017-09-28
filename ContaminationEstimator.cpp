@@ -27,46 +27,26 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
     AmoebaMinimizer myMinimizer;
     std::ofstream fout(OutputPrefix + ".out");
     fn.initialize();
-
     if (!isHeter) {
         if (isPCFixed) {
             std::cout << "Estimation from OptimizeHomoFixedPC:" << std::endl;
             fout << "Estimation from OptimizeHomoFixedPC:" << std::endl;
-            alpha = fabs(static_cast <double> (rand()) /
-                         static_cast <double> (RAND_MAX));//all the initializations in this function are for AmoebaMinimizer simplex
             OptimizeHomoFixedPC(myMinimizer);
         } else if (isAlphaFixed) {
             std::cout << "Estimation from OptimizeHomoFixedAlpha:" << std::endl;
-            fout << "Estimation from OptimizeHomoFixedAlpha:" << std::endl;
-            for (int k = 0; k < PC[0].size(); ++k) {
-                PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            }
             OptimizeHomoFixedAlpha(myMinimizer);
         } else {
-            for (int k = 0; k < PC[0].size(); ++k) {
-                PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            }
-            alpha = fabs(static_cast <double> (rand()) / static_cast <double> (RAND_MAX));
             std::cout << "Estimation from OptimizeHomo:" << std::endl;
             fout << "Estimation from OptimizeHomo:" << std::endl;
             OptimizeHomo(myMinimizer);
-
         }
     } else//contamination source from different population
     {
         if (isPCFixed) {
             std::cout << "Estimation from OptimizeHeterFixedPC:" << std::endl;
             fout << "Estimation from OptimizeHeterFixedPC:" << std::endl;
-            alpha = fabs(static_cast <double> (rand()) / static_cast <double> (RAND_MAX));
             OptimizeHeterFixedPC(myMinimizer);
-
         } else if (isAlphaFixed) {
-            for (int k = 0; k < numPC; ++k) {
-                PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            }
-            for (int k = 0; k < numPC; ++k) {
-                PC[1][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            }
             std::cout << "Estimation from OptimizeHeterFixedAlpha:" << std::endl;
             fout << "Estimation from OptimizeHeterFixedAlpha:" << std::endl;
             isHeter = false;
@@ -76,10 +56,6 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
             isHeter = true;
             OptimizeHeterFixedAlpha(myMinimizer);
         } else {
-            for (int k = 0; k < numPC; ++k) {
-                PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            }
-            alpha = fabs(static_cast <double> (rand()) / static_cast <double> (RAND_MAX));
             std::cout << "Estimation from OptimizeHeter:" << std::endl;
             fout << "Estimation from OptimizeHeter:" << std::endl;
             isHeter = false;

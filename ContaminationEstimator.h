@@ -101,6 +101,18 @@ public:
             return log(x / (1. - x));
         };
 
+        inline double invNormalize(const std::vector<double> & tPC) {
+            for (int i = 0; i < tPC.size(); ++i) {
+                tPC[i]=(tPC[i]-ptr->muv[i])/ptr->sdv[i];
+            }
+        };
+
+        inline double Normalize(const std::vector<double> & tPC){
+            for (int i = 0; i < tPC.size(); ++i) {
+                tPC[i]=tPC[i]*ptr->sdv[i]+ptr->muv[i];
+            }
+        };
+
         inline char findAlt(std::vector<char> &tmpBase) {
             int a[4];
             int maxIndex(-1);
@@ -272,7 +284,7 @@ public:
                     sumLLK += log(markerLK);
 //                std::cerr << "sumLLK:" << sumLLK << std::endl;
             }
-//            std::cerr << "sumLLK:" << sumLLK << std::endl;
+//            std::cerr <<"PC1:"<<tPC1[0]<<"\tPC1:"<<tPC1[1]<<"\tPC2:"<<tPC2[0]<<"\tPC2:"<<tPC2[1]<< "sumLLK:" << sumLLK << std::endl;
             return sumLLK;
         }
 
@@ -280,6 +292,14 @@ public:
             globalPC=fixPC=globalPC2=fixPC2=ptr->PC[1];//only intended smaple has pre defined PCs
             globalAlpha=fixAlpha = ptr->alpha;
             llk1 = (0 - computeMixLLKs(fixPC,fixPC2,fixAlpha));
+
+            for (int k = 0; k < ptr->numPC; ++k) {
+                ptr->PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            }
+            for (int k = 0; k < ptr->numPC; ++k) {
+                ptr->PC[1][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            }
+            ptr->alpha = fabs(static_cast <double> (rand()) / static_cast <double> (RAND_MAX));
             return 0;
         }
 
