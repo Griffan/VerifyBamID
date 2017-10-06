@@ -101,17 +101,17 @@ public:
             return log(x / (1. - x));
         };
 
-        inline double invNormalize(const std::vector<double> & tPC) {
-            for (int i = 0; i < tPC.size(); ++i) {
-                tPC[i]=(tPC[i]-ptr->muv[i])/ptr->sdv[i];
-            }
-        };
-
-        inline double Normalize(const std::vector<double> & tPC){
-            for (int i = 0; i < tPC.size(); ++i) {
-                tPC[i]=tPC[i]*ptr->sdv[i]+ptr->muv[i];
-            }
-        };
+//        inline double invNormalize(const std::vector<double> & tPC) {
+//            for (int i = 0; i < tPC.size(); ++i) {
+//                tPC[i]=(tPC[i]-ptr->muv[i])/ptr->sdv[i];
+//            }
+//        };
+//
+//        inline double Normalize(const std::vector<double> & tPC){
+//            for (int i = 0; i < tPC.size(); ++i) {
+//                tPC[i]=tPC[i]*ptr->sdv[i]+ptr->muv[i];
+//            }
+//        };
 
         inline char findAlt(std::vector<char> &tmpBase) {
             int a[4];
