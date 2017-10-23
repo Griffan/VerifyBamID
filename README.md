@@ -58,7 +58,6 @@ $(VERIFY_BAM_ID_HOME)/binVerifyBamID --UDPath [/path/to/UD/file] --BamFile [/pat
 --FixAlpha       [Double] Specify known contamination level
 --WithinAncestry [Bool] Enabling withinAncestry assume target sample and contamination source are from the same populations,[default:betweenAncestry] otherwise")
 --KnownAF        [String] A Bed file that provide known allele frequency for each marker, similar behaviour with VerifyBamID 1.0
---Seed           [INT] Random number seed[default:12345]
 --Epsilon        [Double] Minimization procedure convergence threshold, usually a trade-off bettween accuracy and running time[default:1e-10]
 --OutputPileup   [Bool] If output temp pileup file
 --Verbose        [Bool] If print the progress of the method on the screen
