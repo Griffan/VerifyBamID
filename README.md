@@ -4,7 +4,7 @@
 
 * Results: We applied our method to 1000 Genomes datasets by simulating contamination levels from 1% to 20% and comparing the contamination estimates obtain from different methods. When using pooled allele frequencies, as opposed to population-specific allele frequencies, we observed that the contamination levels are underestimated by 20%, 40%, 51%, and 73% for CEU, YRI, FIN, and CHS populations, respectively. Using our new method, the underestimation bias was reduced to 2-5%.
 
-* Input Files: Aligned NGS sequence files(Bam or Cram); Marker related files(SVD result on genotype matrix, provided in resorce directory)
+* Input Files: Aligned NGS sequence files(BAM or CRAM); Marker related files(SVD result on genotype matrix, provided in resorce directory)
 
 
 ## Installation
@@ -38,6 +38,9 @@ $(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --UDPath $(VERIFY_BAM_ID_HOME)/resource/10
    --MeanPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b38.vcf.gz.dat.mu \
    --Reference [/path/to//GRCh38_full_analysis_set_plus_decoy_hla.fa]
 ```
+### Resource files are ready
+(for both 1000 Genome Project(1000g) dataset and Human Genome Diversity Project(hgdp) dataset are available)
+You can directly use reference panel information by using our pre-calculated resource files in $(VERIFY_BAM_ID_HOME)/resource/ directory.
 
 ## Usage
 For regular estimation:
@@ -78,8 +81,8 @@ In the example above, the expected output file names will be ``ReferencePanel.vc
 
 After each run, you will get the contamination Alpha estimation, as well as ancestry PC coordinates for both intended sample and contaminating sample.
 You may want to visualize these information, in that case, the PC coordinates files(ending with .V) in $(VERIFY_BAM_ID_HOME)/resource/ might help you by
-providing background PC points of 1000 Genomes Project samples(e.g. 1000g.100k.b38.vcf.gz.dat.V or hgdp.100k.b38.vcf.gz.dat.V)
-We provide you with this script to generate PC plot, for example:
+providing background PC points of 1000 Genomes Project samples(e.g. 1000g.100k.b38.vcf.gz.dat.V) or of Human Genome Diversity Project samples(e.g. hgdp.100k.b38.vcf.gz.dat.V)
+We also provide script to generate PC plot with customized dataset as background points, for example:
 ```
 sh $(VERIFY_BAM_ID_HOME)/bin/run.plot.sh -i ./resource/test/hapmap_3.3.b37.dat.V -o ./resource/test/hapmap -r 1000g -g grey
 ```
