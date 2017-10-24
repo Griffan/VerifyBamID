@@ -41,7 +41,7 @@ $(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --UDPath $(VERIFY_BAM_ID_HOME)/resource/10
 ### Resource files are ready
 (for both 1000 Genome Project(1000g) dataset and Human Genome Diversity Project(hgdp) dataset are available)
 
-You can directly use reference panel information by using our pre-calculated resource files in $(VERIFY_BAM_ID_HOME)/resource/ directory.
+You can directly use reference panel information by using our pre-calculated resource files in ``$(VERIFY_BAM_ID_HOME)/resource/`` directory.
 
 ## Usage
 For regular estimation:
@@ -82,7 +82,7 @@ In the example above, the expected output file names will be ``ReferencePanel.vc
 
 After each run, you will get the contamination Alpha estimation, as well as ancestry PC coordinates for both intended sample and contaminating sample.
 
-You may want to visualize these information, in that case, the PC coordinates files(ending with .V) in $(VERIFY_BAM_ID_HOME)/resource/ might help you by
+You may want to visualize these information, in that case, the PC coordinates files(ending with .V) in ``$(VERIFY_BAM_ID_HOME)/resource/`` might help you by
 providing background PC points of 1000 Genomes Project samples(e.g. 1000g.100k.b38.vcf.gz.dat.V) or of Human Genome Diversity Project samples(e.g. hgdp.100k.b38.vcf.gz.dat.V)
 
 We also provide script to generate PC plot with customized dataset as background points, for example:
