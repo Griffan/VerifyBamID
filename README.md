@@ -77,8 +77,14 @@ In the example above, the expected output file names will be ``ReferencePanel.vc
 ## Generating PC plot
 
 After each run, you will get the contamination Alpha estimation, as well as ancestry PC coordinates for both intended sample and contaminating sample.
-You may want to visualize these information, in that case, the PC coordinates in $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b38.vcf.gz.dat.V might help you by
-providing background PC points of 1000 Genomes Project samples.
+You may want to visualize these information, in that case, the PC coordinates files(ending with .V) in $(VERIFY_BAM_ID_HOME)/resource/ might help you by
+providing background PC points of 1000 Genomes Project samples(e.g. 1000g.100k.b38.vcf.gz.dat.V or hgdp.100k.b38.vcf.gz.dat.V)
+We provide you with this script to generate PC plot, for example:
+```
+sh $(VERIFY_BAM_ID_HOME)/bin/run.plot.sh -i ./resource/test/hapmap_3.3.b37.dat.V -o ./resource/test/hapmap -r 1000g -g grey
+```
+You may run ``sh $(VERIFY_BAM_ID_HOME)/bin/run.plot.sh -h`` for further help.
+
 
 ## Contributing
 

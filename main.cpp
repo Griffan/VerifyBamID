@@ -203,6 +203,7 @@ int execute(int argc, char **argv) {
 int main(int argc, char** argv) {
     int returnVal = 0;
     String compStatus;
+    PhoneHome::allThinning = 50;
     try
     {
         returnVal = execute(argc, argv);

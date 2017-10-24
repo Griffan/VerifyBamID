@@ -1,11 +1,12 @@
 .idea
 .DS_Store
+.Rhistory
+.RData
 libStatGen
 Debug
 Release
 build
 samtools/htslib/
-bin/
 result.selfSM
 cmake-build-debug/
 cmake-build-release/

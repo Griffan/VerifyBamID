@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.4)
 project(VerifyBamID)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
@@ -63,6 +63,9 @@ endif()
 target_link_libraries(VerifyBamID statgen Vcf samtools ${CMAKE_CURRENT_SOURCE_DIR}/samtools/htslib/libhts.a ${ZLIB} ${BZ2LIB} ${CURLLIB} ${SSLLIB} ${CRYPTOLIB})
 
 enable_testing()
-add_test( NAME myTest
+add_test( NAME myTest1
           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
           COMMAND VerifyBamID --UDPath ./resource/test/hapmap_3.3.b37.dat.UD --BamFile ./resource/test/test.bam --BedPath resource/test/hapmap_3.3.b37.dat.bed --MeanPath ./resource/test/hapmap_3.3.b37.dat.mu --Reference ./resource/test/chr20.fa.gz )
+add_test( NAME myTest2
+          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+          COMMAND sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/run.plot.sh -i ./resource/test/hapmap_3.3.b37.dat.V -o ./resource/test/hapmap -r 1000g -g grey)
