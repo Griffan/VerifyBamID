@@ -75,9 +75,12 @@ Contaminating Sample PC1:-0.623602      PC2:0.57292
 Intended Sample  PC3:-0.036304  PC4:0.0200112
 Alpha:0.0013662
 ```
-First line: Which odel used
+First line: Which model used
+
 Second line: PC coordinates of Contaminating Sample
+
 Third line: PC coordinates of Intended Sample(the sample your are interested)
+
 Fourth line: Estimated contamination level 
 
 Since last version, we also provided backward compatible output file result.selfSM, format description same as vb1(https://genome.sph.umich.edu/wiki/VerifyBamID)
