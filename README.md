@@ -67,6 +67,22 @@ $(VERIFY_BAM_ID_HOME)/binVerifyBamID --UDPath [/path/to/UD/file] --BamFile [/pat
 --Verbose        [Bool] If print the progress of the method on the screen
 ```
 
+## Output Format
+
+```
+Estimation from OptimizeHeter:
+Contaminating Sample PC1:-0.623602      PC2:0.57292
+Intended Sample  PC3:-0.036304  PC4:0.0200112
+Alpha:0.0013662
+```
+First line: Which odel used
+Second line: PC coordinates of Contaminating Sample
+Third line: PC coordinates of Intended Sample(the sample your are interested)
+Fourth line: Estimated contamination level 
+
+Since last version, we also provided backward compatible output file result.selfSM, format description same as vb1(https://genome.sph.umich.edu/wiki/VerifyBamID)
+
+
 ## Generating your own resource files.
 
 For producing customized resource files to be used as the input argument of verifyBamID2 generation, you need to start with a VCF file and FASTA formatted reference files. Please refer to the example below.
