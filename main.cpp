@@ -2,20 +2,20 @@
 
 Copyright (c) 2017 Fan Zhang, Hyun Min Kang
 
-        Permission is hereby granted, free of charge, to any person obtaining a copy
+Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
-        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-        copies of the Software, and to permit persons to whom the Software is
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-        The above copyright notice and this permission notice shall be included in all
-        copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
@@ -32,7 +32,7 @@ SOFTWARE.
 int execute(int argc, char **argv) {
 
     std::string UDPath("Empty"), PCPath("Empty"), MeanPath("Empty"), BedPath("Empty"), BamFileList("Empty"), BamFile("Empty"), RefPath(
-            "Empty"), outputPrefix("result");
+            "Empty"), outputPrefix("result"), PileupFile("Empty");
     std::string knownAF("Empty");
     std::string RefVCF("Empty");
     std::string fixPC("Empty");
@@ -44,7 +44,9 @@ int execute(int argc, char **argv) {
                     LONG_PARAM_GROUP("Input/Output Files",
                                      "Input/Output files for the program[Complete Path Recommended]")
                     LONG_STRING_PARAM("BamFile", &BamFile,
-                                      "[String] Bam or Cram file for the sample[Required]")
+                                      "[String] Bam or Cram file for the sample[Required if --PileupFile not specified]")
+                    LONG_STRING_PARAM("PileupFile", &PileupFile,
+                                      "[String] Pileup file for the sample[Required if --BamFile not specified]")
                     LONG_STRING_PARAM("BedPath", &BedPath,
                                       "[String] Bed file for markers used in this analysis,1 based pos(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]")
                     LONG_STRING_PARAM("Reference", &RefPath,
@@ -119,8 +121,12 @@ int execute(int argc, char **argv) {
 //    {
 //        nfiles=2;
 //    }
+    else if(PileupFile != "Empty")
+    {
+
+    }
     else {
-        error("--BamFile is required");
+        error("--BamFile or --PileupFile is required");
         exit(EXIT_FAILURE);
     }
 
@@ -162,7 +168,10 @@ int execute(int argc, char **argv) {
     }
 
     Estimator.ReadSVDMatrix(UDPath, PCPath, MeanPath);
-    Estimator.ReadBam(BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
+    if(nfiles)
+        Estimator.ReadBam(BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
+    else
+        Estimator.ReadPileup(PileupFile);
 
     if(outputPileup)
     {

@@ -28,7 +28,7 @@ class ContaminationEstimator;
 class SVDcalculator;
 struct region_t{
     std::string chr;
-    int beg;
+    int beg;//0 based
     int end;
     region_t(std::string chr0, int beg0, int end0)
     {
@@ -44,13 +44,15 @@ struct region_t{
     }
 } ;
 
+typedef std::unordered_map<std::string, std::unordered_map<int, std::pair<char, char> > > BED;
 
 class SimplePileupViewer {
 
 public:
 
     int regIndex;
-    std::vector<region_t>* BedVec;
+    std::vector<region_t>* bedVec;
+    BED bedTable;
 
     mplp_conf_t mplp;
 
@@ -61,7 +63,6 @@ public:
     int numReads;
     float avgDepth;
 
-
     std::unordered_map<std::string,std::unordered_map<int32_t,int32_t> > posIndex;
 
     SimplePileupViewer();
@@ -70,12 +71,16 @@ public:
 
     int SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn);
 
+    SimplePileupViewer(const BED& BedFromEstimator, const std::string &pileupFile);
+
+    int ReadPileup(const std::string & filePath);
+
     region_t GetNextRegion(bool& BedEOF)
     {
         BedEOF=false;
-        if(regIndex<BedVec->size()) {
-            if(regIndex==(BedVec->size()-1)) BedEOF=true;
-            return BedVec->at(regIndex++);
+        if(regIndex<bedVec->size()) {
+            if(regIndex==(bedVec->size()-1)) BedEOF=true;
+            return bedVec->at(regIndex++);
         }
         else {
             std::cerr<<"Region number out of bound!\n"<<std::endl;
@@ -85,7 +90,7 @@ public:
 
     int GetNumMarker()
     {
-        return BedVec->size();
+        return bedVec->size();
     }
 
     inline std::vector<char>& GetBaseInfoAt(std::string& chr, int32_t pos)

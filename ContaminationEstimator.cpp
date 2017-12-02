@@ -387,3 +387,7 @@ int ContaminationEstimator::ReadAF(const std::string &path) {
 int ContaminationEstimator::ReadBam(const char *bamFile, const char *faiFile, const char *bedFile) {
     viewer = SimplePileupViewer(&BedVec, bamFile, faiFile, bedFile, 1);
 }
+
+int ContaminationEstimator::ReadPileup(const std::string & pileupFile) {
+        viewer = SimplePileupViewer(ChooseBed,pileupFile);
+}

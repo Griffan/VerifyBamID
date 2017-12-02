@@ -6,7 +6,6 @@
 #include <map>
 #include "SimplePileupViewer.h"
 
-typedef std::map<std::string, std::map<int, std::pair<char, char> > > BED;
 class SVDcalculator {
 private:
     int numIndividual;

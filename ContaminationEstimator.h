@@ -435,8 +435,8 @@ public:
     std::vector<double> AF2s;
 
     typedef std::unordered_map<std::string, std::unordered_map<int, std::pair<char, char> > > BED;
-    BED ChooseBed;
-    std::vector<region_t> BedVec;
+    BED ChooseBed;//pos is 1-based
+    std::vector<region_t> BedVec;//serialized BED info, convenient for bam reading
     std::vector<std::pair<std::string, int> > PosVec;
 
     ContaminationEstimator();
@@ -463,6 +463,8 @@ public:
     int ReadAF(const std::string & path);
 
     int ReadBam(const char *bamFile, const char *faiFile, const char *bedFile);
+
+    int ReadPileup(const std::string & pileupFile);
     /*
     int CheckMarkerSetConsistency();
 
@@ -470,13 +472,7 @@ public:
     */
     /*Optimize*/
     int OptimizeLLK(const std::string &OutputPrefix);
-    /*
-    int RunMapping();
 
-    int writeVcfFile(const std::string &path);
-
-    int ReadPileup(const std::string &path);
-    */
     ~ContaminationEstimator();
     /*
     int RunFromVCF(const std::string VcfSiteAFFile, const std::string CurrentMPU, const std::string ReadGroup,
