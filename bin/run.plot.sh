@@ -72,5 +72,5 @@ while getopts "r:g:h:i:o:" OPTION;do
       ;;
   esac
 done
-
-Rscript Plot.R $input $output $refType $isGrey
+my_dir="$(dirname "$0")"
+Rscript $my_dir/Plot.R $input $output $refType $isGrey
