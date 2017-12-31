@@ -7,6 +7,7 @@
 #include <string.h>
 #include <limits.h>
 #include <errno.h>
+#include <algorithm>
 #include <sys/stat.h>
 #include <getopt.h>
 #include "htslib/sam.h"
@@ -734,6 +735,34 @@ SimplePileupViewer::SimplePileupViewer(const BED& BedFromEstimator, const std::s
     ReadPileup(pileupFile);
 }
 
+static std::string ParsePileupSeq(std::string seq, std::string refAllele)
+{
+    std::string newSeq;
+    std::transform(seq.begin(), seq.end(), seq.begin(),
+                   [](unsigned char c){ return std::toupper(c); }
+    );
+    for(int i=0; i!=seq.size(); i++)
+    {
+        if(seq[i]=='+' or seq[i]=='-')
+        {
+            int tmpIndex=i+1;
+            while(tmpIndex != seq.size() and std::isdigit(seq[tmpIndex]))
+            {
+                tmpIndex++;
+            }
+            int digitLen=tmpIndex-(i+1);
+            int clipLen=std::stoi(seq.substr(i+1,digitLen));
+            i+= digitLen + clipLen;
+        }
+        else if(seq[i] == '^')
+        {
+            i+=1;
+        }
+        else if(seq[i]=='.' or seq[i]==',') newSeq += refAllele[0];
+        else if(seq[i] == 'A' or seq[i]== 'G' or seq[i] =='C' or seq[i] == 'T' or seq[i]=='N') newSeq+=seq[i];
+    }
+    return newSeq;
+}
 int SimplePileupViewer::ReadPileup(const std::string &filePath) {
 
     int globalIndex=0;
@@ -741,6 +770,8 @@ int SimplePileupViewer::ReadPileup(const std::string &filePath) {
     //pileup variables
     std::string pChr;
     int pPos;
+    std::string refAllele;
+    int depth;
     std::string seq;
     std::string qual;
     std::ifstream fin(filePath);
@@ -753,7 +784,17 @@ int SimplePileupViewer::ReadPileup(const std::string &filePath) {
     while(getline(fin,pileupLine)) {
 
         std::stringstream ss(pileupLine);
-        ss>>pChr>>pPos>>seq>>seq>>qual;
+        ss>>pChr>>pPos>>refAllele>>depth>>seq>>qual;
+        if(seq.find_first_of(".,")!=std::string::npos)//using ., format
+        {
+            if(refAllele==".")
+            {
+                std::cerr<<"Pileup format error: cannot find ref allele, exit!\n";
+                exit(EXIT_FAILURE);
+            }
+        }
+        seq=ParsePileupSeq(seq,refAllele);
+
         if(bedTable.find(pChr)==bedTable.end())
             continue;
         else if(bedTable[pChr].find(pPos)==bedTable[pChr].end())
