@@ -684,7 +684,7 @@ SimplePileupViewer::SimplePileupViewer(std::vector<region_t> *BedPtr, const char
     mplp.tandemQ = 100;
     mplp.min_frac = 0.002;
     mplp.min_support = 1;
-    mplp.flag = MPLP_NO_ORPHAN | MPLP_REALN | MPLP_SMART_OVERLAPS;
+    mplp.flag = /*MPLP_NO_ORPHAN |*/ MPLP_REALN | MPLP_SMART_OVERLAPS;
     mplp.argc = 0;
     mplp.argv = 0;
     mplp.rflag_filter = BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP;
