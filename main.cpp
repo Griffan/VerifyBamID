@@ -175,7 +175,7 @@ int execute(int argc, char **argv) {
 
     if(outputPileup)
     {
-        std::ofstream fout(outputPrefix+".pileup");
+        std::ofstream fout(outputPrefix+".Pileup");
         for(auto item:Estimator.BedVec)
         {
             if(Estimator.viewer.posIndex.find(item.chr)==Estimator.viewer.posIndex.end())//chr existed
@@ -183,7 +183,7 @@ int execute(int argc, char **argv) {
             else if(Estimator.viewer.posIndex[item.chr].find(item.end)==Estimator.viewer.posIndex[item.chr].end())
                 continue;
 
-            fout<<item.chr<<"\t"<<item.end<<"\t"<<Estimator.ChooseBed[item.chr][item.end].first<<"\t";
+            fout<<item.chr<<"\t"<<item.end<<"\t"<<Estimator.ChooseBed[item.chr][item.end].first<<"\t"<<Estimator.viewer.GetBaseInfoAt(item.chr,item.end).size()<<"\t";
             for(auto base:Estimator.viewer.GetBaseInfoAt(item.chr,item.end))
                 fout<<base;
             fout<<"\t";
