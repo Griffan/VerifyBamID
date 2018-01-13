@@ -107,7 +107,7 @@ int execute(int argc, char **argv) {
     }
 
     ////patch to PC path
-    PCPath=UDPath.substr(0,UDPath.size()-3)+".V";
+    PCPath=UDPath.substr(0,UDPath.size()-3)+".PC";
     ////
 
     if (RefPath == "Empty") {
@@ -168,6 +168,7 @@ int execute(int argc, char **argv) {
     }
 
     Estimator.ReadSVDMatrix(UDPath, PCPath, MeanPath);
+
     if(nfiles)
         Estimator.ReadBam(BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
     else

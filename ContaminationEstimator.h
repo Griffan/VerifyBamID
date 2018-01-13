@@ -75,7 +75,7 @@ public:
             llk1=0;
             ptr=nullptr;
             fixAlpha=0;
-            std::cerr<<"Initializae from fullLLKFunc()"<<std::endl;
+            std::cerr<<"Initialize from fullLLKFunc()"<<std::endl;
 
         }
         fullLLKFunc(int dim, ContaminationEstimator* contPtr):fixPC(dim,0.),fixPC2(dim,0.),globalPC(fixPC),globalPC2(fixPC2) {
@@ -101,17 +101,18 @@ public:
             return log(x / (1. - x));
         };
 
-//        inline double invNormalize(const std::vector<double> & tPC) {
-//            for (int i = 0; i < tPC.size(); ++i) {
-//                tPC[i]=(tPC[i]-ptr->muv[i])/ptr->sdv[i];
-//            }
-//        };
-//
-//        inline double Normalize(const std::vector<double> & tPC){
-//            for (int i = 0; i < tPC.size(); ++i) {
-//                tPC[i]=tPC[i]*ptr->sdv[i]+ptr->muv[i];
-//            }
-//        };
+        inline int Normalize(std::vector<double> & tPC) {
+            for (int i = 0; i < tPC.size(); ++i) {
+                tPC[i]=(tPC[i]-ptr->muv[i])/ptr->sdv[i];
+            }
+        };
+
+        inline int InvNormalize(std::vector<double> & tPC){
+            for (int i = 0; i < tPC.size(); ++i) {
+                tPC[i]=tPC[i]*ptr->sdv[i]+ptr->muv[i];
+            }
+
+        };
 
         inline char findAlt(std::vector<char> &tmpBase) {
             int a[4];
@@ -328,6 +329,7 @@ public:
                     for (int i = 0; i <ptr->numPC ; ++i) {
                         tmpPC[i]=v[i];
                     }
+
                     smLLK = 0 - computeMixLLKs(tmpPC, tmpPC, fixAlpha);
                     if (smLLK < llk1) {
                         llk1 = smLLK;

@@ -96,6 +96,7 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
 }
 
 bool ContaminationEstimator::OptimizeHeter(AmoebaMinimizer &myMinimizer) {
+
     Vector startingPoint("TestPoint", numPC * 2 + 1);
     for (int i = 0; i < numPC * 2; ++i) {
         if (i < numPC)
@@ -125,11 +126,13 @@ bool ContaminationEstimator::OptimizeHeter(AmoebaMinimizer &myMinimizer) {
     for (int i = numPC; i < numPC * 2; ++i) {
         PC[1][i - numPC] = myMinimizer.point[i];
     }
+
     if (ret == std::numeric_limits<double>::max()) return false;
     else return true;
 }
 
 bool ContaminationEstimator::OptimizeHeterFixedAlpha(AmoebaMinimizer &myMinimizer) {
+
     Vector startingPoint("TestPoint", numPC * 2);
     for (int i = 0; i < numPC * 2; ++i) {
         if (i < numPC)
@@ -156,6 +159,7 @@ bool ContaminationEstimator::OptimizeHeterFixedAlpha(AmoebaMinimizer &myMinimize
     for (int i = numPC; i < numPC * 2; ++i) {
         PC[1][i - numPC] = myMinimizer.point[i];
     }
+
     //fixAlpha usually converges well
     return true;
 }
@@ -235,7 +239,7 @@ bool ContaminationEstimator::OptimizeHomoFixedPC(AmoebaMinimizer &myMinimizer) {
 
 int ContaminationEstimator::ReadSVDMatrix(const std::string &UDpath, const std::string &PCpath, const std::string &Mean) {
     ReadMatrixUD(UDpath);
-//    ReadMatrixPC(PCpath);
+    ReadMatrixPC(PCpath);
     ReadMean(Mean);
 
     return 0;
@@ -270,6 +274,7 @@ int ContaminationEstimator::ReadMatrixPC(const std::string &path) {
     std::ifstream fin(path);
     std::string line;
     std::vector<PCtype> tmpPC(numPC, 0);
+    std::vector<std::vector<PCtype> > PCvec;
     if (!fin.is_open()) {
         std::cerr << "Open file:" << path << "\t failed, exit!";
         exit(EXIT_FAILURE);
@@ -280,7 +285,7 @@ int ContaminationEstimator::ReadMatrixPC(const std::string &path) {
         ss >> sampleID;
         for (int index = 0; index != numPC; ++index)
             ss >> tmpPC[index];
-        PC.push_back(tmpPC);
+        PCvec.push_back(tmpPC);
         //initialize arrays
         NumMarker++;
         AFs.push_back(0.);
@@ -289,20 +294,20 @@ int ContaminationEstimator::ReadMatrixPC(const std::string &path) {
     fin.close();
 
     // calculate the mean and variance of PCs
-    std::vector<double> sumv(numPC,0);
-    std::vector<double> ssqv(numPC,0);
+    std::vector<double> sumv(numPC,0.);
+    std::vector<double> ssqv(numPC,0.);
 
-    for(int32_t i=0; i < (int32_t)PC.size(); ++i) {
-        for(int32_t j=0; j < numPC; ++j) {
-            sumv[j] += PC[i][j];
-            ssqv[j] += (PC[i][j] * PC[i][j]);
+    for(int32_t i=0; i < (int32_t)PCvec.size(); ++i) {//each instance
+        for(int32_t j=0; j < numPC; ++j) {//each dimension
+            sumv[j] += PCvec[i][j];
+            ssqv[j] += PCvec[i][j] * PCvec[i][j];
         }
     }
-
     for(int32_t i=0; i < numPC; ++i) {
-        muv[i] = sumv[i] / (int32_t)PC.size();
-        sdv[i] = sqrt(ssqv[i]/(int32_t)PC.size() - muv[i]*muv[i]);
+        muv[i] = sumv[i] / PCvec.size();
+        sdv[i] = sqrt(ssqv[i]/PCvec.size() - muv[i] * muv[i]);
     }
+
     return 0;
 }
 
