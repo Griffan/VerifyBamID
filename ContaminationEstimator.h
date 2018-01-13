@@ -234,7 +234,7 @@ public:
                 }
                 if(ptr->isAFknown)
                 {
-                    ptr->AFs[i]=ptr->knownAF[chr][pos];
+                    ptr->AFs[i] = ptr->AF2s[i] =ptr->knownAF[chr][pos];
                 }
                 else
                 {
@@ -294,13 +294,16 @@ public:
             llk1 = (0 - computeMixLLKs(fixPC,fixPC2,fixAlpha));
 
             for (int k = 0; k < ptr->numPC; ++k) {
-                ptr->PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            }
+                //ptr->PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            	ptr->PC[0][k] = 0.01;
+	    }
             for (int k = 0; k < ptr->numPC; ++k) {
-                ptr->PC[1][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            }
-            ptr->alpha = fabs(static_cast <double> (rand()) / static_cast <double> (RAND_MAX));
-            return 0;
+                //ptr->PC[1][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
+            	ptr->PC[1][k] = 0.01;
+	    }
+            //ptr->alpha = fabs(static_cast <double> (rand()) / static_cast <double> (RAND_MAX));
+            ptr->alpha = 0.03;
+	    return 0;
         }
 
         int calculateLLK0() {
