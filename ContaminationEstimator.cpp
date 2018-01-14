@@ -239,7 +239,7 @@ bool ContaminationEstimator::OptimizeHomoFixedPC(AmoebaMinimizer &myMinimizer) {
 
 int ContaminationEstimator::ReadSVDMatrix(const std::string &UDpath, const std::string &PCpath, const std::string &Mean) {
     ReadMatrixUD(UDpath);
-    ReadMatrixPC(PCpath);
+//    ReadMatrixPC(PCpath);
     ReadMean(Mean);
 
     return 0;
@@ -286,11 +286,8 @@ int ContaminationEstimator::ReadMatrixPC(const std::string &path) {
         for (int index = 0; index != numPC; ++index)
             ss >> tmpPC[index];
         PCvec.push_back(tmpPC);
-        //initialize arrays
-        NumMarker++;
-        AFs.push_back(0.);
+
     }
-    AF2s.assign(AFs.begin(), AFs.end());
     fin.close();
 
     // calculate the mean and variance of PCs

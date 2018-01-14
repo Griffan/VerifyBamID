@@ -834,6 +834,7 @@ int SimplePileupViewer::ReadPileup(const std::string &filePath) {
             qualInfo.push_back(tmpQual);
         }
     }
+    return 0;
 }
 
 SimplePileupViewer::~SimplePileupViewer() {
