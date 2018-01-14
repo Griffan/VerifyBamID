@@ -3,6 +3,7 @@
 .Rhistory
 .RData
 libStatGen
+result*
 Debug
 Release
 build

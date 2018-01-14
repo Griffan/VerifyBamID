@@ -105,13 +105,14 @@ public:
             for (int i = 0; i < tPC.size(); ++i) {
                 tPC[i]=(tPC[i]-ptr->muv[i])/ptr->sdv[i];
             }
+            return 0;
         };
 
         inline int InvNormalize(std::vector<double> & tPC){
             for (int i = 0; i < tPC.size(); ++i) {
                 tPC[i]=tPC[i]*ptr->sdv[i]+ptr->muv[i];
             }
-
+            return 0;
         };
 
         inline char findAlt(std::vector<char> &tmpBase) {

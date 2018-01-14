@@ -107,7 +107,7 @@ int execute(int argc, char **argv) {
     }
 
     ////patch to PC path
-    PCPath=UDPath.substr(0,UDPath.size()-3)+".PC";
+    PCPath=UDPath.substr(0,UDPath.size()-3)+".V";
     ////
 
     if (RefPath == "Empty") {
