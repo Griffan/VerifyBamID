@@ -49,13 +49,15 @@ You can directly use reference panel information by using our pre-calculated res
 ## Usage
 For regular estimation:
 ```
+$(VERIFY_BAM_ID_HOME)/binVerifyBamID --BamFile [/path/to/bam/or/cram/file] --SVDPrefix [/path/to/SVDPrefix/file] --Reference [/path/to/fasta/file]
+```
+or
+```
 $(VERIFY_BAM_ID_HOME)/binVerifyBamID --UDPath [/path/to/UD/file] --BamFile [/path/to/bam/or/cram/file] --BedPath [/path/to/bed/file] --MeanPath [/path/to/mu/file] --Reference [/path/to/fasta/file]
 ```
 ```
---UDPath         [String] .UD matrix file from SVD result of genotype matrix[Required]
---MeanPath       [String] .Mean matrix file of genotype matrix[Required]
---BedPath        [String] .Bed file for markers used in this analysis,format(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]
---RefVCF         [String] Reference panel VCF with genotype information, for generation of .UD .Mean .Bed files[Optional]
+--SVDPrefix      [String] SVD related files prefix(normally shared by .UD, .mu and .bed files)[Required]
+--RefVCF         [String] Reference panel VCF with genotype information, for generation of .UD .mu .bed files[Optional]
 --BamFile        [String] Bam or Cram file for the sample[Required]
 --Reference      [String] reference file[Required]
 --Seed           [INT] Random number seed(default:12345)
@@ -68,6 +70,10 @@ $(VERIFY_BAM_ID_HOME)/binVerifyBamID --UDPath [/path/to/UD/file] --BamFile [/pat
 --Epsilon        [Double] Minimization procedure convergence threshold, usually a trade-off bettween accuracy and running time[default:1e-10]
 --OutputPileup   [Bool] If output temp pileup file
 --Verbose        [Bool] If print the progress of the method on the screen
+/*Below are deprecated but still available*/
+--UDPath         [String] .UD matrix file from SVD result of genotype matrix[Required]
+--MeanPath       [String] .Mean matrix file of genotype matrix[Required]
+--BedPath        [String] .Bed file for markers used in this analysis,format(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]
 ```
 
 ## Output Format
@@ -75,7 +81,7 @@ $(VERIFY_BAM_ID_HOME)/binVerifyBamID --UDPath [/path/to/UD/file] --BamFile [/pat
 ```
 Estimation from OptimizeHeter:
 Contaminating Sample PC1:-0.623602      PC2:0.57292
-Intended Sample  PC3:-0.036304  PC4:0.0200112
+Intended Sample  PC1:-0.036304  PC2:0.0200112
 Alpha:0.0013662
 ```
 First line: Which model used
@@ -97,7 +103,7 @@ VerifyBamID --RefVCF ReferencePanel.vcf.gz --BamFile ./resource/test/test.bam --
 
 ```
 
-In the example above, the expected output file names will be ``ReferencePanel.vcf.gz.UD, ReferencePanel.vcf.gz.Mean, ReferencePanel.vcf.gz.Bed``
+In the example above, the expected output file names will be ``ReferencePanel.vcf.gz.UD, ReferencePanel.vcf.gz.mu, ReferencePanel.vcf.gz.bed``
 
 
 ## Generating PC plot
