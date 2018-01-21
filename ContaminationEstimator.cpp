@@ -349,7 +349,14 @@ int ContaminationEstimator::ReadMean(const std::string &path) {
         std::stringstream ss(line);
         ss >> snpName;
         chr = snpName.substr(0, snpName.find(':', 0));
-        //pos = atoi(snpName.substr(snpName.find(':', 0)+1,snpName.find('_',0)).c_str());
+        //        pivot = snpName.find(':', 0);
+//        chr = snpName.substr(0, pivot);
+//        start = pivot + 1;
+//        pivot = snpName.find(':', start);
+//        pos = atoi(snpName.substr(start,pivot - start).c_str());
+//        start = pivot +1;
+//        ref = snpName[start];
+//        alt = snpName[start+2];
         ss >> mu;
         //std::cerr << chr << "\t" << pos << "\t"<<mu<<std::endl;
         //PosVec.push_back(make_pair(chr, pos));

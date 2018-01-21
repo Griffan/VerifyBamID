@@ -32,7 +32,7 @@ SOFTWARE.
 int execute(int argc, char **argv) {
 
     std::string UDPath("Empty"), PCPath("Empty"), MeanPath("Empty"), BedPath("Empty"), BamFileList("Empty"), BamFile("Empty"), RefPath(
-            "Empty"), outputPrefix("result"), PileupFile("Empty");
+            "Empty"), outputPrefix("result"), PileupFile("Empty"), SVDPrefix("Empty");
     std::string knownAF("Empty");
     std::string RefVCF("Empty");
     std::string fixPC("Empty");
@@ -47,32 +47,37 @@ int execute(int argc, char **argv) {
                                       "[String] Bam or Cram file for the sample[Required if --PileupFile not specified]")
                     LONG_STRING_PARAM("PileupFile", &PileupFile,
                                       "[String] Pileup file for the sample[Required if --BamFile not specified]")
-                    LONG_STRING_PARAM("BedPath", &BedPath,
-                                      "[String] Bed file for markers used in this analysis,1 based pos(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]")
                     LONG_STRING_PARAM("Reference", &RefPath,
-                                      "[String] reference file[Required]")
+                                      "[String] Reference file[Required]")
+                    LONG_STRING_PARAM("SVDPrefix", &SVDPrefix,
+                                      "[String] SVD related files prefix(normally shared by .UD, .mu and .bed files)[Required]")
                     LONG_STRING_PARAM("RefVCF", &RefVCF,
-                                      "[String] VCF file from which to extract reference panel's genotype matrix")
-                    LONG_STRING_PARAM("UDPath", &UDPath,
-                                      "[String] UD matrix file from SVD result of genotype matrix")
-                    LONG_STRING_PARAM("MeanPath", &MeanPath,
-                                      "[String] Mean matrix file of genotype matrix")
+                                      "[String] VCF file from which to extract reference panel's genotype matrix[Required if no SVD files available]")
                     LONG_STRING_PARAM("Output", &outputPrefix,
-                                      "[String] outputPrefix[optional]")
+                                      "[String] Prefix of output files[optional]")
+                    LONG_PARAM_GROUP("Model Selection Options",
+                                     "Options to adjust model selection and parameters")
+                    LONG_PARAM("WithinAncestry", &withinAncestry,
+                                     "[Bool] Enabling withinAncestry assume target sample and contamination source are from the same populations,[default:BetweenAncestry] otherwise")
                     LONG_INT_PARAM("NumPC", &nPC,
-                                   "[Int] Set number of PCs to infer Allele Frequency[optional]")
-                    LONG_INT_PARAM("NumThread", &nthread,
-                                   "[Int] Set number of threads in likelihood calculation[default:4]")
+                                     "[Int] Set number of PCs to infer Allele Frequency[optional]")
                     LONG_STRING_PARAM("FixPC", &fixPC, "[String] Input fixed PCs to estimate Alpha[format PC1:PC2:PC3...]")
                     LONG_DOUBLE_PARAM("FixAlpha", &fixAlpha, "[Double] Input fixed Alpha to estimate PC coordinates")
-
-                    LONG_PARAM("WithinAncestry", &withinAncestry, "[Bool] Enabling withinAncestry assume target sample and contamination source are from the same populations,[default:betweenAncestry] otherwise")
                     LONG_STRING_PARAM("KnownAF", &knownAF, "[String] known allele frequency file (chr\tpos\tfreq)[Optional]")
+                    LONG_INT_PARAM("NumThread", &nthread,
+                                   "[Int] Set number of threads in likelihood calculation[default:4]")
                     LONG_INT_PARAM("Seed",&seed,"[Int] Random number seed[default:12345]")
                     LONG_DOUBLE_PARAM("Epsilon",&epsilon,"[Double] Minimization procedure convergence threshold, usually a trade-off bettween accuracy and running time[default:1e-10]")
                     LONG_PARAM("OutputPileup", &outputPileup, "[Bool] If output temp pileup file")
                     LONG_PARAM("Verbose", &verbose, "[Bool] If print the progress of the method on the screen")
-
+                    LONG_PARAM_GROUP("Deprecated Options",
+                                     "These options still are available but not recommended")
+                    LONG_STRING_PARAM("UDPath", &UDPath,
+                                      "[String] UD matrix file from SVD result of genotype matrix")
+                    LONG_STRING_PARAM("MeanPath", &MeanPath,
+                                      "[String] Mean matrix file of genotype matrix")
+                    LONG_STRING_PARAM("BedPath", &BedPath,
+                                      "[String] Bed file for markers used in this analysis,1 based pos(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]")
 
 
     END_LONG_PARAMS();
@@ -82,23 +87,31 @@ int execute(int argc, char **argv) {
     pl.Status();
 
     if (RefVCF == "Empty") {
-        if (UDPath == "Empty") {
-            error("--UDPath is required when --RefVCF is absent");
-            exit(EXIT_FAILURE);
+        if (SVDPrefix == "Empty") {
+            if (UDPath == "Empty") {
+                error("--UDPath is required when --RefVCF is absent");
+                exit(EXIT_FAILURE);
+            }
+            if (MeanPath == "Empty") {
+                error("--MeanPath is required when --RefVCF is absent");
+                exit(EXIT_FAILURE);
+            }
+            if (BedPath == "Empty") {
+                error("--BedPath is required when --RefVCF is absent");
+                exit(EXIT_FAILURE);
+            }
         }
-        if (MeanPath == "Empty") {
-            error("--MeanPath is required when --RefVCF is absent");
-            exit(EXIT_FAILURE);
-        }
-        if (BedPath == "Empty") {
-            error("--BedPath is required when --RefVCF is absent");
-            exit(EXIT_FAILURE);
+        else
+        {
+            UDPath = SVDPrefix + ".UD";
+            MeanPath = SVDPrefix + ".mu";
+            BedPath = SVDPrefix + ".bed";
         }
     } else//SVD on the fly
     {
         notice("Specified reference panel VCF file, doing SVD on the fly...");
         notice("This procedure will generate SVD matrices as [RefVCF path].UD and [RefVCF path].mu");
-        notice("You may specify --UDPath [RefVCF path].UD and --MeanPath [RefVCF path].mu in future use");
+        notice("You may specify --SVDPrefix [RefVCF path](or --UDPath [RefVCF path].UD and --MeanPath [RefVCF path].mu) in future use");
         SVDcalculator calculator;
         calculator.ProcessRefVCF(RefVCF);
         UDPath = RefVCF+".UD";
