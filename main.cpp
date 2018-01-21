@@ -174,6 +174,7 @@ int execute(int argc, char **argv) {
     else
         Estimator.ReadPileup(PileupFile);
 
+
     if(outputPileup)
     {
         std::ofstream fout(outputPrefix+".Pileup");
@@ -195,6 +196,13 @@ int execute(int argc, char **argv) {
         fout.close();
     }
 
+    if(Estimator.IsSanityCheckOK())
+        notice("Passing Marker Sanity Check...");
+    else {
+        warning("Insufficient Available markers, check input bam depth distribution in output pileup file after specifying --OutputPileup");
+        exit(EXIT_FAILURE);
+    }
+
     Estimator.OptimizeLLK(outputPrefix);
 
     const char* headers = "#SEQ_ID\tRG\tCHIP_ID\t#SNPS\t#READS\tAVG_DP\tFREEMIX\tFREELK1\tFREELK0\tFREE_RH\tFREE_RA\tCHIPMIX\tCHIPLK1\tCHIPLK0\tCHIP_RH\tCHIP_RA\tDPREF\tRDPHET\tRDPALT";
@@ -211,6 +219,10 @@ int execute(int argc, char **argv) {
 
 // main function of verifyBamID
 int main(int argc, char** argv) {
+    fprintf(stderr, "VerifyBamID2: A robust tool for DNA contamination estimation from sequence reads using ancestry-agnostic method.\n\n");
+    fprintf(stderr, " Copyright (c) 2009-2018 by Hyun Min Kang and Fan Zhang\n");
+    fprintf(stderr, " This project is licensed under the terms of the MIT license.\n");
+
     int returnVal = 0;
     String compStatus;
     PhoneHome::allThinning = 50;

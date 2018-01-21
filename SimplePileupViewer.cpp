@@ -278,6 +278,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
     hts_idx_t *idx = NULL;
     numReads = 0;
     avgDepth = 0;
+    sdDepth = 0;
 
     mplp_aux_t **data;
     int i(0), tid(0), pos(0), *n_plp(0), beg0 = 0, end0 = INT_MAX, ref_len(0), max_depth(0), max_indel_depth(0);

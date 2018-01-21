@@ -62,6 +62,9 @@ public:
     std::string SEQ_SM;
     int numReads;
     float avgDepth;
+    float sdDepth;
+    float firstQT;//1st quantile
+    float thirdQT;//2st quantile
 
     std::unordered_map<std::string,std::unordered_map<int32_t,int32_t> > posIndex;
 

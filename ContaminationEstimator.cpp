@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
+#include <algorithm>
 
 ContaminationEstimator::ContaminationEstimator() {
 
@@ -394,4 +395,83 @@ int ContaminationEstimator::ReadBam(const char *bamFile, const char *faiFile, co
 int ContaminationEstimator::ReadPileup(const std::string & pileupFile) {
     viewer = SimplePileupViewer(ChooseBed,pileupFile);
     return 0;
+}
+
+//bool ContaminationEstimator::IsSanityCheckOK()
+//{
+//    int effectSite(0), tmpDepth(0);
+//    std::vector<int> depthVec;
+//    std::string chr;
+//    int pos;
+//    for (size_t i = 0; i < NumMarker; ++i) {
+//        chr = PosVec[i].first;
+//        pos = PosVec[i].second;
+//        if (viewer.posIndex.find(chr) == viewer.posIndex.end()) {
+//            continue;
+//        } else if (viewer.posIndex[chr].find(pos) == viewer.posIndex[chr].end()) {
+//            continue;
+//        }
+//        depthVec.push_back(viewer.GetBaseInfoAt(chr, pos).size());
+//    }
+//    std::sort(depthVec.begin(), depthVec.end());
+//    viewer.firstQT = depthVec[NumMarker/4.0];
+//    viewer.thirdQT = depthVec[NumMarker/4.0 * 3];
+//
+//    float range = viewer.thirdQT - viewer.firstQT;
+//
+//    viewer.firstQT -= 1.5 * range;
+//    viewer.thirdQT += 1.5 * range;
+//
+//    effectSite=0;
+//    for (size_t i = 0; i < NumMarker; ++i) {
+//        chr = PosVec[i].first;
+//        pos = PosVec[i].second;
+//        tmpDepth = viewer.GetBaseInfoAt(chr, pos).size();
+//        if(tmpDepth < viewer.firstQT||
+//           tmpDepth > viewer.thirdQT ) continue;
+//        effectSite++;
+//    }
+//
+//    std::cerr<<"Mean Depth: "<<viewer.avgDepth<<"\n"
+//             <<"First Quantile Depth: "<<viewer.firstQT<<"\n"
+//             <<"Third Quantile Depth: "<<viewer.thirdQT<<std::endl;
+//    std::cerr<<"Removed "<<NumMarker-effectSite<<" out of "<< NumMarker <<" outlier sites."<<std::endl;
+//    return double(effectSite)/NumMarker > 0.5 and effectSite > 7000;
+//}
+
+bool ContaminationEstimator::IsSanityCheckOK()
+{
+    int effectSite(0), tmpDepth(0);
+    std::vector<int> depthVec;
+    std::string chr;
+    int pos;
+    for (size_t i = 0; i < NumMarker; ++i) {
+        chr = PosVec[i].first;
+        pos = PosVec[i].second;
+        if (viewer.posIndex.find(chr) == viewer.posIndex.end()) {
+            continue;
+        } else if (viewer.posIndex[chr].find(pos) == viewer.posIndex[chr].end()) {
+            continue;
+        }
+        tmpDepth = viewer.GetBaseInfoAt(chr, pos).size();
+        viewer.sdDepth += tmpDepth * tmpDepth;
+        effectSite++;
+    }
+
+    viewer.sdDepth = sqrt(viewer.sdDepth/effectSite - viewer.avgDepth * viewer.avgDepth);
+
+    effectSite=0;
+    for (size_t i = 0; i < NumMarker; ++i) {
+        chr = PosVec[i].first;
+        pos = PosVec[i].second;
+        tmpDepth = viewer.GetBaseInfoAt(chr, pos).size();
+        if(tmpDepth < (viewer.avgDepth - 3 * viewer.sdDepth)||
+           tmpDepth > (viewer.avgDepth + 3 * viewer.sdDepth)) continue;
+        effectSite++;
+    }
+
+    std::cerr<<"Mean Depth: "<<viewer.avgDepth<<"\n"
+             <<"SD Depth: "<<viewer.sdDepth<<"\n";
+    std::cerr<<"Removed "<<NumMarker-effectSite<<" out of "<< NumMarker <<" outlier sites."<<std::endl;
+    return double(effectSite)/NumMarker > 0.5 and effectSite > 7000;
 }
