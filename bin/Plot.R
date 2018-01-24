@@ -7,7 +7,6 @@ print(paste("running from:",script.basename))
 
 oldwd=getwd()
 setwd(script.basename)
-setwd("/Users/fanzhang/Dropbox/ClionProjects/VerifyBamID/bin")
 
 # test if there is at least one argument: if not, return an error
 args <- commandArgs(trailingOnly = TRUE)
@@ -62,7 +61,7 @@ colScale = scale_color_manual(values=c('ESN'='#FFCD00','GWD'='#FFB900','LWK'='#C
                                        'IBS','TSI','BEB','GIH','ITU','PJL','STU','AFR','AFR/AMR','AMR','EAS','EUR','SAS','UserSample'))
 #set 1000g coordinates
 POP=read.table("../resource/1000g.pop",header = F)
-RefCoord.1kg=read.table("../resource/1000g.100k.b37.vcf.gz.dat.V",header = F)
+RefCoord.1kg=read.table("../resource/1000g.phase3.100k.b37.vcf.gz.dat.V",header = F)
 RefCoord.1kg=RefCoord.1kg[,1:3]
 RefCoord.1kg['POP'] <- POP$V2[match(RefCoord.1kg$V1, POP$V1)]
 colnames(RefCoord.1kg)=c("ID","PC1","PC2","POP")

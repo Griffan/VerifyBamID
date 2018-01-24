@@ -476,9 +476,8 @@ bool ContaminationEstimator::IsSanityCheckOK()
            tmpDepth > (viewer.avgDepth + 3 * viewer.sdDepth)) continue;
         effectSite++;
     }
-
-    std::cerr<<"Mean Depth: "<<viewer.avgDepth<<"\n"
-             <<"SD Depth: "<<viewer.sdDepth<<"\n";
-    std::cerr<<"Removed "<<NumMarker-effectSite<<" out of "<< NumMarker <<" outlier sites."<<std::endl;
+    notice("Mean Depth:%f",viewer.avgDepth);
+    notice("SD Depth:%f",viewer.sdDepth);
+    notice("Filtered %d low-quality SNP markers.", NumMarker-effectSite);
     return double(effectSite)/NumMarker > 0.5 and effectSite > 7000;
 }

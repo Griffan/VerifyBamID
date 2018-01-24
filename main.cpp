@@ -86,6 +86,12 @@ int execute(int argc, char **argv) {
     pl.Read(argc, argv);
     pl.Status();
 
+    if (nPC > 4)
+    {
+        error("--NumPC only permits as large as 4 PCs when using SVD files in ${verifybamID}/resource/ directory!");
+        error("You can always prepare you own SVD files with arbitrary number of PCs with --RefVCF enabled.");
+        exit(EXIT_FAILURE);
+    }
     if (RefVCF == "Empty") {
         if (SVDPrefix == "Empty") {
             if (UDPath == "Empty") {

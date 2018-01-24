@@ -18,6 +18,7 @@
 #include "samtools.h"
 #include <assert.h>
 #include <sample.h>
+#include <Error.h>
 #include "htslib/vcf.h"
 #include "sample.h"
 
@@ -430,7 +431,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
             REGET2:
             tmp = GetNextRegion(BedEOF);
             sprintf(reg, "%s:%d-%d", tmp.chr.c_str(), tmp.beg + 1, tmp.end);
-            fprintf(stderr, "Process %s...\n", reg);
+            notice("Process %s...", reg);
 //            hts_idx_t *idx = sam_index_load(data[0]->fp, fn[0]);
 //            if (idx == NULL) {
 //                fprintf(stderr, "[%s] fail to load index for %s\n", __func__, fn[0]);
