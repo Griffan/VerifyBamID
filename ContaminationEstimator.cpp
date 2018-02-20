@@ -26,7 +26,13 @@ ContaminationEstimator::ContaminationEstimator(int nPC, const char *bedFile, int
 
 int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
     AmoebaMinimizer myMinimizer;
-    std::ofstream fout(OutputPrefix + ".out");
+    std::string fileName(OutputPrefix + ".out");
+    std::ofstream fout(fileName);
+    if(not fout.is_open())
+    {
+        error("Open file %s failed!",fileName.c_str());
+        exit(EXIT_FAILURE);
+    }
     fn.initialize();
     if (!isHeter) {
         if (isPCFixed) {
@@ -93,6 +99,11 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
     std::cout << "Alpha:" << (fn.globalAlpha < 0.5 ? fn.globalAlpha : (1 - fn.globalAlpha)) << std::endl;
     fout << "Alpha:" << (fn.globalAlpha < 0.5 ? fn.globalAlpha : (1 - fn.globalAlpha)) << std::endl;
     fout.close();
+    if(!fout)
+    {
+        error("Errors detected when writing to file %s !",fileName.c_str());
+        exit(EXIT_FAILURE);
+    }
     return 0;
 }
 

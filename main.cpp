@@ -196,7 +196,13 @@ int execute(int argc, char **argv) {
 
     if(outputPileup)
     {
-        std::ofstream fout(outputPrefix+".Pileup");
+        std::string fileName(outputPrefix+".Pileup");
+        std::ofstream fout(fileName);
+        if(not fout.is_open())
+        {
+            error("Open file %s failed!",fileName.c_str());
+            exit(EXIT_FAILURE);
+        }
         for(auto item:Estimator.BedVec)
         {
             if(Estimator.viewer.posIndex.find(item.chr)==Estimator.viewer.posIndex.end())//chr existed
@@ -213,6 +219,11 @@ int execute(int argc, char **argv) {
             fout<<std::endl;
         }
         fout.close();
+        if(!fout)
+        {
+            error("Errors detected when writing to file %s !",fileName.c_str());
+            exit(EXIT_FAILURE);
+        }
     }
 
     if(Estimator.IsSanityCheckOK())
@@ -224,15 +235,29 @@ int execute(int argc, char **argv) {
 
     Estimator.OptimizeLLK(outputPrefix);
 
-    const char* headers = "#SEQ_ID\tRG\tCHIP_ID\t#SNPS\t#READS\tAVG_DP\tFREEMIX\tFREELK1\tFREELK0\tFREE_RH\tFREE_RA\tCHIPMIX\tCHIPLK1\tCHIPLK0\tCHIP_RH\tCHIP_RA\tDPREF\tRDPHET\tRDPALT";
-    std::ofstream fout(outputPrefix+".selfSM");
-    fout<<headers<<std::endl;
-    fout<<Estimator.viewer.SEQ_SM<<"\tNA\tNA\t"<<Estimator.NumMarker<<"\t"<<Estimator.viewer.numReads<<"\t"<<Estimator.viewer.avgDepth<<"\t"
-        <<((Estimator.fn.globalAlpha < 0.5) ? Estimator.fn.globalAlpha:(1.f-Estimator.fn.globalAlpha))<<"\t"<<-Estimator.fn.llk1<<"\t"<<-Estimator.fn.llk0<<"\t"<<"NA\tNA\t"
-        <<"NA\tNA\tNA\tNA\tNA\t"
-        <<"NA\tNA\tNA"<<std::endl;
-
-
+    {//output vb1 compatible result
+        const char *headers = "#SEQ_ID\tRG\tCHIP_ID\t#SNPS\t#READS\tAVG_DP\tFREEMIX\tFREELK1\tFREELK0\tFREE_RH\tFREE_RA\tCHIPMIX\tCHIPLK1\tCHIPLK0\tCHIP_RH\tCHIP_RA\tDPREF\tRDPHET\tRDPALT";
+        std::string fileName(outputPrefix + ".selfSM");
+        std::ofstream fout(fileName);
+        if(not fout.is_open())
+        {
+            error("Open file %s failed!",fileName.c_str());
+            exit(EXIT_FAILURE);
+        }
+        fout << headers << std::endl;
+        fout << Estimator.viewer.SEQ_SM << "\tNA\tNA\t" << Estimator.NumMarker << "\t" << Estimator.viewer.numReads
+             << "\t" << Estimator.viewer.avgDepth << "\t"
+             << ((Estimator.fn.globalAlpha < 0.5) ? Estimator.fn.globalAlpha : (1.f - Estimator.fn.globalAlpha)) << "\t"
+             << -Estimator.fn.llk1 << "\t" << -Estimator.fn.llk0 << "\t" << "NA\tNA\t"
+             << "NA\tNA\tNA\tNA\tNA\t"
+             << "NA\tNA\tNA" << std::endl;
+        fout.close();
+        if(!fout)
+        {
+            error("Errors detected when writing to file %s !",fileName.c_str());
+            exit(EXIT_FAILURE);
+        }
+    }
     return 0;
 }
 
