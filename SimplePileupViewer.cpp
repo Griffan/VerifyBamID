@@ -277,7 +277,7 @@ static int mplp_func(void *data, bam1_t *b) {
 int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
     bool BedEOF;
     hts_idx_t *idx = NULL;
-    numReads = 0;
+    numBases = 0;
     avgDepth = 0;
     sdDepth = 0;
 
@@ -503,7 +503,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
                     continue;
                 } else {
                     /*calculate number of reads covering snps*/
-                    numReads += n_plp[i];
+                    numBases += n_plp[i];
                     for (j = 0; j < n_plp[i]; ++j) {//each covered read in ith bam file
                         const bam_pileup1_t *p = plp[i] + j;
                         int c = p->qpos < p->b->core.l_qseq
@@ -560,7 +560,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
         }
 
     }
-    avgDepth = double(numReads) / GetNumMarker();
+    avgDepth = double(numBases) / GetNumMarker();
     hts_idx_destroy(idx);
 
     // clean up
@@ -777,6 +777,7 @@ int SimplePileupViewer::ReadPileup(const std::string &filePath) {
     std::string seq;
     std::string qual;
     std::ifstream fin(filePath);
+    numBases = 0;
     if(not fin.is_open())
     {
         std::cerr<<"open file "<<filePath<<" failed!"<<std::endl;
@@ -795,7 +796,7 @@ int SimplePileupViewer::ReadPileup(const std::string &filePath) {
                 exit(EXIT_FAILURE);
             }
         }
-        seq=ParsePileupSeq(seq,refAllele);
+//        seq=ParsePileupSeq(seq,refAllele);
 
         if(bedTable.find(pChr)==bedTable.end())
             continue;
@@ -835,7 +836,9 @@ int SimplePileupViewer::ReadPileup(const std::string &filePath) {
             baseInfo.push_back(tmpBase);
             qualInfo.push_back(tmpQual);
         }
+        numBases += depth;
     }
+    avgDepth = (double)numBases/GetNumMarker();
     return 0;
 }
 

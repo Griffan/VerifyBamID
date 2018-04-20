@@ -18,6 +18,7 @@ ContaminationEstimator::ContaminationEstimator(int nPC, const char *bedFile, int
     isPCFixed = false;
     isAlphaFixed = false;
     isHeter = true;
+    isPileupInput = false;
     ReadChooseBed(std::string(bedFile));
     alpha = 0.5;
     NumMarker = 0;
@@ -412,6 +413,7 @@ int ContaminationEstimator::ReadBam(const char *bamFile, const char *faiFile, co
 
 int ContaminationEstimator::ReadPileup(const std::string & pileupFile) {
     viewer = SimplePileupViewer(ChooseBed,pileupFile);
+    isPileupInput = true;
     return 0;
 }
 
@@ -459,6 +461,8 @@ int ContaminationEstimator::ReadPileup(const std::string & pileupFile) {
 
 bool ContaminationEstimator::IsSanityCheckOK()
 {
+    if(isPileupInput)
+        return true;
     int effectSite(0), tmpDepth(0);
     std::vector<int> depthVec;
     std::string chr;

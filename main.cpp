@@ -245,7 +245,7 @@ int execute(int argc, char **argv) {
             exit(EXIT_FAILURE);
         }
         fout << headers << std::endl;
-        fout << Estimator.viewer.SEQ_SM << "\tNA\tNA\t" << Estimator.NumMarker << "\t" << Estimator.viewer.numReads
+        fout << Estimator.viewer.SEQ_SM << "\tNA\tNA\t" << Estimator.NumMarker << "\t" << std::floor((double)Estimator.viewer.numBases/Estimator.NumMarker+0.5)
              << "\t" << Estimator.viewer.avgDepth << "\t"
              << ((Estimator.fn.globalAlpha < 0.5) ? Estimator.fn.globalAlpha : (1.f - Estimator.fn.globalAlpha)) << "\t"
              << -Estimator.fn.llk1 << "\t" << -Estimator.fn.llk0 << "\t" << "NA\tNA\t"
@@ -274,7 +274,7 @@ int main(int argc, char** argv) {
     {
         returnVal = execute(argc, argv);
     }
-    catch(std::runtime_error e)
+    catch(std::runtime_error& e)
     {
         returnVal = -1;
         compStatus = "Exception";

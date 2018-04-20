@@ -60,11 +60,11 @@ public:
     QualInfo qualInfo;
 
     std::string SEQ_SM;
-    int numReads;
-    float avgDepth;
-    float sdDepth;
-    float firstQT;//1st quantile
-    float thirdQT;//2st quantile
+    int numBases;
+    double avgDepth;
+    double sdDepth;
+    double firstQT;//1st quantile
+    double thirdQT;//2st quantile
 
     std::unordered_map<std::string,std::unordered_map<int32_t,int32_t> > posIndex;
 
@@ -93,7 +93,7 @@ public:
 
     int GetNumMarker()
     {
-        return bedVec->size();
+        return baseInfo.size();
     }
 
     inline std::vector<char>& GetBaseInfoAt(std::string& chr, int32_t pos)

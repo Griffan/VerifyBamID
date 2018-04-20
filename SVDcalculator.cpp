@@ -18,7 +18,6 @@ SVDcalculator::~SVDcalculator() {}
 int SVDcalculator::ReadVcf(const std::string &VcfPath,
                            std::vector<std::vector<char> >& genotype,
                            int & nSamples, int& nMarkers) {
-    printf("starting LoadGenotypeFromUnphasedVCF\n\n");
     try {
         int maxPhred=255;
         VcfFile *pVcf = new VcfFile;
