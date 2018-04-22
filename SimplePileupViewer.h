@@ -59,10 +59,12 @@ public:
     BaseInfo baseInfo;
     QualInfo qualInfo;
 
-    std::string SEQ_SM;
-    int numBases;
-    double avgDepth;
-    double sdDepth;
+    std::string SEQ_SM = "DefaultSampleName";
+    int numBases = 0;
+    int effectiveNumSite = 0;
+    double avgDepth = 0;
+    double sdDepth = 0;
+
     double firstQT;//1st quantile
     double thirdQT;//2st quantile
 
@@ -93,7 +95,7 @@ public:
 
     int GetNumMarker()
     {
-        return baseInfo.size();
+        return effectiveNumSite;
     }
 
     inline std::vector<char>& GetBaseInfoAt(std::string& chr, int32_t pos)

@@ -261,9 +261,9 @@ public:
                 InitialGF(ptr->AF2s[i], GF2);
                 std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
                 std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
-                if (!ptr->isPileupInput and (tmpBase.size() == 0 ||
+                if (tmpBase.size() == 0 ||
                         tmpBase.size() < (ptr->viewer.avgDepth - 3 * ptr->viewer.sdDepth)||
-                        tmpBase.size() > (ptr->viewer.avgDepth + 3 * ptr->viewer.sdDepth))
+                        tmpBase.size() > (ptr->viewer.avgDepth + 3 * ptr->viewer.sdDepth)
 //                                ||
 //                        tmpBase.size() < ptr->viewer.firstQT ||
 //                        tmpBase.size() > ptr->viewer.thirdQT

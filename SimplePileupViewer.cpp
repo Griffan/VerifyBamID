@@ -503,7 +503,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
                     continue;
                 } else {
                     /*calculate number of reads covering snps*/
-                    numBases += n_plp[i];
+//                    numBases += n_plp[i];
                     for (j = 0; j < n_plp[i]; ++j) {//each covered read in ith bam file
                         const bam_pileup1_t *p = plp[i] + j;
                         int c = p->qpos < p->b->core.l_qseq
@@ -550,6 +550,11 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
 //                        }
 //                    }
                 }
+            }
+            if(tmpBase.size()>0)
+            {
+                effectiveNumSite++;
+                numBases +=tmpBase.size();
             }
             // putc('\n', pileup_fp);
             if (not existed) {
@@ -837,6 +842,10 @@ int SimplePileupViewer::ReadPileup(const std::string &filePath) {
             qualInfo.push_back(tmpQual);
         }
         numBases += depth;
+        depth = 0;
+        seq = "";
+        qual = "";
+        effectiveNumSite++;
     }
     avgDepth = (double)numBases/GetNumMarker();
     return 0;

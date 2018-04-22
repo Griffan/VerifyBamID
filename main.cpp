@@ -37,7 +37,7 @@ int execute(int argc, char **argv) {
     std::string RefVCF("Empty");
     std::string fixPC("Empty");
     double fixAlpha(-1.),epsilon(1e-8);
-    bool withinAncestry(false),outputPileup(false),verbose(false);
+    bool withinAncestry(false),outputPileup(false),verbose(false),disableSanityCheck(false);
     int nfiles(0),seed(12345),nPC(2),nthread(4);
     paramList pl;
     BEGIN_LONG_PARAMS(longParameters)
@@ -59,6 +59,8 @@ int execute(int argc, char **argv) {
                                      "Options to adjust model selection and parameters")
                     LONG_PARAM("WithinAncestry", &withinAncestry,
                                      "[Bool] Enabling withinAncestry assume target sample and contamination source are from the same populations,[default:BetweenAncestry] otherwise")
+                    LONG_PARAM("DisableSanityCheck", &disableSanityCheck,
+                               "[Bool] Disable marker quality sanity check(no marker filtering)[default:false]")
                     LONG_INT_PARAM("NumPC", &nPC,
                                      "[Int] Set number of PCs to infer Allele Frequency[optional]")
                     LONG_STRING_PARAM("FixPC", &fixPC, "[String] Input fixed PCs to estimate Alpha[format PC1:PC2:PC3...]")
@@ -210,13 +212,16 @@ int execute(int argc, char **argv) {
             else if(Estimator.viewer.posIndex[item.chr].find(item.end)==Estimator.viewer.posIndex[item.chr].end())
                 continue;
 
-            fout<<item.chr<<"\t"<<item.end<<"\t"<<Estimator.ChooseBed[item.chr][item.end].first<<"\t"<<Estimator.viewer.GetBaseInfoAt(item.chr,item.end).size()<<"\t";
-            for(auto base:Estimator.viewer.GetBaseInfoAt(item.chr,item.end))
-                fout<<base;
-            fout<<"\t";
-            for(auto qual:Estimator.viewer.GetQualInfoAt(item.chr,item.end))
-                fout<<qual;
-            fout<<std::endl;
+            if(Estimator.viewer.GetBaseInfoAt(item.chr,item.end).size() > 0) {
+                fout << item.chr << "\t" << item.end << "\t" << Estimator.ChooseBed[item.chr][item.end].first << "\t"
+                     << Estimator.viewer.GetBaseInfoAt(item.chr, item.end).size() << "\t";
+                for (auto base:Estimator.viewer.GetBaseInfoAt(item.chr, item.end))
+                    fout << base;
+                fout << "\t";
+                for (auto qual:Estimator.viewer.GetQualInfoAt(item.chr, item.end))
+                    fout << qual;
+                fout << std::endl;
+            }
         }
         fout.close();
         if(!fout)
@@ -226,11 +231,13 @@ int execute(int argc, char **argv) {
         }
     }
 
-    if(Estimator.IsSanityCheckOK())
-        notice("Passing Marker Sanity Check...");
-    else {
-        warning("Insufficient Available markers, check input bam depth distribution in output pileup file after specifying --OutputPileup");
-        exit(EXIT_FAILURE);
+    if(!disableSanityCheck) {
+        if (Estimator.IsSanityCheckOK())
+            notice("Passing Marker Sanity Check...");
+        else {
+            warning("Insufficient Available markers, check input bam depth distribution in output pileup file after specifying --OutputPileup");
+            exit(EXIT_FAILURE);
+        }
     }
 
     Estimator.OptimizeLLK(outputPrefix);
@@ -245,8 +252,11 @@ int execute(int argc, char **argv) {
             exit(EXIT_FAILURE);
         }
         fout << headers << std::endl;
-        fout << Estimator.viewer.SEQ_SM << "\tNA\tNA\t" << Estimator.NumMarker << "\t" << floor((double)Estimator.viewer.numBases/Estimator.NumMarker+0.5)
-             << "\t" << Estimator.viewer.avgDepth << "\t"
+        fout << Estimator.viewer.SEQ_SM << "\tNA\tNA\t" << Estimator.NumMarker << "\t";
+        if(Estimator.isPileupInput)
+            fout <<"NA";
+        else fout<<Estimator.viewer.numBases;
+        fout << "\t" << Estimator.viewer.avgDepth << "\t"
              << ((Estimator.fn.globalAlpha < 0.5) ? Estimator.fn.globalAlpha : (1.f - Estimator.fn.globalAlpha)) << "\t"
              << -Estimator.fn.llk1 << "\t" << -Estimator.fn.llk0 << "\t" << "NA\tNA\t"
              << "NA\tNA\tNA\tNA\tNA\t"
@@ -279,6 +289,14 @@ int main(int argc, char** argv) {
         returnVal = -1;
         compStatus = "Exception";
         PhoneHome::completionStatus(compStatus.c_str(),"VerifyBamID2");
+        std::string errorMsg = "Exiting due to ERROR:\n\t";
+        errorMsg += e.what();
+        std::cerr << errorMsg << std::endl;
+        return returnVal;
+    }
+    catch(std::exception& e)
+    {
+        returnVal = -1;
         std::string errorMsg = "Exiting due to ERROR:\n\t";
         errorMsg += e.what();
         std::cerr << errorMsg << std::endl;

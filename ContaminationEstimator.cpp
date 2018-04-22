@@ -461,11 +461,12 @@ int ContaminationEstimator::ReadPileup(const std::string & pileupFile) {
 
 bool ContaminationEstimator::IsSanityCheckOK()
 {
-    if(isPileupInput)
-        return true;
-    int effectSite(0), tmpDepth(0);
-    std::vector<int> depthVec;
+//    if(isPileupInput) return true;
+    int tmpDepth(0);
+//    std::vector<int> depthVec;
     std::string chr;
+    notice("Input Number of Marker:%d",viewer.GetNumMarker());
+
     int pos;
     for (size_t i = 0; i < NumMarker; ++i) {
         chr = PosVec[i].first;
@@ -477,22 +478,28 @@ bool ContaminationEstimator::IsSanityCheckOK()
         }
         tmpDepth = viewer.GetBaseInfoAt(chr, pos).size();
         viewer.sdDepth += tmpDepth * tmpDepth;
-        effectSite++;
     }
 
-    viewer.sdDepth = sqrt(viewer.sdDepth/effectSite - viewer.avgDepth * viewer.avgDepth);
+    viewer.sdDepth = sqrt(viewer.sdDepth/viewer.effectiveNumSite - viewer.avgDepth * viewer.avgDepth);
 
-    effectSite=0;
+    double filteredDepth(0), filteredsdDepth(0);
+    viewer.effectiveNumSite=0;
+
     for (size_t i = 0; i < NumMarker; ++i) {
         chr = PosVec[i].first;
         pos = PosVec[i].second;
+        if (viewer.posIndex.find(chr) == viewer.posIndex.end()) {
+            continue;
+        } else if (viewer.posIndex[chr].find(pos) == viewer.posIndex[chr].end()) {
+            continue;
+        }
         tmpDepth = viewer.GetBaseInfoAt(chr, pos).size();
-        if(tmpDepth < (viewer.avgDepth - 3 * viewer.sdDepth)||
+        if(tmpDepth == 0 || tmpDepth < (viewer.avgDepth - 3 * viewer.sdDepth)||
            tmpDepth > (viewer.avgDepth + 3 * viewer.sdDepth)) continue;
-        effectSite++;
+        viewer.effectiveNumSite++;
     }
     notice("Mean Depth:%f",viewer.avgDepth);
     notice("SD Depth:%f",viewer.sdDepth);
-    notice("Filtered %d low-quality SNP markers.", NumMarker-effectSite);
-    return double(effectSite)/NumMarker > 0.5 and effectSite > 7000;
+    notice("%d SNP markers remained after sanity check.", viewer.effectiveNumSite);
+    return double(viewer.effectiveNumSite)/NumMarker > 0.5 and viewer.effectiveNumSite > 7000;
 }
