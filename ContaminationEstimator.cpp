@@ -465,7 +465,7 @@ bool ContaminationEstimator::IsSanityCheckOK()
     int tmpDepth(0);
 //    std::vector<int> depthVec;
     std::string chr;
-    notice("Input Number of Marker:%d",viewer.GetNumMarker());
+    notice("Input Number of Marker:%d", NumMarker);
 
     int pos;
     for (size_t i = 0; i < NumMarker; ++i) {
@@ -501,5 +501,5 @@ bool ContaminationEstimator::IsSanityCheckOK()
     notice("Mean Depth:%f",viewer.avgDepth);
     notice("SD Depth:%f",viewer.sdDepth);
     notice("%d SNP markers remained after sanity check.", viewer.effectiveNumSite);
-    return double(viewer.effectiveNumSite)/NumMarker > 0.5 and viewer.effectiveNumSite > 7000;
+    return viewer.effectiveNumSite > 7000;
 }

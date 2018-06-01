@@ -367,6 +367,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
                         conf->reg, fn[i]);
                 if (BedEOF) {
                     delete[] conf->reg;
+                    conf->reg = nullptr;
                     fprintf(stderr, "No reads found in any of the regions, exit!");
                     exit(EXIT_FAILURE);
                 }
@@ -432,11 +433,6 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
             tmp = GetNextRegion(BedEOF);
             sprintf(reg, "%s:%d-%d", tmp.chr.c_str(), tmp.beg + 1, tmp.end);
             notice("Process %s...", reg);
-//            hts_idx_t *idx = sam_index_load(data[0]->fp, fn[0]);
-//            if (idx == NULL) {
-//                fprintf(stderr, "[%s] fail to load index for %s\n", __func__, fn[0]);
-//                exit(EXIT_FAILURE);
-//            }
             if ((data[0]->iter = sam_itr_querys(idx, data[0]->h, reg)) == 0) {
                 fprintf(stderr, "[Warning::%s] fail to parse region '%s' with %s\n", __func__, reg, fn[0]);
                 if (BedEOF) {
@@ -445,7 +441,6 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
                 goto REGET2;
             }
             beg0 = data[0]->iter->beg, end0 = data[0]->iter->end;
-//            hts_idx_destroy(idx);
             bam_mplp_destroy(iter);
             iter = bam_mplp_init(n, mplp_func, (void **) data);
             if (conf->flag & MPLP_SMART_OVERLAPS) bam_mplp_init_overlaps(iter);
@@ -462,14 +457,12 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
             //fprintf(pileup_fp, "%s\t%d\t%c", h->target_name[tid], pos + 1, (ref && pos < ref_len)? ref[pos] : 'N');
 
             std::string chr = h->target_name[tid];
-            int tmpIndex(0);
             bool existed(false);
 
             if (posIndex.find(chr) != posIndex.end())//chr existed
             {
                 if (posIndex[chr].find(pos + 1) != posIndex[chr].end())//pos existed
                 {
-                    tmpIndex = posIndex[chr][pos + 1];
                     existed = true;
                 } else {
                     posIndex[chr][pos + 1] = globalIndex;
@@ -480,21 +473,22 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
                 globalIndex++;
             }
 
-            std::vector<char> tmpBase, tmpQual;
             if (existed) {
-                tmpBase = GetBaseInfoAt(chr, pos + 1);
-                tmpQual = GetQualInfoAt(chr, pos + 1);
+                warning("Duplicated marker %s:%d present, skip ...", chr.c_str(), pos + 1);
+                continue;
             }
+
+            std::vector<char> tmpBase, tmpQual;
 
             for (i = 0; i < n; ++i) {//for each bam file
                 int j, cnt;
-                for (j = cnt = 0; j < n_plp[i]; ++j) {//each covered read
-                    const bam_pileup1_t *p = plp[i] + j;
-                    int c = p->qpos < p->b->core.l_qseq
-                            ? bam_get_qual(p->b)[p->qpos]
-                            : 0;
-                    if (c >= conf->min_baseQ) ++cnt;
-                }
+//                for (j = cnt = 0; j < n_plp[i]; ++j) {//each covered read
+//                    const bam_pileup1_t *p = plp[i] + j;
+//                    int c = p->qpos < p->b->core.l_qseq
+//                            ? bam_get_qual(p->b)[p->qpos]
+//                            : 0;
+//                    if (c >= conf->min_baseQ) ++cnt;
+//                }
                 //fprintf(pileup_fp, "\t%d\t", cnt);
                 if (n_plp[i] == 0) {// if no reads covered
                     //fputs("*\t*", pileup_fp);
