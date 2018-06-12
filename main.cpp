@@ -51,8 +51,6 @@ int execute(int argc, char **argv) {
                                       "[String] Reference file[Required]")
                     LONG_STRING_PARAM("SVDPrefix", &SVDPrefix,
                                       "[String] SVD related files prefix(normally shared by .UD, .mu and .bed files)[Required]")
-                    LONG_STRING_PARAM("RefVCF", &RefVCF,
-                                      "[String] VCF file from which to extract reference panel's genotype matrix[Required if no SVD files available]")
                     LONG_STRING_PARAM("Output", &outputPrefix,
                                       "[String] Prefix of output files[optional]")
                     LONG_PARAM_GROUP("Model Selection Options",
@@ -72,6 +70,9 @@ int execute(int argc, char **argv) {
                     LONG_DOUBLE_PARAM("Epsilon",&epsilon,"[Double] Minimization procedure convergence threshold, usually a trade-off bettween accuracy and running time[default:1e-10]")
                     LONG_PARAM("OutputPileup", &outputPileup, "[Bool] If output temp pileup file")
                     LONG_PARAM("Verbose", &verbose, "[Bool] If print the progress of the method on the screen")
+                    LONG_PARAM_GROUP("Construction of SVD Auxiliary Files","Use these options when generating SVDPrefix files")
+                    LONG_STRING_PARAM("RefVCF", &RefVCF,
+                                      "[String] VCF file from which to extract reference panel's genotype matrix[Required if no SVD files available]")
                     LONG_PARAM_GROUP("Deprecated Options",
                                      "These options still are available but not recommended")
                     LONG_STRING_PARAM("UDPath", &UDPath,
@@ -117,7 +118,7 @@ int execute(int argc, char **argv) {
         }
     } else//SVD on the fly
     {
-        notice("Specified reference panel VCF file, doing SVD on the fly...");
+        notice("Specified --RefVCF reference panel VCF file, doing SVD on the fly...");
         notice("This procedure will generate SVD matrices as [RefVCF path].UD and [RefVCF path].mu");
         notice("You may specify --SVDPrefix [RefVCF path](or --UDPath [RefVCF path].UD and --MeanPath [RefVCF path].mu) in future use");
         SVDcalculator calculator;
@@ -125,6 +126,8 @@ int execute(int argc, char **argv) {
         UDPath = RefVCF+".UD";
         MeanPath = RefVCF+".mu";
         BedPath = RefVCF+".bed";
+        notice("Success!");
+        return 0;
     }
 
     ////patch to PC path
@@ -268,6 +271,7 @@ int execute(int argc, char **argv) {
             exit(EXIT_FAILURE);
         }
     }
+    notice("Success!");
     return 0;
 }
 

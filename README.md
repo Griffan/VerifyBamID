@@ -57,7 +57,6 @@ $(VERIFY_BAM_ID_HOME)/binVerifyBamID --UDPath [/path/to/UD/file] --BamFile [/pat
 ```
 ```
 --SVDPrefix      [String] SVD related files prefix(normally shared by .UD, .mu and .bed files)[Required]
---RefVCF         [String] Reference panel VCF with genotype information, for generation of .UD .mu .bed files[Optional]
 --BamFile        [String] Bam or Cram file for the sample[Required]
 --Reference      [String] reference file[Required]
 --Seed           [INT] Random number seed(default:12345)
@@ -70,9 +69,11 @@ $(VERIFY_BAM_ID_HOME)/binVerifyBamID --UDPath [/path/to/UD/file] --BamFile [/pat
 --Epsilon        [Double] Minimization procedure convergence threshold, usually a trade-off bettween accuracy and running time[default:1e-10]
 --OutputPileup   [Bool] If output temp pileup file
 --Verbose        [Bool] If print the progress of the method on the screen
+/*To construct SVDPrefix auxillary files*/
+--RefVCF         [String] Reference panel VCF with genotype information, for generation of .UD .mu .bed files[Optional]
 /*Below are deprecated but still available*/
 --UDPath         [String] .UD matrix file from SVD result of genotype matrix[Required]
---MeanPath       [String] .Mean matrix file of genotype matrix[Required]
+--MeanPath       [String] .mu matrix file of genotype matrix[Required]
 --BedPath        [String] .Bed file for markers used in this analysis,format(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]
 ```
 

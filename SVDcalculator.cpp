@@ -1,6 +1,7 @@
 #include <unordered_map>
 #include <fstream>
 #include <Error.h>
+#include <unordered_set>
 #include "SVDcalculator.h"
 #include "libVcf/libVcfVcfFile.h"
 #include "Eigen/Dense"
@@ -33,18 +34,45 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                                    VcfPath.c_str());
         }
 
-        nSamples = pVcf->getSampleCount();
+        std::unordered_set<std::string> acceptChr={"1","2","3","4","5","6","7","8","9","10",
+                                              "11","12","13","14","15","16","17","18","19","20",
+                                              "21","22",
+                                              "chr1", "chr2", "chr3","chr4","chr5","chr6","chr7","chr8", "chr9","chr10",
+                                              "chr11","chr12","chr13","chr14","chr15","chr16","chr17", "chr18","chr19",
+                                              "chr20","chr21","chr22"};
 
+        nSamples = pVcf->getSampleCount();
         nMarkers = 0;
         char refAllele;
         char altAllele;
         VcfMarker *pMarker = new VcfMarker;
         String markerName;
+        String prevMarkerName;
         while (pVcf->iterateMarker()) {//for each marker
 
             pMarker = pVcf->getLastMarker();
             markerName.printf("%s:%d", pMarker->sChrom.c_str(), pMarker->nPos);
-            if(pMarker->sRef.Length()>1 or pMarker->asAlts[0].Length()>1 ) fprintf(stderr,"skip indel at %s\n",markerName.c_str());
+            if(prevMarkerName==markerName)
+            {
+                fprintf(stderr,"Duplicated Marker at %s\n",markerName.c_str());
+                exit(EXIT_FAILURE);
+            }
+            if(acceptChr.find(std::string(pMarker->sChrom.c_str())) == acceptChr.end())
+            {
+                fprintf(stderr,"skip non-autosome at %s\n",markerName.c_str());
+                continue;
+            }
+//            if(pMarker->sChrom.Compare("X")==0 or pMarker->sChrom.Compare("chrX")==0 or
+//              pMarker->sChrom.Compare("Y")==0 or pMarker->sChrom.Compare("chrY")==0)
+//            {
+//                fprintf(stderr,"skip non-autosome at %s\n",markerName.c_str());
+//                continue;
+//            }
+            if(pMarker->sRef.Length()>1 or pMarker->asAlts[0].Length()>1 )
+            {
+                fprintf(stderr,"skip indel at %s\n",markerName.c_str());
+                continue;
+            }
             refAllele=pMarker->sRef[0];
             altAllele=pMarker->asAlts[0][0];
 
@@ -144,12 +172,13 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
             }
             genotype.push_back(perMarkerGeno);
             nMarkers++;
+            prevMarkerName = markerName;
         }
 
         delete pVcf;
         //delete pMarker;
     }
-    catch (VcfFileException e) {
+    catch (VcfFileException& e) {
         error(e.what());
     }
     return 0;
@@ -162,7 +191,10 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath)
 
     ReadVcf(VcfPath, genotype, numIndividual, numMarker);
     MatrixXf genoMatrix(numMarker,numIndividual);
-    std::cerr<<numMarker<<"\t"<<genotype.size()<<"\t"<<numIndividual<<"\t"<<genotype[0].size()<<std::endl;
+//    std::cerr<<numMarker<<"\t"<<genotype.size()<<"\t"<<numIndividual<<"\t"<<genotype[0].size()<<std::endl;
+    notice("Number of Markers:%d\n",numMarker);
+    notice("Number of Individuals:%d\n",numIndividual);
+
     for (int i = 0; i <genotype.size() ; ++i) {//per marker
         for (int j = 0; j <genotype[i].size() ; ++j) {//per sample
             genoMatrix(i,j)=genotype[i][j];
