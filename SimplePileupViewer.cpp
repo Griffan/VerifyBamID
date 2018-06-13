@@ -291,9 +291,6 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
     void *rghash = NULL;
     FILE *pileup_fp = NULL;
 
-//    bcf_callaux_t *bca = NULL;
-//    bcf_callret1_t *bcr = NULL;
-//    bcf_call_t bc;
     htsFile *bcf_fp = NULL;
     bcf_hdr_t *bcf_hdr = NULL;
 
@@ -341,14 +338,14 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
         }
         bam_smpl_add(sm, fn[i], (conf->flag & MPLP_IGNORE_RG) ? 0 : h_tmp->text);
 
-        int tmp_pos = std::string(h_tmp->text).find("\tSM:", 0);
-        int tmp_end = std::string(h_tmp->text).find("\t", tmp_pos + 4);
-        SEQ_SM = std::string(h_tmp->text).substr(tmp_pos + 4, tmp_end - tmp_pos - 4);
-
-        // Collect read group IDs with PL (platform) listed in pl_list (note: fragile, strstr search)
-//        rghash = bcf_call_add_rg(rghash, h_tmp->text, conf->pl_list);
-
-
+        if (0) {
+            SEQ_SM = std::string(sm->smpl[0]);//sm->n:# of sample; sm->m:max # of sample
+            warning("The BAM or CRAM file contains more than 1 sample, please be aware the risk! Ignored...");
+        } else {
+            if (sm->n == 1) SEQ_SM = std::string(sm->smpl[0]);//sm->n:# of sample; sm->m:max # of sample
+            else
+                error("This BAM or CRAM file contains more than 1 sample, please demultiplex or separate first!");
+        }
         idx = sam_index_load(data[i]->fp, fn[i]);
         if (idx == NULL) {
             fprintf(stderr, "[%s] fail to load index for %s\n", __func__, fn[i]);
@@ -394,17 +391,17 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
     gplp.m_plp = (int *) calloc(sm->n, sizeof(int));
     gplp.plp = (bam_pileup1_t **) calloc(sm->n, sizeof(bam_pileup1_t *));
 
-    fprintf(stderr, "[%s] %d samples in %d input files\n", __func__, sm->n, n);
+    fprintf(stderr, "[%s] %d sample(s) in %d input file(s)\n", __func__, sm->n, n);
 
     // init pileup
     iter = bam_mplp_init(n, mplp_func, (void **) data);
     if (conf->flag & MPLP_SMART_OVERLAPS) bam_mplp_init_overlaps(iter);
     max_depth = conf->max_depth;
     if (max_depth * sm->n > 1 << 20)
-        fprintf(stderr, "(%s) Max depth is above 1M. Potential memory hog!\n", __func__);
+        fprintf(stderr, "[%s] Max depth is above 1M. Potential memory hog!\n", __func__);
     if (max_depth * sm->n < 8000) {
         max_depth = 8000 / sm->n;
-        fprintf(stderr, "<%s> Set max per-file depth to %d\n", __func__, max_depth);
+        fprintf(stderr, "[%s] Set max per-file depth to %d\n", __func__, max_depth);
     }
     max_indel_depth = conf->max_indel_depth * sm->n;
     bam_mplp_set_maxcnt(iter, max_depth);
