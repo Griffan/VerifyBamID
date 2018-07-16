@@ -31,6 +31,7 @@ SOFTWARE.
 #include "MathGenMin.h"
 #include "SimplePileupViewer.h"
 #include <limits>
+
 #ifdef _OPENMP
 #include "omp.h"
 #endif
@@ -42,6 +43,7 @@ public:
     bool isAFknown;
     bool isHeter;
     bool isPileupInput;
+    bool isSanityCheckDisabled;
     bool verbose;
     int numPC;
     int numThread;
@@ -54,7 +56,7 @@ public:
         return pow(10.0, x / -10.0);
     }
 
-    class fullLLKFunc : public VectorFunc {
+    class FullLLKFunc : public VectorFunc {
     public:
         double min_af;
         double max_af;
@@ -67,32 +69,34 @@ public:
         std::vector<double> globalPC;//best result holder
         std::vector<double> globalPC2;//best result holder
         double globalAlpha;//best result holder
-        const char* Base;
-        fullLLKFunc()
-        {
-            fullLLKFunc::Base = "actg";
-            min_af=0.00005;
-            max_af=0.99995;
-            llk1=0;
-            ptr=nullptr;
-            fixAlpha=0;
-            std::cerr<<"Initialize from fullLLKFunc()"<<std::endl;
+        const char *Base;
+
+        FullLLKFunc() {
+            FullLLKFunc::Base = "actg";
+            min_af = 0.00005;
+            max_af = 0.99995;
+            llk1 = 0;
+            ptr = nullptr;
+            fixAlpha = 0;
+            std::cerr << "Initialize from FullLLKFunc()" << std::endl;
 
         }
-        fullLLKFunc(int dim, ContaminationEstimator* contPtr):fixPC(dim,0.),fixPC2(dim,0.),globalPC(fixPC),globalPC2(fixPC2) {
-            fullLLKFunc::Base = "actg";
+
+        FullLLKFunc(int dim, ContaminationEstimator *contPtr) : fixPC(dim, 0.), fixPC2(dim, 0.), globalPC(fixPC),
+                                                                globalPC2(fixPC2) {
+            FullLLKFunc::Base = "actg";
             min_af = 0.00005;
             max_af = 0.99995;
             llk1 = 0.;
             ptr = contPtr;
             fixAlpha = 0.;
-            globalAlpha =0.;
-            std::cerr<<"Initialize from fullLLKFunc(int dim, ContaminationEstimator* contPtr)"<<std::endl;
+            globalAlpha = 0.;
+            std::cerr << "Initialize from FullLLKFunc(int dim, ContaminationEstimator* contPtr)" << std::endl;
         }
 
-        ~fullLLKFunc() { };
+        ~FullLLKFunc() {};
 
-        inline static double invLogit(double &x) {
+        inline static double InvLogit(double &x) {
             double e = exp(x);
             return e / (1. + e);
         };
@@ -102,16 +106,16 @@ public:
             return log(x / (1. - x));
         };
 
-        inline int Normalize(std::vector<double> & tPC) {
+        inline int Normalize(std::vector<double> &tPC) {
             for (int i = 0; i < tPC.size(); ++i) {
-                tPC[i]=(tPC[i]-ptr->muv[i])/ptr->sdv[i];
+                tPC[i] = (tPC[i] - ptr->muv[i]) / ptr->sdv[i];
             }
             return 0;
         };
 
-        inline int InvNormalize(std::vector<double> & tPC){
+        inline int InvNormalize(std::vector<double> &tPC) {
             for (int i = 0; i < tPC.size(); ++i) {
-                tPC[i]=tPC[i]*ptr->sdv[i]+ptr->muv[i];
+                tPC[i] = tPC[i] * ptr->sdv[i] + ptr->muv[i];
             }
             return 0;
         };
@@ -140,64 +144,48 @@ public:
                 if (genotype == 0) {
                     if (base == '.' || base == ',') {
                         return 1;
-                    }
-                    else
+                    } else
                         return 0;
-                }
-                else if (genotype == 1) {
+                } else if (genotype == 1) {
                     if (base == '.' || base == ',') {
                         return 0.5;
-                    }
-                    else if (toupper(base) == toupper(altBase)) {
+                    } else if (toupper(base) == toupper(altBase)) {
                         return 0.5;
-                    }
-                    else
+                    } else
                         return 0;
-                }
-                else if (genotype == 2) {
+                } else if (genotype == 2) {
                     if (toupper(base) == toupper(altBase)) {
                         return 1;
-                    }
-                    else
+                    } else
                         return 0;
-                }
-                else {
+                } else {
                     std::cerr << "genotype error!" << std::endl;
                     exit(EXIT_FAILURE);
                 }
-            }
-            else {
+            } else {
                 if (genotype == 0) {
                     if (base == '.' || base == ',') {
                         return 0;
-                    }
-                    else if (toupper(base) == toupper(altBase)) {
+                    } else if (toupper(base) == toupper(altBase)) {
                         return 1. / 3.;
-                    }
-                    else
+                    } else
                         return 2. / 3.;
-                }
-                else if (genotype == 1) {
+                } else if (genotype == 1) {
                     if (base == '.' || base == ',') {
                         return 1. / 6.;
-                    }
-                    else if (toupper(base) == toupper(altBase)) {
+                    } else if (toupper(base) == toupper(altBase)) {
                         return 1. / 6.;
-                    }
-                    else
+                    } else
                         return 2. / 3.;
-                }
-                else if (genotype == 2) {
+                } else if (genotype == 2) {
                     if (base == '.' || base == ',') {
                         return 1. / 3.;
                     }
                     if (toupper(base) == toupper(altBase)) {
                         return 0;
-                    }
-                    else
+                    } else
                         return 2. / 3.;
-                }
-                else {
+                } else {
                     std::cerr << "genotype error!" << std::endl;
                     exit(EXIT_FAILURE);
                 }
@@ -215,8 +203,8 @@ public:
             GF[2] = AF * AF;
         }
 
-        inline double computeMixLLKs(const std::vector<double> & tPC1,const std::vector<double> & tPC2,const double alpha)
-        {
+        inline double
+        ComputeMixLLKs(const std::vector<double> &tPC1, const std::vector<double> &tPC2, const double alpha) {
 
             double sumLLK(0);
 #ifdef _OPENMP
@@ -224,50 +212,49 @@ public:
 #pragma omp parallel for reduction (+:sumLLK)
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
-                double markerLK(0);
-                double GF[3];
-                double GF2[3];
+
                 std::string chr = ptr->PosVec[i].first;
                 int pos = ptr->PosVec[i].second;
                 if (ptr->viewer.posIndex.find(chr) == ptr->viewer.posIndex.end()) {
                     continue;
-                }
-                else if (ptr->viewer.posIndex[chr].find(pos) == ptr->viewer.posIndex[chr].end()) {
+                } else if (ptr->viewer.posIndex[chr].find(pos) == ptr->viewer.posIndex[chr].end()) {
                     continue;
                 }
-                if(ptr->isAFknown)
-                {
-                    ptr->AFs[i] = ptr->AF2s[i] =ptr->knownAF[chr][pos];
-                }
-                else
-                {
-                    ptr->AFs[i]=0.;
-                    for (int k = 0; k <tPC1.size(); ++k) {
-                        ptr->AFs[i]+=ptr->UD[i][k] * tPC1[k];
+
+                std::vector<char> tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
+                std::vector<char> tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
+
+                if (tmpBase.size() == 0) continue;
+
+                if (not ptr->isSanityCheckDisabled and
+                    (tmpBase.size() < (ptr->viewer.avgDepth - 3 * ptr->viewer.sdDepth) or
+                     tmpBase.size() > (ptr->viewer.avgDepth + 3 * ptr->viewer.sdDepth)))
+                    continue;
+
+                if (ptr->isAFknown) {
+                    ptr->AFs[i] = ptr->AF2s[i] = ptr->knownAF[chr][pos];
+                } else {
+                    ptr->AFs[i] = 0.;
+                    for (int k = 0; k < tPC1.size(); ++k) {
+                        ptr->AFs[i] += ptr->UD[i][k] * tPC1[k];
                     }
                     ptr->AFs[i] += ptr->means[i];
                     ptr->AFs[i] /= 2.0;
 
-                    ptr->AF2s[i]=0.;
-                    for (int k = 0; k <tPC2.size(); ++k) {
-                        ptr->AF2s[i]+=ptr->UD[i][k] * tPC2[k];
+                    ptr->AF2s[i] = 0.;
+                    for (int k = 0; k < tPC2.size(); ++k) {
+                        ptr->AF2s[i] += ptr->UD[i][k] * tPC2[k];
                     }
                     ptr->AF2s[i] += ptr->means[i];
                     ptr->AF2s[i] /= 2.0;
                 }
 
+                double markerLK(0);
+                double GF[3];
+                double GF2[3];
 
                 InitialGF(ptr->AFs[i], GF);
                 InitialGF(ptr->AF2s[i], GF2);
-                std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
-                if (tmpBase.size() == 0 ||
-                        tmpBase.size() < (ptr->viewer.avgDepth - 3 * ptr->viewer.sdDepth)||
-                        tmpBase.size() > (ptr->viewer.avgDepth + 3 * ptr->viewer.sdDepth)
-//                                ||
-//                        tmpBase.size() < ptr->viewer.firstQT ||
-//                        tmpBase.size() > ptr->viewer.thirdQT
-                       ) continue;
 
                 char altBase = ptr->ChooseBed[chr][pos].second;
 
@@ -275,83 +262,76 @@ public:
                     for (int geno2 = 0; geno2 < 3; ++geno2) {
                         double baseLK(0);
                         for (int j = 0; j < tmpBase.size(); ++j) {
-                            baseLK += log(( alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                            (1. - alpha)* getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
+                            baseLK += log((alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
+                                           (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
                                           Phred(tmpQual[j] - 33)
-                                          + ( alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
+                                          + (alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
                                              (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
                                             (1 - Phred(tmpQual[j] - 33)));
 //                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
 //                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
 //                            <<"\tgetConditionalBaseLK0:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 0)<<"\t"<<getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)<< std::endl;
                         }
-//                        std::cerr<<"baseLK:"<<baseLK;
                         markerLK += exp(baseLK) * GF[geno1] * GF2[geno2];
-//                        std::cerr<<"markerLK:"<<markerLK<<std::endl;
                     }
                 if (markerLK > 0)
                     sumLLK += log(markerLK);
-//                std::cerr << "sumLLK:" << sumLLK << std::endl;
             }
-//            std::cerr <<"PC1:"<<tPC1[0]<<"\tPC1:"<<tPC1[1]<<"\tPC2:"<<tPC2[0]<<"\tPC2:"<<tPC2[1]<< "sumLLK:" << sumLLK << std::endl;
             return sumLLK;
         }
 
-        int initialize() {
-            globalPC=fixPC=globalPC2=fixPC2=ptr->PC[1];//only intended smaple has pre defined PCs
-            globalAlpha=fixAlpha = ptr->alpha;
-            llk1 = (0 - computeMixLLKs(fixPC,fixPC2,fixAlpha));
+        int Initialize() {
+            globalPC = fixPC = globalPC2 = fixPC2 = ptr->PC[1];//only intended smaple has pre defined PCs
+            globalAlpha = fixAlpha = ptr->alpha;
+            llk1 = (0 - ComputeMixLLKs(fixPC, fixPC2, fixAlpha));
 
             for (int k = 0; k < ptr->numPC; ++k) {
                 //ptr->PC[0][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            	ptr->PC[0][k] = 0.01;
-	    }
+                ptr->PC[0][k] = 0.01;
+            }
             for (int k = 0; k < ptr->numPC; ++k) {
                 //ptr->PC[1][k] = static_cast <double> (rand()) / static_cast <double> (RAND_MAX);
-            	ptr->PC[1][k] = 0.01;
-	    }
+                ptr->PC[1][k] = 0.01;
+            }
             //ptr->alpha = fabs(static_cast <double> (rand()) / static_cast <double> (RAND_MAX));
             ptr->alpha = 0.03;
-	    return 0;
+            return 0;
         }
 
-        int calculateLLK0() {
-            llk0 = (0 - computeMixLLKs(globalPC,globalPC,0));
+        int CalculateLLK0() {
+            llk0 = (0 - ComputeMixLLKs(globalPC, globalPC, 0));
             return 0;
         }
 
         virtual double Evaluate(Vector &v) {
             double smLLK = 0;
-            if(!ptr->isHeter)
-            {
-                if(ptr->isPCFixed) {
-                    double tmpAlpha = invLogit(v[0]);
-                    smLLK = 0 - computeMixLLKs(fixPC, fixPC2, tmpAlpha);
+            if (!ptr->isHeter) {
+                if (ptr->isPCFixed) {
+                    double tmpAlpha = InvLogit(v[0]);
+                    smLLK = 0 - ComputeMixLLKs(fixPC, fixPC2, tmpAlpha);
                     if (smLLK < llk1) {
                         llk1 = smLLK;
                         globalAlpha = tmpAlpha;
                     }
-                }
-                else if(ptr->isAlphaFixed) {
-                    std::vector<double> tmpPC(ptr->numPC,0.);
-                    for (int i = 0; i <ptr->numPC ; ++i) {
-                        tmpPC[i]=v[i];
+                } else if (ptr->isAlphaFixed) {
+                    std::vector<double> tmpPC(ptr->numPC, 0.);
+                    for (int i = 0; i < ptr->numPC; ++i) {
+                        tmpPC[i] = v[i];
                     }
 
-                    smLLK = 0 - computeMixLLKs(tmpPC, tmpPC, fixAlpha);
+                    smLLK = 0 - ComputeMixLLKs(tmpPC, tmpPC, fixAlpha);
                     if (smLLK < llk1) {
                         llk1 = smLLK;
                         globalPC = tmpPC;
                         globalPC2 = tmpPC;
                     }
-                }
-                else {
-                    std::vector<double> tmpPC(ptr->numPC,0.);
-                    for (int i = 0; i <ptr->numPC ; ++i) {
-                        tmpPC[i]=v[i];
+                } else {
+                    std::vector<double> tmpPC(ptr->numPC, 0.);
+                    for (int i = 0; i < ptr->numPC; ++i) {
+                        tmpPC[i] = v[i];
                     }
-                    double tmpAlpha=invLogit(v[ptr->numPC]);
-                    smLLK = 0 - computeMixLLKs(tmpPC, tmpPC, tmpAlpha);
+                    double tmpAlpha = InvLogit(v[ptr->numPC]);
+                    smLLK = 0 - ComputeMixLLKs(tmpPC, tmpPC, tmpAlpha);
                     if (smLLK < llk1) {
                         llk1 = smLLK;
                         globalPC = tmpPC;
@@ -359,61 +339,58 @@ public:
                         globalAlpha = tmpAlpha;
                     }
                 }
-            }
-            else//contamination source from different population
+            } else//contamination source from different population
             {
-                if(ptr->isPCFixed) {//only fixed for intended sample
-                    std::vector<double> tmpPC(ptr->numPC,0.);
-                    for (int i = 0; i <ptr->numPC ; ++i) {
-                        tmpPC[i]=v[i];
-                        }
-                    double tmpAlpha = invLogit(v[ptr->numPC]);
-                    smLLK = 0 - computeMixLLKs(tmpPC, fixPC2, tmpAlpha);
+                if (ptr->isPCFixed) {//only fixed for intended sample
+                    std::vector<double> tmpPC(ptr->numPC, 0.);
+                    for (int i = 0; i < ptr->numPC; ++i) {
+                        tmpPC[i] = v[i];
+                    }
+                    double tmpAlpha = InvLogit(v[ptr->numPC]);
+                    smLLK = 0 - ComputeMixLLKs(tmpPC, fixPC2, tmpAlpha);
 
                     if (smLLK < llk1) {
                         llk1 = smLLK;
                         globalPC = tmpPC;
                         globalAlpha = tmpAlpha;
                     }
-                }
-                else if(ptr->isAlphaFixed) {
-                    std::vector<double> tmpPC(ptr->numPC,0.);
-                    std::vector<double> tmpPC2(ptr->numPC,0.);
+                } else if (ptr->isAlphaFixed) {
+                    std::vector<double> tmpPC(ptr->numPC, 0.);
+                    std::vector<double> tmpPC2(ptr->numPC, 0.);
 
-                    for (int k = 0; k <v.Length(); ++k) {
-                        if(k < ptr->numPC)
-                            tmpPC[k]=v[k];
-                        else if(k< ptr->numPC*2)
-                            tmpPC2[k-(ptr->numPC)]=v[k];
+                    for (int k = 0; k < v.Length(); ++k) {
+                        if (k < ptr->numPC)
+                            tmpPC[k] = v[k];
+                        else if (k < ptr->numPC * 2)
+                            tmpPC2[k - (ptr->numPC)] = v[k];
                         else {
                             error("Simplex Vector dimension error!");
                             exit(EXIT_FAILURE);
                         }
                     }
-                    smLLK = 0 - computeMixLLKs(tmpPC, tmpPC2, fixAlpha);
+                    smLLK = 0 - ComputeMixLLKs(tmpPC, tmpPC2, fixAlpha);
                     if (smLLK < llk1) {
                         llk1 = smLLK;
                         globalPC = tmpPC;
                         globalPC2 = tmpPC2;
                     }
-                }
-                else {
-                    std::vector<double> tmpPC(ptr->numPC,0.);
-                    std::vector<double> tmpPC2(ptr->numPC,0.);
+                } else {
+                    std::vector<double> tmpPC(ptr->numPC, 0.);
+                    std::vector<double> tmpPC2(ptr->numPC, 0.);
                     double tmpAlpha(0.);
-                    for (int k = 0; k <v.Length(); ++k) {
-                        if(k < ptr->numPC)
-                            tmpPC[k]=v[k];
-                        else if(k < ptr->numPC*2)
-                            tmpPC2[k-(ptr->numPC)]=v[k];
-                        else if(k == ptr->numPC*2)
-                            tmpAlpha = invLogit(v[k]);
-                        else{
+                    for (int k = 0; k < v.Length(); ++k) {
+                        if (k < ptr->numPC)
+                            tmpPC[k] = v[k];
+                        else if (k < ptr->numPC * 2)
+                            tmpPC2[k - (ptr->numPC)] = v[k];
+                        else if (k == ptr->numPC * 2)
+                            tmpAlpha = InvLogit(v[k]);
+                        else {
                             error("Simplex Vector dimension error!");
                             exit(EXIT_FAILURE);
                         }
                     }
-                    smLLK = (0 - computeMixLLKs(tmpPC, tmpPC2, tmpAlpha));
+                    smLLK = (0 - ComputeMixLLKs(tmpPC, tmpPC2, tmpAlpha));
                     if (smLLK < llk1) {
                         llk1 = smLLK;
                         globalPC = tmpPC;
@@ -422,17 +399,17 @@ public:
                     }
                 }
             }
-            if(ptr->verbose)
-            std::cerr << "globalPC:" << globalPC[0] << "\tglobalPC:" << globalPC[1]
-                      << "\tglobalPC2:" << globalPC2[0] << "\tglobalPC2:" << globalPC2[1]
-                      << "\tglobalAlpha:" << globalAlpha << "\tllk:" << llk1 <<std::endl;
+            if (ptr->verbose)
+                std::cerr << "globalPC:" << globalPC[0] << "\tglobalPC:" << globalPC[1]
+                          << "\tglobalPC2:" << globalPC2[0] << "\tglobalPC2:" << globalPC2[1]
+                          << "\tglobalAlpha:" << globalAlpha << "\tllk:" << llk1 << std::endl;
             return smLLK;
         }
     };
 
     SimplePileupViewer viewer;
     uint32_t NumMarker;
-    fullLLKFunc fn;
+    FullLLKFunc fn;
 
     std::unordered_map<std::string, std::unordered_map<uint32_t, double> > knownAF;
 
@@ -473,11 +450,11 @@ public:
 
     int ReadMean(const std::string &path);
 
-    int ReadAF(const std::string & path);
+    int ReadAF(const std::string &path);
 
     int ReadBam(const char *bamFile, const char *faiFile, const char *bedFile);
 
-    int ReadPileup(const std::string & pileupFile);
+    int ReadPileup(const std::string &pileupFile);
 
     bool IsSanityCheckOK();
     /*
@@ -489,6 +466,7 @@ public:
     int OptimizeLLK(const std::string &OutputPrefix);
 
     ~ContaminationEstimator();
+
     /*
     int RunFromVCF(const std::string VcfSiteAFFile, const std::string CurrentMPU, const std::string ReadGroup,
                    const std::string Prefix);
@@ -498,6 +476,7 @@ public:
                          const std::string &ReadGroup);
     */
     int ReadSVDMatrix(const std::string &UDpath, const std::string &PCpath, const std::string &Mean);
+
     /*
     int FromBamtoPileup();
      */

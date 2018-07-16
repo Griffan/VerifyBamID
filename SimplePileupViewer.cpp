@@ -311,7 +311,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
         exit(EXIT_FAILURE);
     }
 
-    // read the header of each file in the list and initialize data
+    // read the header of each file in the list and Initialize data
     for (i = 0; i < n; ++i) {
         bam_hdr_t *h_tmp;
         data[i] = (mplp_aux_t *) calloc(1, sizeof(mplp_aux_t));

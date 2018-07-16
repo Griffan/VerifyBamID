@@ -19,6 +19,7 @@ ContaminationEstimator::ContaminationEstimator(int nPC, const char *bedFile, int
     isAlphaFixed = false;
     isHeter = true;
     isPileupInput = false;
+    isSanityCheckDisabled = false;
     ReadChooseBed(std::string(bedFile));
     alpha = 0.5;
     NumMarker = 0;
@@ -34,7 +35,7 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
         error("Open file %s failed!",fileName.c_str());
         exit(EXIT_FAILURE);
     }
-    fn.initialize();
+    fn.Initialize();
     if (!isHeter) {
         if (isPCFixed) {
             std::cout << "Estimation from OptimizeHomoFixedPC:" << std::endl;
@@ -78,7 +79,7 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
             std::swap(fn.globalPC[1], fn.globalPC2[1]);
         }
     }
-    fn.calculateLLK0();
+    fn.CalculateLLK0();
     std::cout << "Contaminating Sample ";
     fout << "Contaminating Sample ";
     for (int i = 0; i < numPC; ++i) {
@@ -117,7 +118,7 @@ bool ContaminationEstimator::OptimizeHeter(AmoebaMinimizer &myMinimizer) {
         else
             startingPoint[i] = PC[1][i - numPC];
     }
-    startingPoint[numPC * 2] = fullLLKFunc::Logit(alpha);
+    startingPoint[numPC * 2] = FullLLKFunc::Logit(alpha);
 
     if (verbose) {
         std::cerr << "Start point:";
@@ -132,7 +133,7 @@ bool ContaminationEstimator::OptimizeHeter(AmoebaMinimizer &myMinimizer) {
     myMinimizer.Reset(numPC * 2 + 1);
     myMinimizer.point = startingPoint;
     double ret = myMinimizer.Minimize(epsilon);
-    alpha = fullLLKFunc::invLogit(myMinimizer.point[numPC * 2]);
+    alpha = FullLLKFunc::InvLogit(myMinimizer.point[numPC * 2]);
     for (int i = 0; i < numPC; ++i) {
         PC[0][i] = myMinimizer.point[i];
     }
@@ -186,7 +187,7 @@ bool ContaminationEstimator::OptimizeHomo(AmoebaMinimizer &myMinimizer) {
     for (int i = 0; i < numPC; ++i) {
         startingPoint[i] = PC[0][i];
     }
-    startingPoint[numPC] = fullLLKFunc::Logit(alpha);
+    startingPoint[numPC] = FullLLKFunc::Logit(alpha);
     if (verbose) {
         std::cerr << "Start point:";
         for (int i = 0; i < numPC; ++i) {
@@ -199,7 +200,7 @@ bool ContaminationEstimator::OptimizeHomo(AmoebaMinimizer &myMinimizer) {
     myMinimizer.Reset(numPC + 1);
     myMinimizer.point = startingPoint;
     double ret = myMinimizer.Minimize(epsilon);
-    alpha = fullLLKFunc::invLogit(myMinimizer.point[numPC]);
+    alpha = FullLLKFunc::InvLogit(myMinimizer.point[numPC]);
     for (int i = 0; i < numPC; ++i) {
         PC[0][i] = myMinimizer.point[i];
     }
@@ -233,7 +234,7 @@ bool ContaminationEstimator::OptimizeHomoFixedAlpha(AmoebaMinimizer &myMinimizer
 
 bool ContaminationEstimator::OptimizeHomoFixedPC(AmoebaMinimizer &myMinimizer) {
     Vector startingPoint("TestPoint", 1);
-    startingPoint[0] = fullLLKFunc::Logit(alpha);
+    startingPoint[0] = FullLLKFunc::Logit(alpha);
 
     if (verbose) {
         std::cerr << "Start point";
@@ -245,7 +246,7 @@ bool ContaminationEstimator::OptimizeHomoFixedPC(AmoebaMinimizer &myMinimizer) {
     myMinimizer.Reset(1);
     myMinimizer.point = startingPoint;
     double ret = myMinimizer.Minimize(epsilon);
-    alpha = fullLLKFunc::invLogit(myMinimizer.point[0]);
+    alpha = FullLLKFunc::InvLogit(myMinimizer.point[0]);
     if (ret == std::numeric_limits<double>::max()) return false;//not converge
     else return true;
 }
@@ -274,7 +275,7 @@ int ContaminationEstimator::ReadMatrixUD(const std::string &path) {
         for (int index = 0; index != numPC; ++index)
             ss >> tmpUD[index];
         UD.push_back(tmpUD);
-        //initialize arrays
+        //Initialize arrays
         NumMarker++;
         AFs.push_back(0.);
     }
@@ -502,5 +503,5 @@ bool ContaminationEstimator::IsSanityCheckOK()
     notice("Mean Depth:%f",viewer.avgDepth);
     notice("SD Depth:%f",viewer.sdDepth);
     notice("%d SNP markers remained after sanity check.", viewer.GetNumMarker());
-    return viewer.GetNumMarker() > 7000;
+    return viewer.GetNumMarker() > 1000 and viewer.GetNumMarker() > (NumMarker * 0.1);
 }

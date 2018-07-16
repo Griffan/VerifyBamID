@@ -159,6 +159,7 @@ int execute(int argc, char **argv) {
     Estimator.verbose=verbose;
     Estimator.seed = seed;
     Estimator.isHeter = !withinAncestry;
+    Estimator.isSanityCheckDisabled = disableSanityCheck;
 
     //std::cerr<<"NumMarker:"<<Estimator.NumMarker<<" and UD size:"<<Estimator.UD.size()<<std::endl;
     if(fixPC!="Empty") {// parse --fixPC
