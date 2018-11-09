@@ -9,6 +9,9 @@
 
 * Input Files: Aligned NGS sequence files(BAM or CRAM); Marker related files(SVD result on genotype matrix, provided in resorce directory)
 
+* Please cite: 
+Zhang F., Flickinger M., InPSYght Psychiatric Genetics Consortium, Abecasis G., Boehnke M., Kang H.M.(8 November 2018)."Ancestry-agnostic estimation of DNA sample contamination from sequence reads".bioRxiv 466268; doi: https://doi.org/10.1101/466268
+
 
 ## Installation
 
