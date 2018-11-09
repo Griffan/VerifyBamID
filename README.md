@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/Griffan/VerifyBamID.png?branch=master)](https://travis-ci.org/Griffan/VerifyBamID)
 [![GitHub Downloads](https://img.shields.io/github/downloads/Griffan/VerifyBamID/total.svg?style=flat)](https://github.com/Griffan/VerifyBamID/releases)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/verifybamid2/badges/downloads.svg)](https://anaconda.org/bioconda/verifybamid2)
 
 # VerifyBamID
 
