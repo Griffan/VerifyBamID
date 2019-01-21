@@ -2,8 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 project(samtools)
 
 file(GLOB SOURCE_FILES *.c)
-include_directories(${samtools_SOURCE_DIR}/htslib/include/)
 
 add_library(samtools ${SOURCE_FILES})
-add_dependencies(samtools HTSLIB)
-target_link_libraries(samtools ${samtools_SOURCE_DIR}/htslib/lib/libhts.a)
+include_directories(samtools ${HTS_INCLUDE_DIRS})
+target_link_libraries(samtools ${HTS_LIBRARIES})

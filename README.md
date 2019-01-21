@@ -19,6 +19,18 @@ Zhang F., Flickinger M., InPSYght Psychiatric Genetics Consortium, Abecasis G., 
   - mkdir build
   - cd build
   - cmake ..
+```
+In case any required libraries is missing, you may specify customized installing path by replacing "cmake .." with:
+
+For libhts:
+  - cmake -DHTS_INCLUDE_DIRS=/absolute_path/include  -DHTS_LIBRARIES=/absolute_path/lib/libhts.a ..
+
+For bzip2:
+  - cmake -DBZIP2=/absolute_path/lib/libbz2.a ..
+
+For lzma:
+  - cmake -DLZMA=/absolute_path/lib/liblzma.a ..
+```
   - make
   - make test
   
