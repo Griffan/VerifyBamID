@@ -49,7 +49,7 @@ find_package (BZip2)
 if (NOT BZIP2_FOUND)
     message(FATAL_ERROR "libbz2 library not found")
 else()
-    include_directories(${BZIP_INCLUDE_DIRS})
+    include_directories(${BZIP2_INCLUDE_DIRS})
     set(BZIP2 ${BZIP2_LIBRARIES})
 endif()
 

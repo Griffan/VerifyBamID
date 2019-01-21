@@ -19,18 +19,20 @@ Zhang F., Flickinger M., InPSYght Psychiatric Genetics Consortium, Abecasis G., 
   - mkdir build
   - cd build
   - cmake ..
+
 ```
 In case any required libraries is missing, you may specify customized installing path by replacing "cmake .." with:
 
 For libhts:
-  - cmake -DHTS_INCLUDE_DIRS=/absolute_path/include  -DHTS_LIBRARIES=/absolute_path/lib/libhts.a ..
+  - cmake -DHTS_INCLUDE_DIRS=/hts_absolute_path/include/  -DHTS_LIBRARIES=/hts_absolute_path/lib/libhts.a ..
 
 For bzip2:
-  - cmake -DBZIP2=/absolute_path/lib/libbz2.a ..
+  - cmake -DBZIP2_INCLUDE_DIRS=/bzip2_absolute_path/include/ -DBZIP2_LIBRARIES=/bzip2_absolute_path/lib/libbz2.a ..
 
 For lzma:
-  - cmake -DLZMA=/absolute_path/lib/liblzma.a ..
+  - cmake -DLZMA_INCLUDE_DIRS=/lzma_absolute_path/include/ -DLZMA_LIBRARIES=/lzma_absolute_path/lib/liblzma.a ..
 ```
+
   - make
   - make test
   
@@ -65,11 +67,11 @@ You can directly use reference panel information by using our pre-calculated res
 ## Usage
 For regular estimation:
 ```
-$(VERIFY_BAM_ID_HOME)/binVerifyBamID --BamFile [/path/to/bam/or/cram/file] --SVDPrefix [/path/to/SVDPrefix/file] --Reference [/path/to/fasta/file]
+$(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --BamFile [/path/to/bam/or/cram/file] --SVDPrefix [/path/to/SVDPrefix/file] --Reference [/path/to/fasta/file]
 ```
 or
 ```
-$(VERIFY_BAM_ID_HOME)/binVerifyBamID --UDPath [/path/to/UD/file] --BamFile [/path/to/bam/or/cram/file] --BedPath [/path/to/bed/file] --MeanPath [/path/to/mu/file] --Reference [/path/to/fasta/file]
+$(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --UDPath [/path/to/UD/file] --BamFile [/path/to/bam/or/cram/file] --BedPath [/path/to/bed/file] --MeanPath [/path/to/mu/file] --Reference [/path/to/fasta/file]
 ```
 ```
 --SVDPrefix      [String] SVD related files prefix(normally shared by .UD, .mu and .bed files)[Required]
