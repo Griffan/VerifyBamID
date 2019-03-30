@@ -118,12 +118,16 @@ Since last version, we also provided backward compatible output file result.self
 
 For producing customized resource files to be used as the input argument of verifyBamID2 generation, you need to start with a VCF file and FASTA formatted reference files. Please refer to the example below.
 ```
-VerifyBamID --RefVCF ReferencePanel.vcf.gz --BamFile ./resource/test/test.bam --Reference ./resource/test/chr20.fa.gz
+VerifyBamID --RefVCF ReferencePanel.vcf.gz --Reference ./resource/test/chr20.fa.gz
 
 ```
 
 In the example above, the expected output file names will be ``ReferencePanel.vcf.gz.UD, ReferencePanel.vcf.gz.mu, ReferencePanel.vcf.gz.bed``
 
+## Need more markers
+
+If you want to use more than 1M markers, the memory consumption of verifyBamID2 could be large. One way to circumvent this situation is to use 'a truncated SVD' technique, which is described in this link:
+http://bwlewis.github.io/1000_genomes_examples/PCA_whole_genome.html
 
 ## Generating PC plot
 
