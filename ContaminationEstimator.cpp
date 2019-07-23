@@ -260,49 +260,47 @@ int ContaminationEstimator::ReadSVDMatrix(const std::string &UDpath, const std::
 }
 
 int ContaminationEstimator::ReadMatrixUD(const std::string &path) {
-    std::ifstream fin(path);
+    InputFile fin;
     std::string line;
     std::vector<PCtype> tmpUD(numPC, 0);
-    if (!fin.is_open()) {
+    if (!fin.openFile(path.c_str(), "r", InputFile::ifileCompression::DEFAULT)) {
         std::cerr << "Open file:" << path << "\t failed, exit!";
         exit(EXIT_FAILURE);
     }
-    while (std::getline(fin, line)) {
+    while (fin.readLine(line)==0) {
         std::stringstream ss(line);
-        //std::string chr;
-        //int pos;
-        //ss >> chr >> pos;
         for (int index = 0; index != numPC; ++index)
             ss >> tmpUD[index];
         UD.push_back(tmpUD);
         //Initialize arrays
         NumMarker++;
         AFs.push_back(0.);
+      line="";
     }
     AF2s.assign(AFs.begin(), AFs.end());
-    fin.close();
+    fin.ifclose();
     return 0;
 }
 
 int ContaminationEstimator::ReadMatrixPC(const std::string &path) {
-    std::ifstream fin(path);
+    InputFile fin;
     std::string line;
     std::vector<PCtype> tmpPC(numPC, 0);
     std::vector<std::vector<PCtype> > PCvec;
-    if (!fin.is_open()) {
+    if (!fin.openFile(path.c_str(), "r", InputFile::ifileCompression::DEFAULT)) {
         std::cerr << "Open file:" << path << "\t failed, exit!";
         exit(EXIT_FAILURE);
     }
     std::string sampleID;
-    while (std::getline(fin, line)) {
+    while (fin.readLine(line)==0) {
         std::stringstream ss(line);
         ss >> sampleID;
         for (int index = 0; index != numPC; ++index)
             ss >> tmpPC[index];
         PCvec.push_back(tmpPC);
-
+      line="";
     }
-    fin.close();
+    fin.ifclose();
 
     // calculate the mean and variance of PCs
     std::vector<double> sumv(numPC,0.);
@@ -323,16 +321,16 @@ int ContaminationEstimator::ReadMatrixPC(const std::string &path) {
 }
 
 int ContaminationEstimator::ReadChooseBed(const std::string &path) {
-    std::ifstream fin(path);
-    std::string line, chr;
+  InputFile fin;
+  std::string line, chr;
     int index(0), pos(0);
     char ref(0), alt(0);
 
-    if (!fin.is_open()) {
+  if (!fin.openFile(path.c_str(), "r", InputFile::ifileCompression::DEFAULT)) {
         std::cerr << "Open file:" << path << "\t failed, exit!";
         exit(EXIT_FAILURE);
     }
-    while (std::getline(fin, line)) {
+  while (fin.readLine(line)==0) {
         index++;
         std::stringstream ss(line);
         //std::string chr;
@@ -343,39 +341,30 @@ int ContaminationEstimator::ReadChooseBed(const std::string &path) {
         BedVec.push_back(region_t(chr, pos - 1, pos));
         PosVec.push_back(make_pair(chr, pos));
         ChooseBed[chr][pos] = std::make_pair(ref, alt);
-    }
-    fin.close();
+        line="";
+  }
+    fin.ifclose();
     return 0;
 }
 
 int ContaminationEstimator::ReadMean(const std::string &path) {
-    std::ifstream fin(path);
+    InputFile fin;
     std::string line;
-    //int pos(0);
     double mu(0);
     std::string snpName, chr;
-    if (!fin.is_open()) {
+  if (!fin.openFile(path.c_str(), "r", InputFile::ifileCompression::DEFAULT)) {
         std::cerr << "Open file:" << path << "\t failed, exit!";
         exit(EXIT_FAILURE);
     }
-    while (std::getline(fin, line)) {
+  while (fin.readLine(line)==0) {
         std::stringstream ss(line);
         ss >> snpName;
         chr = snpName.substr(0, snpName.find(':', 0));
-        //        pivot = snpName.find(':', 0);
-//        chr = snpName.substr(0, pivot);
-//        start = pivot + 1;
-//        pivot = snpName.find(':', start);
-//        pos = atoi(snpName.substr(start,pivot - start).c_str());
-//        start = pivot +1;
-//        ref = snpName[start];
-//        alt = snpName[start+2];
         ss >> mu;
-        //std::cerr << chr << "\t" << pos << "\t"<<mu<<std::endl;
-        //PosVec.push_back(make_pair(chr, pos));
         means.push_back(mu);
-    }
-    fin.close();
+        line="";
+  }
+    fin.ifclose();
     return 0;
 }
 

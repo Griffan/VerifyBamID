@@ -479,18 +479,7 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
 
             for (i = 0; i < n; ++i) {//for each bam file
                 int j, cnt;
-//                for (j = cnt = 0; j < n_plp[i]; ++j) {//each covered read
-//                    const bam_pileup1_t *p = plp[i] + j;
-//                    int c = p->qpos < p->b->core.l_qseq
-//                            ? bam_get_qual(p->b)[p->qpos]
-//                            : 0;
-//                    if (c >= conf->min_baseQ) ++cnt;
-//                }
-                //fprintf(pileup_fp, "\t%d\t", cnt);
                 if (n_plp[i] == 0) {// if no reads covered
-                    //fputs("*\t*", pileup_fp);
-                    //if (conf->flag & MPLP_PRINT_MAPQ) fputs("\t*", pileup_fp);
-                    //if (conf->flag & MPLP_PRINT_POS) fputs("\t*", pileup_fp);
                     continue;
                 } else {
                     /*calculate number of reads covering snps*/
@@ -557,6 +546,9 @@ int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
 
     }
     avgDepth = double(numBases) / GetNumMarker();
+    fprintf(stderr, "[%s] Total Number Bases: %d\n", __func__, numBases);
+    fprintf(stderr, "[%s] Total Number Markers: %d\n", __func__, GetNumMarker());
+
     hts_idx_destroy(idx);
 
     // clean up
