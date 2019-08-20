@@ -261,14 +261,14 @@ void SVDcalculator::WriteSVD(const std::string &Prefix) {
         end=BedVec[i].end;
         fMu<<chr+":"+std::to_string(end)<<"\t"<<Mu[i]<<std::endl;
         fBed<<chr<<"\t"<<beg<<"\t"<<end<<"\t"<<chooseBed[chr][end].first<<"\t"<<chooseBed[chr][end].second<<std::endl;
-        for (int j = 0; j < UD[i].size() ; ++j) {
+        for (int j = 0; j < 10/*UD[i].size()*/ ; ++j) {
             fUD<<UD[i][j]<<"\t";
         }
         fUD<<std::endl;
     }
     for (int k = 0; k <numIndividual; ++k) {
         fPC<<Samples[k]<<"\t";
-        for (int i = 0; i < PC[k].size(); ++i) {
+        for (int i = 0; i < 10/*PC[k].size()*/; ++i) {
             fPC<<PC[k][i]<<"\t";
         }
         fPC<<std::endl;
