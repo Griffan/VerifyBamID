@@ -11,8 +11,7 @@
 * Input Files: Aligned NGS sequence files(BAM or CRAM); Marker related files(SVD result on genotype matrix, provided in resorce directory)
 
 * Please cite: 
-Zhang F., Flickinger M., InPSYght Psychiatric Genetics Consortium, Abecasis G., Boehnke M., Kang H.M.(8 November 2018)."Ancestry-agnostic estimation of DNA sample contamination from sequence reads".bioRxiv 466268; doi: https://doi.org/10.1101/466268
-
+Fan Zhang, Matthew Flickinger, Sarah A. Gagliano Taliun, Gonçalo R. Abecasis, Laura J. Scott, Steven A. McCaroll, Carlos N. Pato, Michael Boehnke, and Hyun Min Kang. 2020. “Ancestry-agnostic estimation of DNA sample contamination from sequence reads.” Genome Research. https://doi.org/10.1101/gr.246934.118
 
 ## Installation
 
@@ -38,27 +37,46 @@ For lzma:
   
 ## Guide for beginners
 
-If you are unfamiliar with detailed arguments of verifyBamID2, use the resources provided in the repository as input files. More specifically try to run the following commands
+We have prepared example cmdline and necessary auxiliary resource files in the repository.
+If you are unfamiliar with the arguments of verifyBamID2, you can verify the status of your BamFile by following examples listed below: 
 
 ### For BAM/CRAMs aligned to GRCh37 
 (Note that GRCh37 assumes ***without chr prefix*** 1000 Genomes version - not UCSC - of human genome build 37, which is available at ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/reference/human_g1k_v37.fasta.gz ). Use the following commands for the BAM/CRAM files mapped to GRCh37.
 
 ```
-$(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --UDPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b37.vcf.gz.dat.UD \
-  --BamFile [/path/to/bam/or/cram/file] --BedPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b37.vcf.gz.dat.bed \
+$(VERIFY_BAM_ID_HOME)/bin/VerifyBamID \
+  --UDPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b37.vcf.gz.dat.UD \
+  --BedPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b37.vcf.gz.dat.bed \
   --MeanPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b37.vcf.gz.dat.mu \
-  --Reference [/path/to/human_g1k_v37.fasta(.gz)]
+  --Reference [/path/to/human_g1k_v37.fasta(.gz)] \
+  --BamFile [/path/to/bam/or/cram/file]
 ```
-
+or simply:
+```
+$(VERIFY_BAM_ID_HOME)/bin/VerifyBamID \
+  --SVDPrefix $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b37.vcf.gz.dat \
+  --Reference [/path/to/human_g1k_v37.fasta(.gz)] \
+  --BamFile [/path/to/bam/or/cram/file]
+```
 ### For BAM/CRAMs aligned to GRCh38
 (Note that GRCh38 assumes ***with chr prefix*** 1000 Genomes version of human genome build 38, which is available at ftp://ftp-trace.ncbi.nih.gov/1000genomes/ftp/technical/reference/GRCh38_reference_genome ). Use the following commands for the BAM/CRAM files mapped to GRCh37.
 
 ```
-$(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --UDPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b38.vcf.gz.dat.UD \
-   --BamFile [/path/to/bam/or/cram/file] --BedPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b38.vcf.gz.dat.bed \
-   --MeanPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b38.vcf.gz.dat.mu \
-   --Reference [/path/to//GRCh38_full_analysis_set_plus_decoy_hla.fa]
+$(VERIFY_BAM_ID_HOME)/bin/VerifyBamID \
+  --UDPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b38.vcf.gz.dat.UD \
+  --BedPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b38.vcf.gz.dat.bed \
+  --MeanPath $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b38.vcf.gz.dat.mu \
+  --Reference [/path/to//GRCh38_full_analysis_set_plus_decoy_hla.fa] \
+  --BamFile [/path/to/bam/or/cram/file] 
 ```
+or simply:
+```
+$(VERIFY_BAM_ID_HOME)/bin/VerifyBamID \
+  --SVDPrefix $(VERIFY_BAM_ID_HOME)/resource/1000g.100k.b38.vcf.gz.dat \
+  --Reference [/path/to//GRCh38_full_analysis_set_plus_decoy_hla.fa] \
+  --BamFile [/path/to/bam/or/cram/file] 
+```
+
 ### Resource files are ready
 (for both 1000 Genome Project(1000g) dataset and Human Genome Diversity Project(hgdp) dataset are available)
 
@@ -67,12 +85,13 @@ You can directly use reference panel information by using our pre-calculated res
 ## Usage
 For regular estimation:
 ```
+$(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --BamFile [/path/to/bam/or/cram/file] --UDPath [/path/to/UD/file] --BedPath [/path/to/bed/file] --MeanPath [/path/to/mu/file] --Reference [/path/to/fasta/file]
+```
+or simply:
+```
 $(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --BamFile [/path/to/bam/or/cram/file] --SVDPrefix [/path/to/SVDPrefix/file] --Reference [/path/to/fasta/file]
 ```
-or
-```
-$(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --UDPath [/path/to/UD/file] --BamFile [/path/to/bam/or/cram/file] --BedPath [/path/to/bed/file] --MeanPath [/path/to/mu/file] --Reference [/path/to/fasta/file]
-```
+
 ```
 --SVDPrefix      [String] SVD related files prefix(normally shared by .UD, .mu and .bed files)[Required]
 --BamFile        [String] Bam or Cram file for the sample[Required]
