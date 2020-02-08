@@ -11,7 +11,7 @@
 * Input Files: Aligned NGS sequence files(BAM or CRAM); Marker related files(SVD result on genotype matrix, provided in resorce directory)
 
 * Please cite: 
-Fan Zhang, Matthew Flickinger, Sarah A. Gagliano Taliun, Gonçalo R. Abecasis, Laura J. Scott, Steven A. McCaroll, Carlos N. Pato, Michael Boehnke, and Hyun Min Kang. 2020. “Ancestry-agnostic estimation of DNA sample contamination from sequence reads.” Genome Research. https://doi.org/10.1101/gr.246934.118
+Fan Zhang, Matthew Flickinger, Sarah A. Gagliano Taliun, InPSYght Psychiatric Genetics Consortium, Gonçalo R. Abecasis, Laura J. Scott, Steven A. McCaroll, Carlos N. Pato, Michael Boehnke, and Hyun Min Kang. 2020. “Ancestry-agnostic estimation of DNA sample contamination from sequence reads.” Genome Research. https://doi.org/10.1101/gr.246934.118
 
 ## Installation
 
