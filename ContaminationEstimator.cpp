@@ -28,36 +28,25 @@ ContaminationEstimator::ContaminationEstimator(int nPC, const char *bedFile, int
 
 int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
     AmoebaMinimizer myMinimizer;
-    std::string fileName(OutputPrefix + ".out");
-    std::ofstream fout(fileName);
-    if(not fout.is_open())
-    {
-        error("Open file %s failed!",fileName.c_str());
-        exit(EXIT_FAILURE);
-    }
+
     fn.Initialize();
     if (!isHeter) {
         if (isPCFixed) {
             std::cout << "Estimation from OptimizeHomoFixedPC:" << std::endl;
-            fout << "Estimation from OptimizeHomoFixedPC:" << std::endl;
             OptimizeHomoFixedPC(myMinimizer);
         } else if (isAlphaFixed) {
-            std::cout << "Estimation from OptimizeHomoFixedAlpha:" << std::endl;
             OptimizeHomoFixedAlpha(myMinimizer);
         } else {
             std::cout << "Estimation from OptimizeHomo:" << std::endl;
-            fout << "Estimation from OptimizeHomo:" << std::endl;
             OptimizeHomo(myMinimizer);
         }
     } else//contamination source from different population
     {
         if (isPCFixed) {
             std::cout << "Estimation from OptimizeHeterFixedPC:" << std::endl;
-            fout << "Estimation from OptimizeHeterFixedPC:" << std::endl;
             OptimizeHeterFixedPC(myMinimizer);
         } else if (isAlphaFixed) {
             std::cout << "Estimation from OptimizeHeterFixedAlpha:" << std::endl;
-            fout << "Estimation from OptimizeHeterFixedAlpha:" << std::endl;
             isHeter = false;
             OptimizeHomoFixedAlpha(myMinimizer);
             PC[1] = PC[0];
@@ -66,7 +55,6 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
             OptimizeHeterFixedAlpha(myMinimizer);
         } else {
             std::cout << "Estimation from OptimizeHeter:" << std::endl;
-            fout << "Estimation from OptimizeHeter:" << std::endl;
             isHeter = false;
             OptimizeHomo(myMinimizer);
             PC[1] = PC[0];
@@ -81,26 +69,33 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
     }
     fn.CalculateLLK0();
     std::cout << "Contaminating Sample ";
-    fout << "Contaminating Sample ";
     for (int i = 0; i < numPC; ++i) {
         std::cout << "PC" << i + 1 << ":" << fn.globalPC[i] << "\t";
-        fout << "PC" << i + 1 << ":" << fn.globalPC[i] << "\t";
     }
     std::cout << std::endl;
-    fout << std::endl;
-
     std::cout << "Intended Sample ";
-    fout << "Intended Sample ";
     for (int i = 0; i < numPC; ++i) {
         std::cout << "PC" << i + 1 << ":" << fn.globalPC2[i] << "\t";
-        fout << "PC" << i + 1 << ":" << fn.globalPC2[i] << "\t";
     }
     std::cout << std::endl;
-    fout << std::endl;
-
     std::cout << "Alpha:" << (fn.globalAlpha < 0.5 ? fn.globalAlpha : (1 - fn.globalAlpha)) << std::endl;
-    fout << "Alpha:" << (fn.globalAlpha < 0.5 ? fn.globalAlpha : (1 - fn.globalAlpha)) << std::endl;
+
+    std::string fileName(OutputPrefix + ".Ancestry");
+    std::ofstream fout(fileName);
+    if(not fout.is_open())
+    {
+      error("Open file %s failed!",fileName.c_str());
+      exit(EXIT_FAILURE);
+    }
+    std::cout << "PC\tContaminatingSample\tIntendedSample"<<std::endl;
+    fout<< "PC\tContaminatingSample\tIntendedSample"<<std::endl;
+    for (int i = 0; i < numPC; ++i) {
+      std::cout << i + 1 << "\t" << fn.globalPC[i] << "\t"<< fn.globalPC2[i] << std::endl;
+      fout << i + 1 << "\t" << fn.globalPC[i] << "\t"<< fn.globalPC2[i] << std::endl;
+    }
+
     fout.close();
+
     if(!fout)
     {
         error("Errors detected when writing to file %s !",fileName.c_str());
