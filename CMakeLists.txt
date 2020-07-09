@@ -64,7 +64,7 @@ add_subdirectory(statgen)
 set(LIBSTATGEN_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/statgen")
 add_subdirectory(samtools)
 add_subdirectory(libVcf)
-set(SOURCE_FILES main.cpp SVDcalculator.cpp ContaminationEstimator.cpp MathGenMin.cpp MathGold.cpp Random.cpp SimplePileupViewer.cpp params.cpp )#SVDcalculator.cpp SVDcalculator.h)
+set(SOURCE_FILES main.cpp SVDcalculator.cpp ContaminationEstimator.cpp MathGenMin.cpp MathGold.cpp Random.cpp SimplePileupViewer.cpp params.cpp )
 include_directories(statgen ${HTS_INCLUDE_DIRS} samtools libVcf Eigen)
 add_executable(VerifyBamID ${SOURCE_FILES})
 

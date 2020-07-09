@@ -251,7 +251,7 @@ vector<region_t> SVDcalculator::GetBedVec() {
 void SVDcalculator::WriteSVD(const std::string &Prefix) {
     std::ofstream fMu(Prefix+".mu");
     std::ofstream fUD(Prefix+".UD");
-    std::ofstream fPC(Prefix+".PC");
+    std::ofstream fPC(Prefix+".V");
     std::ofstream fBed(Prefix+".bed");
     std::string chr;
     int beg(0),end(0);
