@@ -1,7 +1,7 @@
 #include <math.h>
 #include <limits.h>
 
-#include "libVcfVcfFile.h"
+#include "libVcfFile.h"
 using namespace libVcf;
 
 std::vector<double> VcfHelper::vPhred2Err;
@@ -34,7 +34,7 @@ bool VcfHelper::initChromNamesNums() {
 }
 
 bool VcfHelper::initChar2TwoBit() {
-  memset(char2twobit, sizeof(char), 255);
+  memset(char2twobit, 0, 255);
   char2twobit['A'] = 0;
   char2twobit['C'] = 1;
   char2twobit['G'] = 2;

@@ -249,7 +249,7 @@ int execute(int argc, char **argv) {
     Estimator.OptimizeLLK(outputPrefix);
 
     {//output vb1 compatible result
-        const char *headers = "#SEQ_ID\tRG\tCHIP_ID\t#SNPS\t#READS\tAVG_DP\tFREEMIX(alpha)\tFREELK1\tFREELK0\tFREE_RH\tFREE_RA\tCHIPMIX\tCHIPLK1\tCHIPLK0\tCHIP_RH\tCHIP_RA\tDPREF\tRDPHET\tRDPALT";
+        const char *headers = "#SEQ_ID\tRG\tCHIP_ID\t#SNPS\t#READS\tAVG_DP\tFREEMIX\tFREELK1\tFREELK0\tFREE_RH\tFREE_RA\tCHIPMIX\tCHIPLK1\tCHIPLK0\tCHIP_RH\tCHIP_RA\tDPREF\tRDPHET\tRDPALT";
         std::string fileName(outputPrefix + ".selfSM");
         std::ofstream fout(fileName);
         if(not fout.is_open())
@@ -280,13 +280,13 @@ int execute(int argc, char **argv) {
 
 // main function of verifyBamID
 int main(int argc, char** argv) {
-  fprintf(stderr, "VerifyBamID2: A robust tool for DNA contamination estimation from sequence reads using ancestry-agnostic method.\n\n");
-  fprintf(stderr, " Version:%s\n",VERSION);
-  fprintf(stderr, " Copyright (c) 2009-2018 by Hyun Min Kang and Fan Zhang\n");
-  fprintf(stderr, " This project is licensed under the terms of the MIT license.\n");
+    fprintf(stderr, "VerifyBamID2: A robust tool for DNA contamination estimation from sequence reads using ancestry-agnostic method.\n\n");
+    fprintf(stderr, " Version:%s\n",VERSION);
+    fprintf(stderr, " Copyright (c) 2009-2020 by Hyun Min Kang and Fan Zhang\n");
+    fprintf(stderr, " This project is licensed under the terms of the MIT license.\n");
 
 
-  int returnVal = 0;
+    int returnVal = 0;
     String compStatus;
     PhoneHome::allThinning = 50;
     try

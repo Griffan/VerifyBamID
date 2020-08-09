@@ -78,7 +78,7 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
         std::cout << "PC" << i + 1 << ":" << fn.globalPC2[i] << "\t";
     }
     std::cout << std::endl;
-    std::cout << "Alpha:" << (fn.globalAlpha < 0.5 ? fn.globalAlpha : (1 - fn.globalAlpha)) << std::endl;
+    std::cout << "FREEMIX(Alpha):" << (fn.globalAlpha < 0.5 ? fn.globalAlpha : (1 - fn.globalAlpha)) << std::endl;
 
     std::string fileName(OutputPrefix + ".Ancestry");
     std::ofstream fout(fileName);
@@ -87,10 +87,10 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
       error("Open file %s failed!",fileName.c_str());
       exit(EXIT_FAILURE);
     }
-    std::cout << "PC\tContaminatingSample\tIntendedSample"<<std::endl;
+    //std::cout << "PC\tContaminatingSample\tIntendedSample"<<std::endl;
     fout<< "PC\tContaminatingSample\tIntendedSample"<<std::endl;
     for (int i = 0; i < numPC; ++i) {
-      std::cout << i + 1 << "\t" << fn.globalPC[i] << "\t"<< fn.globalPC2[i] << std::endl;
+      //std::cout << i + 1 << "\t" << fn.globalPC[i] << "\t"<< fn.globalPC2[i] << std::endl;
       fout << i + 1 << "\t" << fn.globalPC[i] << "\t"<< fn.globalPC2[i] << std::endl;
     }
 

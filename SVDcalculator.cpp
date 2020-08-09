@@ -1,10 +1,10 @@
-#include <unordered_map>
-#include <fstream>
-#include <Error.h>
-#include <unordered_set>
 #include "SVDcalculator.h"
-#include "libVcf/libVcfVcfFile.h"
 #include "Eigen/Dense"
+#include "libVcf/libVcfFile.h"
+#include <Error.h>
+#include <fstream>
+#include <unordered_map>
+#include <unordered_set>
 using namespace libVcf;
 using namespace Eigen;
 

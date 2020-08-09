@@ -242,7 +242,7 @@ static int mplp_func(void *data, bam1_t *b) {
         if (ma->conf->fai && b->core.tid >= 0) {
             has_ref = mplp_get_ref(ma, b->core.tid, &ref, &ref_len);
             if (has_ref && ref_len <= b->core.pos) { // exclude reads outside of the reference sequence
-                fprintf(stderr, "[%s] Skipping because %d is outside of %d [ref:%d]\n",
+                fprintf(stderr, "[%s] Skipping because %lld is outside of %d [ref:%d]\n",
                         __func__, b->core.pos, ref_len, b->core.tid);
                 skip = 1;
                 continue;
