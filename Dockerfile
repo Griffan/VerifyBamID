@@ -30,7 +30,6 @@
      ./configure --prefix=/usr/local/ && \
      make && \
      make install
-  # Install VerifyBamID
 
  RUN git clone https://github.com/Griffan/VerifyBamID.git
  RUN cd VerifyBamID && \

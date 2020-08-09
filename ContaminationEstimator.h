@@ -400,9 +400,11 @@ public:
                 }
             }
             if (ptr->verbose)
-                std::cerr << "globalPC:" << globalPC[0] << "\tglobalPC:" << globalPC[1]
-                          << "\tglobalPC2:" << globalPC2[0] << "\tglobalPC2:" << globalPC2[1]
-                          << "\tglobalAlpha:" << globalAlpha << "\tllk:" << llk1 << std::endl;
+//                std::cerr << "ContaminatingSamplePC1:" << globalPC[0] << "\tContaminatingSamplePC2:" << globalPC[1]
+//                          << "\tIntendedSamplePC1:" << globalPC2[0] << "\tIntendedSamplePC2:" << globalPC2[1]
+//                          << "\tFREEMIX(Alpha):" << globalAlpha << "\tllk:" << llk1 << std::endl;
+                notice("ContaminatingSamplePC1:%f\tContaminatingSamplePC2:%f\tIntendedSamplePC1:%f\tIntendedSamplePC2:%f\tFREEMIX(Alpha):%f\tllk:%f",
+                       globalPC[0],globalPC[1],globalPC2[0],globalPC2[1],globalAlpha,llk1);
             return smLLK;
         }
     };

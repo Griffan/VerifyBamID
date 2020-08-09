@@ -135,6 +135,19 @@ Also, upon the completion of each run, you may find two files ending with suffix
 * “.selfSM” which shares the same format as VB1(https://genome.sph.umich.edu/wiki/VerifyBamID), and the key information FREEMIX indicates the estimated contamination level.
 * “.Ancestry” which contains the PC coordinates for both intended sample and contaminating sample, with each row being one PC.
 
+## Running from docker
+
+To run VB2 from docker hub, you can simply:
+```
+docker pull griffan/verifybamid2
+
+```
+and run the image by mounting local directory:
+```
+docker run -v  /localPath/localDirectory:/VerifyBamID/localDirectory  griffan/verifybamid2:v1.0.6 VerifyBamID --SVDPrefix /VerifyBamID/resource/1000g.phase3.10k.b37.vcf.gz.dat --BamFile  /VerifyBamID/localDirectory/targetSample.bam --Reference  /VerifyBamID/localDirectory/hs37d5.fa 
+```
+Make sure the "targetSample.bam" and "hs37d5.fa" are located inside "/localPath/localDirectory"
+
 ## Generating your own resource files.
 
 For producing customized resource files to be used as the input argument of verifyBamID2 generation, you need to start with a VCF file and FASTA formatted reference files. Please refer to the example below.
