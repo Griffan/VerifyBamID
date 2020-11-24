@@ -74,7 +74,7 @@ public:
 
     SimplePileupViewer(std::vector<region_t>* A,const char *bamFile, const char* faiFile, const char* bedFile,int nfiles=1);
 
-    int SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn);
+    int SimplePileup(mplp_conf_t *conf, int n, char **fn);
 
     SimplePileupViewer(const BED& BedFromEstimator, const std::string &pileupFile);
 

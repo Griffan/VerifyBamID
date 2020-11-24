@@ -267,25 +267,25 @@ static int mplp_func(void *data, bam1_t *b) {
     return ret;
 }
 
-
 /*
  * Performs pileup
  * @param conf configuration for this pileup
  * @param n number of files specified in fn
  * @param fn filenames
  */
-int SimplePileupViewer::SIMPLEmpileup(mplp_conf_t *conf, int n, char **fn) {
-    bool BedEOF;
-    hts_idx_t *idx = NULL;
-    numBases = 0;
-    avgDepth = 0;
-    sdDepth = 0;
+int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
+  bool BedEOF;
+  hts_idx_t *idx = NULL;
+  numBases = 0;
+  avgDepth = 0;
+  sdDepth = 0;
 
-    mplp_aux_t **data;
-    int i(0), tid(0), pos(0), *n_plp(0), beg0 = 0, end0 = INT_MAX, ref_len(0), max_depth(0), max_indel_depth(0);
-    const bam_pileup1_t **plp;
-    mplp_ref_t mp_ref = MPLP_REF_INIT;
-    bam_mplp_t iter;
+  mplp_aux_t **data;
+  int i(0), tid(0), pos(0), *n_plp(0), beg0 = 0, end0 = INT_MAX, ref_len(0),
+                                       max_depth(0), max_indel_depth(0);
+  const bam_pileup1_t **plp;
+  mplp_ref_t mp_ref = MPLP_REF_INIT;
+  bam_mplp_t iter;
     bam_hdr_t *h = NULL; /* header of first file in input list */
     char *ref;
     void *rghash = NULL;
@@ -707,13 +707,13 @@ SimplePileupViewer::SimplePileupViewer(std::vector<region_t> *BedPtr, const char
             std::cerr << "open bam file list failed!" << std::endl;
             exit(EXIT_FAILURE);
         }
-        ret = SIMPLEmpileup(&mplp, nfiles, fn);
+        ret = SimplePileup(&mplp, nfiles, fn);
         for (c = 0; c < nfiles; c++) free(fn[c]);
         free(fn);
     } else {
         fn = new char *[1];
         fn[0] = strdup(bamFile);
-        ret = SIMPLEmpileup(&mplp, nfiles, fn);
+        ret = SimplePileup(&mplp, nfiles, fn);
         free(fn[0]);
         delete[] fn;
     }
