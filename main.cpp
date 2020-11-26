@@ -20,38 +20,63 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
  */
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <sstream>
-#include "ContaminationEstimator.h"
-#include "params.h"
-#include "SVDcalculator.h"
-#include "PhoneHome.h"
 #include <stdexcept>
+
+#include "ContaminationEstimator.h"
+#include "PhoneHome.h"
+#include "SVDcalculator.h"
+#include "htslib/sam.h"
+#include "params.h"
 
 #define VERSION "1.0.6"
 
 int execute(int argc, char **argv) {
 
-    std::string UDPath("Empty"), PCPath("Empty"), MeanPath("Empty"), BedPath("Empty"), BamFileList("Empty"), BamFile("Empty"), RefPath(
-            "Empty"), outputPrefix("result"), PileupFile("Empty"), SVDPrefix("Empty");
-    std::string knownAF("Empty");
-    std::string RefVCF("Empty");
-    std::string fixPC("Empty");
-    double fixAlpha(-1.),epsilon(1e-8);
-    bool withinAncestry(false),outputPileup(false),verbose(false),disableSanityCheck(false);
-    int nfiles(0),seed(12345),nPC(2),nthread(4);
-    paramList pl;
-    BEGIN_LONG_PARAMS(longParameters)
-                    LONG_PARAM_GROUP("Input/Output Files",
-                                     "Input/Output files for the program[Complete Path Recommended]")
-                    LONG_STRING_PARAM("BamFile", &BamFile,
-                                      "[String] Bam or Cram file for the sample[Required if --PileupFile not specified]")
-                    LONG_STRING_PARAM("PileupFile", &PileupFile,
-                                      "[String] Pileup file for the sample[Required if --BamFile not specified]")
-                    LONG_STRING_PARAM("Reference", &RefPath,
-                                      "[String] Reference file[Required]")
-                    LONG_STRING_PARAM("SVDPrefix", &SVDPrefix,
+  std::string UDPath("Empty"), PCPath("Empty"), MeanPath("Empty"),
+      BedPath("Empty"), BamFileList("Empty"), BamFile("Empty"),
+      RefPath("Empty"), outputPrefix("result"), PileupFile("Empty"),
+      SVDPrefix("Empty");
+  std::string knownAF("Empty");
+  std::string RefVCF("Empty");
+  std::string fixPC("Empty");
+  double fixAlpha(-1.), epsilon(1e-8);
+  bool withinAncestry(false), outputPileup(false), verbose(false),
+      disableSanityCheck(false);
+  int nfiles(0), seed(12345), nPC(2), nthread(4);
+  /// mpileup arguments
+  mplp_conf_t mplp;
+  memset(&mplp, 0, sizeof(mplp_conf_t));
+  mplp.min_mq = 2;
+  mplp.min_baseQ = 13;
+  mplp.capQ_thres = 40;
+  mplp.max_depth = MPLP_MAX_DEPTH;
+  mplp.max_indel_depth = MPLP_MAX_INDEL_DEPTH;
+  mplp.openQ = 40;
+  mplp.extQ = 20;
+  mplp.tandemQ = 100;
+  mplp.min_frac = 0.002;
+  mplp.min_support = 1;
+  bool noOrphan = false;
+  mplp.flag = /*MPLP_NO_ORPHAN |*/ MPLP_REALN | MPLP_SMART_OVERLAPS;
+  mplp.rflag_filter = BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP;
+  mplp.output_fname = NULL;
+  ///
+  paramList pl;
+  BEGIN_LONG_PARAMS(longParameters)
+  LONG_PARAM_GROUP(
+      "Input/Output Files",
+      "Input/Output files for the program[Complete Path Recommended]")
+  LONG_STRING_PARAM("BamFile", &BamFile,
+                    "[String] Bam or Cram file for the sample[Required if "
+                    "--PileupFile not specified]")
+  LONG_STRING_PARAM("PileupFile", &PileupFile,
+                    "[String] Pileup file for the sample[Required if --BamFile "
+                    "not specified]")
+  LONG_STRING_PARAM("Reference", &RefPath, "[String] Reference file[Required]")
+  LONG_STRING_PARAM("SVDPrefix", &SVDPrefix,
                                       "[String] SVD related files prefix(normally shared by .UD, .mu and .bed files)[Required]")
                     LONG_STRING_PARAM("Output", &outputPrefix,
                                       "[String] Prefix of output files[optional]")
@@ -65,42 +90,92 @@ int execute(int argc, char **argv) {
                                      "[Int] Set number of PCs to infer Allele Frequency[optional]")
                     LONG_STRING_PARAM("FixPC", &fixPC, "[String] Input fixed PCs to estimate Alpha[format PC1:PC2:PC3...]")
                     LONG_DOUBLE_PARAM("FixAlpha", &fixAlpha, "[Double] Input fixed Alpha to estimate PC coordinates")
-                    LONG_STRING_PARAM("KnownAF", &knownAF, "[String] known allele frequency file (chr\tpos\tfreq)[Optional]")
+                    LONG_STRING_PARAM("KnownAF", &knownAF,
+                                      "[String] known allele frequency file "
+                                      "(chr\tpos\tfreq)[Optional]")
                     LONG_INT_PARAM("NumThread", &nthread,
-                                   "[Int] Set number of threads in likelihood calculation[default:4]")
-                    LONG_INT_PARAM("Seed",&seed,"[Int] Random number seed[default:12345]")
-                    LONG_DOUBLE_PARAM("Epsilon",&epsilon,"[Double] Minimization procedure convergence threshold, usually a trade-off bettween accuracy and running time[default:1e-10]")
-                    LONG_PARAM("OutputPileup", &outputPileup, "[Bool] If output temp pileup file")
-                    LONG_PARAM("Verbose", &verbose, "[Bool] If print the progress of the method on the screen")
-                    LONG_PARAM_GROUP("Construction of SVD Auxiliary Files","Use these options when generating SVDPrefix files")
-                    LONG_STRING_PARAM("RefVCF", &RefVCF,
-                                      "[String] VCF file from which to extract reference panel's genotype matrix[Required if no SVD files available]")
-                    LONG_PARAM_GROUP("Deprecated Options",
-                                     "These options still are available but not recommended")
+                                   "[Int] Set number of threads in likelihood "
+                                   "calculation[default:4]")
+                    LONG_INT_PARAM("Seed", &seed,
+                                   "[Int] Random number seed[default:12345]")
+                    LONG_DOUBLE_PARAM(
+                        "Epsilon", &epsilon,
+                        "[Double] Minimization procedure convergence "
+                        "threshold, usually a trade-off bettween accuracy and "
+                        "running time[default:1e-10]")
+                    LONG_PARAM("OutputPileup", &outputPileup,
+                               "[Bool] If output temp pileup file")
+                    LONG_PARAM("Verbose", &verbose,
+                               "[Bool] If print the progress of the method on "
+                               "the screen")
+                    LONG_PARAM_GROUP(
+                        "Construction of SVD Auxiliary Files",
+                        "Use these options when generating SVDPrefix files")
+                    LONG_STRING_PARAM(
+                        "RefVCF", &RefVCF,
+                        "[String] VCF file from which to extract reference "
+                        "panel's genotype matrix[Required if no SVD files "
+                        "available]")
+                    LONG_PARAM_GROUP("Pileup Options",
+                                     "Arguments for pileup info extraction")
+                    LONG_INT_PARAM(
+                        "min-BQ", &mplp.min_baseQ,
+                        "[Int] skip bases with baseQ/BAQ smaller than min-BQ")
+                    LONG_INT_PARAM(
+                        "min-MQ", &mplp.min_mq,
+                        "[Int] skip alignments with mapQ smaller than min-MQ")
+                    LONG_INT_PARAM("adjust-MQ", &mplp.capQ_thres,
+                                   "[Int] adjust mapping quality; "
+                                   "recommended:50, disable:0")
+                    LONG_INT_PARAM("max-depth", &mplp.max_depth,
+                                   "[Int] max per-file depth")
+                    LONG_PARAM("no-orphans", &noOrphan,
+                               "[Bool] do not use anomalous read pairs")
+                    LONG_INT_PARAM(
+                        "incl-flags", &mplp.flag,
+                        "[Int] required flags: skip reads with mask bits unset")
+                    LONG_INT_PARAM(
+                        "excl-flags", &mplp.rflag_filter,
+                        "[Int] filter flags: skip reads with mask bits set")
+
+                    LONG_PARAM_GROUP(
+                        "Deprecated Options",
+                        "These options still are available but not recommended")
                     LONG_STRING_PARAM("UDPath", &UDPath,
-                                      "[String] UD matrix file from SVD result of genotype matrix")
-                    LONG_STRING_PARAM("MeanPath", &MeanPath,
-                                      "[String] Mean matrix file of genotype matrix")
-                    LONG_STRING_PARAM("BedPath", &BedPath,
-                                      "[String] Bed file for markers used in this analysis,1 based pos(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]")
+                                      "[String] UD matrix file from SVD result "
+                                      "of genotype matrix")
+                    LONG_STRING_PARAM(
+                        "MeanPath", &MeanPath,
+                        "[String] Mean matrix file of genotype matrix")
+                    LONG_STRING_PARAM(
+                        "BedPath", &BedPath,
+                        "[String] Bed file for markers used in this analysis,1 "
+                        "based "
+                        "pos(chr\tpos-1\tpos\trefAllele\taltAllele)[Required]")
+                    END_LONG_PARAMS();
 
+                    pl.Add(new longParams("Available Options", longParameters));
+                    pl.Read(argc, argv);
+                    pl.Status();
 
-    END_LONG_PARAMS();
+                    /// Pass along mpileup arguments
+                    if (noOrphan)
+                      mplp.flag |= MPLP_NO_ORPHAN;
+                    else
+                      mplp.flag &= 0XFFFFFFFF ^ MPLP_NO_ORPHAN;
+                    /// End of mpileup parsing
 
-    pl.Add(new longParams("Available Options", longParameters));
-    pl.Read(argc, argv);
-    pl.Status();
-
-    if (nPC > 4)
-    {
-        error("--NumPC only permits as large as 4 PCs when using SVD files in ${verifybamID}/resource/ directory!");
-        error("You can always prepare you own SVD files with arbitrary number of PCs with --RefVCF enabled.");
-        exit(EXIT_FAILURE);
-    }
-    if (RefVCF == "Empty") {
-        if (SVDPrefix == "Empty") {
-            if (UDPath == "Empty") {
-                error("--UDPath is required when --RefVCF is absent");
+                    if (nPC > 4) {
+                      error("--NumPC only permits as large as 4 PCs when using "
+                            "SVD files in ${verifybamID}/resource/ directory!");
+                      error("You can always prepare you own SVD files with "
+                            "arbitrary number of PCs with --RefVCF enabled.");
+                      exit(EXIT_FAILURE);
+                    }
+                    if (RefVCF == "Empty") {
+                      if (SVDPrefix == "Empty") {
+                        if (UDPath == "Empty") {
+                          error("--UDPath is required when --RefVCF is absent");
                 exit(EXIT_FAILURE);
             }
             if (MeanPath == "Empty") {
@@ -197,7 +272,8 @@ int execute(int argc, char **argv) {
     Estimator.ReadSVDMatrix(UDPath, PCPath, MeanPath);
 
     if(nfiles)
-        Estimator.ReadBam(BamFile.c_str(), RefPath.c_str(), BedPath.c_str());
+      Estimator.ReadBam(BamFile.c_str(), RefPath.c_str(), BedPath.c_str(),
+                        &mplp);
     else
         Estimator.ReadPileup(PileupFile);
 

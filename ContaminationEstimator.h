@@ -454,7 +454,8 @@ public:
 
     int ReadAF(const std::string &path);
 
-    int ReadBam(const char *bamFile, const char *faiFile, const char *bedFile);
+    int ReadBam(const char *bamFile, const char *faiFile, const char *bedFile,
+                mplp_conf_t *mplpPtr);
 
     int ReadPileup(const std::string &pileupFile);
 

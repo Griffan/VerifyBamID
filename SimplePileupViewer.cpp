@@ -1,43 +1,26 @@
 #include "SimplePileupViewer.h"
+
+#include <algorithm>
+#include <ctype.h>
+#include <errno.h>
+#include <fstream>
+#include <getopt.h>
+#include <iostream>
+#include <limits.h>
 #include <math.h>
+#include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <ctype.h>
 #include <string.h>
-#include <limits.h>
-#include <errno.h>
-#include <algorithm>
 #include <sys/stat.h>
-#include <getopt.h>
-#include "htslib/sam.h"
 
-#include "htslib/kstring.h"
+#include "Error.h"
 #include "htslib/khash_str2int.h"
-#include "sam_header.h"
-#include "samtools.h"
-#include <assert.h>
-#include <sample.h>
-#include <Error.h>
+#include "htslib/kstring.h"
+#include "htslib/sam.h"
 #include "htslib/vcf.h"
 #include "sample.h"
-
-
-static inline int printw(int c, FILE *fp) {
-    char buf[16];
-    int l, x;
-    if (c == 0) return fputc('0', fp);
-    for (l = 0, x = c < 0 ? -c : c; x > 0; x /= 10) buf[l++] = x % 10 + '0';
-    if (c < 0) buf[l++] = '-';
-    buf[l] = 0;
-    for (x = 0; x < l / 2; ++x) {
-        int y = buf[x];
-        buf[x] = buf[l - 1 - x];
-        buf[l - 1 - x] = y;
-    }
-    fputs(buf, fp);
-    return 0;
-}
+#include "samtools.h"
 
 static inline void
 pileup_seq(FILE *fp, const bam_pileup1_t *p, int pos, int ref_len, const char *ref, std::vector<char> &tmpBase) {
@@ -78,20 +61,6 @@ pileup_seq(FILE *fp, const bam_pileup1_t *p, int pos, int ref_len, const char *r
 //    if (p->is_tail) putc('$', fp);
 }
 
-
-#define MPLP_BCF        1
-#define MPLP_VCF        (1<<1)
-#define MPLP_NO_COMP    (1<<2)
-#define MPLP_NO_ORPHAN  (1<<3)
-#define MPLP_REALN      (1<<4)
-#define MPLP_NO_INDEL   (1<<5)
-#define MPLP_REDO_BAQ   (1<<6)
-#define MPLP_ILLUMINA13 (1<<7)
-#define MPLP_IGNORE_RG  (1<<8)
-#define MPLP_PRINT_POS  (1<<9)
-#define MPLP_PRINT_MAPQ (1<<10)
-#define MPLP_PER_SAMPLE (1<<11)
-#define MPLP_SMART_OVERLAPS (1<<12)
 
 #ifdef __cplusplus
 extern "C" {
@@ -646,49 +615,33 @@ int read_file_list(const char *file_list, int *n, char **argv[]) {
 
 #undef MAX_PATH_LEN
 
-#include <iostream>
-#include <fstream>
-#include <sstream>
 
 SimplePileupViewer::SimplePileupViewer() {
 
 }
 
-SimplePileupViewer::SimplePileupViewer(std::vector<region_t> *BedPtr, const char *bamFile, const char *faiFile,
-                                       const char *bedFile, int nfiles) {
-    bedVec = BedPtr;
-    regIndex = 0;
-    int c;
-    const char *file_list = bamFile;
-    char **fn = NULL;
-//    int nfiles = 0, use_orphan = 0;
-//    mplp_conf_t mplp;
-    memset(&mplp, 0, sizeof(mplp_conf_t));
-    mplp.min_mq = 13;
-    mplp.min_baseQ = 2;
-    mplp.capQ_thres = 40;
-    mplp.max_depth = 250;
-    mplp.max_indel_depth = 250;
-    mplp.openQ = 40;
-    mplp.extQ = 20;
-    mplp.tandemQ = 100;
-    mplp.min_frac = 0.002;
-    mplp.min_support = 1;
-    mplp.flag = /*MPLP_NO_ORPHAN |*/ MPLP_REALN | MPLP_SMART_OVERLAPS;
-    mplp.argc = 0;
-    mplp.argv = 0;
-    mplp.rflag_filter = BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP;
-    mplp.output_fname = NULL;
-    sam_global_args_init(&mplp.ga);
-    if (faiFile == NULL) {
-        std::cerr << "fai file open failed!" << std::endl;
-        exit(EXIT_FAILURE);
-    } else {
-        mplp.fai = fai_load(faiFile);
-        mplp.fai_fname = const_cast<char *>(faiFile);
-        if (mplp.fai == NULL) {
-            std::cerr << "open fai file failed!";
-            exit(EXIT_FAILURE);
+SimplePileupViewer::SimplePileupViewer(std::vector<region_t> *BedPtr,
+                                       const char *bamFile, const char *faiFile,
+                                       const char *bedFile,
+                                       mplp_conf_t *mplpPtr, int nfiles) {
+  bedVec = BedPtr;
+  regIndex = 0;
+
+  const char *file_list = bamFile;
+  char **fn = NULL;
+
+  mplp = *mplpPtr;
+
+  sam_global_args_init(&mplp.ga);
+  if (faiFile == NULL) {
+    std::cerr << "fai file open failed!" << std::endl;
+    exit(EXIT_FAILURE);
+  } else {
+    mplp.fai = fai_load(faiFile);
+    mplp.fai_fname = const_cast<char *>(faiFile);
+    if (mplp.fai == NULL) {
+      std::cerr << "open fai file failed!";
+      exit(EXIT_FAILURE);
         }
         mplp.ga.reference = mplp.fai_fname;
     }
@@ -708,7 +661,8 @@ SimplePileupViewer::SimplePileupViewer(std::vector<region_t> *BedPtr, const char
             exit(EXIT_FAILURE);
         }
         ret = SimplePileup(&mplp, nfiles, fn);
-        for (c = 0; c < nfiles; c++) free(fn[c]);
+        for (int c = 0; c < nfiles; c++)
+          free(fn[c]);
         free(fn);
     } else {
         fn = new char *[1];
