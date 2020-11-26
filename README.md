@@ -108,6 +108,12 @@ $(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --BamFile [/path/to/bam/or/cram/file] --SV
 --Verbose        [Bool] If print the progress of the method on the screen
 /*To construct SVDPrefix auxillary files*/
 --RefVCF         [String] Reference panel VCF with genotype information, for generation of .UD .mu .bed files[Optional]
+/*Pileup information related*/
+--no-orphans     [Bool] Skip anomalous read pairs in variant calling. Anomolous read pairs are those marked in the FLAG field as paired in sequencing but without the properly-paired flag set. [Optional]
+--adjust-MQ      [Int] Coefficient for downgrading mapping quality for reads containing excessive mismatches. Given a read with a phred-scaled probability q of being generated from the mapped position, the new mapping quality is about sqrt((INT-q)/INT)*INT. A zero value disables this functionality; if enabled, the recommended value for BWA is 50. [default:40]
+--max-depth      [Int] Setting this limit reduces the amount of memory and time needed to process regions with very high coverage. Passing zero for this option sets it to the highest possible value, effectively removing the depth limit. [8000]
+--incl-flags     [Int] Required flags: skip reads with mask bits unset [null]
+--excl-flags     [Int] Filter flags: skip reads with mask bits set [UNMAP,SECONDARY,QCFAIL,DUP]
 /*Below are deprecated but still available*/
 --UDPath         [String] .UD matrix file from SVD result of genotype matrix[Required]
 --MeanPath       [String] .mu matrix file of genotype matrix[Required]
