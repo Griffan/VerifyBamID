@@ -31,7 +31,7 @@ SOFTWARE.
 #include "htslib/sam.h"
 #include "params.h"
 
-#define VERSION "1.0.7"
+#define VERSION "2.0.1"
 
 int execute(int argc, char **argv) {
 
