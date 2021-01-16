@@ -1,16 +1,14 @@
 # Source Image
  FROM ubuntu:latest
-
+ FROM gcc:7.5
   # Set noninterative mode
  ENV DEBIAN_FRONTEND noninteractive
 
   # apt update and install global requirements
  RUN apt-get clean all && \
      apt-get update && \
-     apt-get upgrade -y && \
      apt-get install -y  \
          autoconf \
-         build-essential \
          cmake \
          git \
          libbz2-dev \
@@ -23,7 +21,7 @@
  RUN apt-get clean && \
      rm -rf /var/lib/apt/lists/*
 
- RUN git clone https://github.com/samtools/htslib.git
+ RUN git clone git://github.com/samtools/htslib.git
  RUN cd htslib && \
      autoheader && \
      autoconf && \
@@ -31,7 +29,7 @@
      make && \
      make install
 
- RUN git clone https://github.com/Griffan/VerifyBamID.git
+ RUN git clone git://github.com/Griffan/VerifyBamID.git
  RUN cd VerifyBamID && \
      mkdir build && \
      cd build && \

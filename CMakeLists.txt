@@ -15,22 +15,22 @@ if (OPENMP_FOUND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif ()
 
-find_library(CURLLIB curl HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
+find_library(CURLLIB curl HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/ /usr/local/lib/)
 if (NOT CURLLIB)
     message(FATAL_ERROR "libcurl library not found")
 endif ()
 
-find_library(ZLIB z HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/ /usr/local/Cellar/zlib/1.2.11/lib/)
+find_library(ZLIB z HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/ /usr/local/lib/ /usr/local/Cellar/zlib/1.2.11/lib/)
 if (NOT ZLIB)
     message(FATAL_ERROR "libz library not found")
 endif ()
 
-find_path(HTS_INCLUDE_DIRS htslib/bgzf.h HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
+find_path(HTS_INCLUDE_DIRS htslib/bgzf.h HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/ /usr/local/include/)
 if (NOT HTS_INCLUDE_DIRS)
     message(FATAL_ERROR "libhts HTS_INCLUDE_DIRS not found")
 endif ()
 
-find_library(HTS_LIBRARIES hts HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
+find_library(HTS_LIBRARIES hts HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/ /usr/local/lib/)
 if (NOT HTS_LIBRARIES)
     message(FATAL_ERROR "libhts HTS_LIBRARIES not found")
 endif ()
@@ -43,7 +43,7 @@ else ()
     set(BZIP2 ${BZIP2_LIBRARIES})
 endif ()
 
-find_library(LZMA lzma HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/)
+find_library(LZMA lzma HINTS /usr/lib/x86_64-linux-gnu/ /usr/lib/ /usr/lib64/ /usr/local/lib/)
 if(NOT LZMA)
     message(WARNING "liblzma library not found, if you specified --disable-lzma when compiling libhts, please ignore this warning")
     set(LZMA "")
@@ -63,9 +63,9 @@ add_executable(VerifyBamID ${SOURCE_FILES})
 target_link_libraries(VerifyBamID statgen Vcf ${HTS_LIBRARIES} samtools ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
 
 enable_testing()
-add_test( NAME myTest1
-          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-          COMMAND VerifyBamID --DisableSanityCheck --UDPath resource/test/hapmap_3.3.b37.dat.UD --BamFile resource/test/test.bam --BedPath resource/test/hapmap_3.3.b37.dat.bed --MeanPath resource/test/hapmap_3.3.b37.dat.mu --Reference resource/test/chr20.fa.gz )
+add_test(NAME myTest1
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz)
 #add_test( NAME myTest2
 #          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 #          COMMAND sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/run.plot.sh -i ${CMAKE_CURRENT_SOURCE_DIR}/resource/test/hapmap_3.3.b37.dat.V -o ${CMAKE_CURRENT_SOURCE_DIR}/resource/test/hapmap -r 1000g -g grey)
