@@ -21,21 +21,24 @@
  RUN apt-get clean && \
      rm -rf /var/lib/apt/lists/*
 
- RUN git clone git://github.com/samtools/htslib.git
- RUN cd htslib && \
+ RUN git clone git://github.com/samtools/htslib.git && \
+     cd htslib && \
      autoheader && \
      autoconf && \
      ./configure --prefix=/usr/local/ && \
      make && \
      make install
 
- RUN git clone git://github.com/Griffan/VerifyBamID.git
- RUN cd VerifyBamID && \
+ENV LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH
+
+ RUN git clone git://github.com/Griffan/VerifyBamID.git && \
+     cd VerifyBamID && \
      mkdir build && \
      cd build && \
      cmake .. && \
      make && \
      make test
+
  RUN cp /VerifyBamID/bin/VerifyBamID /usr/local/bin
 
   # Define default command
