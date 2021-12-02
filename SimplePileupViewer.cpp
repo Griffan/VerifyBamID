@@ -222,9 +222,9 @@ static int mplp_func(void *data, bam1_t *b) {
 
         skip = 0;
         if (has_ref && (ma->conf->flag & MPLP_REALN))
-            bam_prob_realn_core(b, ref, ref_len, (ma->conf->flag & MPLP_REDO_BAQ) ? 7 : 3);
+            sam_prob_realn(b, ref, ref_len, (ma->conf->flag & MPLP_REDO_BAQ) ? 7 : 3);
         if (has_ref && ma->conf->capQ_thres > 10) {
-            int q = bam_cap_mapQ(b, ref, ref_len, ma->conf->capQ_thres);
+            int q = sam_cap_mapq(b, ref, ref_len, ma->conf->capQ_thres);
             if (q < 0) skip = 1;
             else if (b->core.qual > q) b->core.qual = q;
         }
