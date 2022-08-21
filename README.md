@@ -16,6 +16,7 @@ Fan Zhang, Matthew Flickinger, Sarah A. Gagliano Taliun, InPSYght Psychiatric Ge
 
 ## Installation
 
+### From source code
   - mkdir build
   - cd build
   - cmake ..
@@ -35,6 +36,9 @@ For lzma:
 
   - make
   - make test
+  
+### From bioconda
+conda install -c bioconda verifybamid2 
   
 ## Guide for beginners
 
