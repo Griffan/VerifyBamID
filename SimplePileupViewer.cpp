@@ -368,10 +368,9 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
     max_depth = conf->max_depth;
     if (max_depth * sm->n > 1 << 20)
         fprintf(stderr, "[%s] Max depth is above 1M. Potential memory hog!\n", __func__);
-    if (max_depth * sm->n < 8000) {
-        max_depth = 8000 / sm->n;
-        fprintf(stderr, "[%s] Set max per-file depth to %d\n", __func__, max_depth);
-    }
+
+    fprintf(stderr, "[%s] Set max per-file depth to %d\n", __func__, max_depth);
+
     max_indel_depth = conf->max_indel_depth * sm->n;
     bam_mplp_set_maxcnt(iter, max_depth);
     bcf1_t *bcf_rec = bcf_init1();
