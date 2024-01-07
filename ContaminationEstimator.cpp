@@ -264,8 +264,18 @@ int ContaminationEstimator::ReadMatrixUD(const std::string &path) {
     }
     while (fin.readLine(line)==0) {
         std::stringstream ss(line);
-        for (int index = 0; index != numPC; ++index)
-            ss >> tmpUD[index];
+        int index = 0;
+        while(index < numPC && ss>>tmpUD[index])
+        {
+          index++;
+        }
+        // Upon finish the line, index == numPC is expected
+        if (index < numPC) {
+          warning("--NumPC should be less than or equal to the number of PCs in SVD files provided by --SVDPrefix! (Expected:%d vs Observed:%d)", numPC, index);
+          warning("--NumPC only permits as large as 4 PCs when using SVD files in ${verifybamID}/resource/ directory!");
+          warning("You can always prepare you own SVD files with arbitrary number of PCs with --RefVCF enabled.");
+          exit(EXIT_FAILURE);
+        }
         UD.push_back(tmpUD);
         //Initialize arrays
         NumMarker++;
