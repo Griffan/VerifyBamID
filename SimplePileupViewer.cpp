@@ -706,6 +706,44 @@ static std::string ParsePileupSeq(std::string seq, std::string refAllele)
     }
     return newSeq;
 }
+
+// adapted from ParsePileupSeq(..) above to ensure both bases and quals are synchronized
+static void ParsePileupSeqBasesOnly(std::string seq, std::string qual, std::string refAllele, std::string &pseq, std::string &pqual)
+{
+    pseq.clear();
+    pqual.clear();
+    std::transform(seq.begin(), seq.end(), seq.begin(), [](unsigned char c){ return std::toupper(c); });
+    for(int i=0, iq=0; i!=seq.size(); ++i) {
+        if(seq[i]=='+' or seq[i]=='-') {
+            int tmpIndex=i+1;
+            while(tmpIndex != seq.size() and std::isdigit(seq[tmpIndex])) {
+                tmpIndex++;
+            }
+            int digitLen=tmpIndex-(i+1);
+            int clipLen=std::stoi(seq.substr(i+1,digitLen));
+            i+= digitLen + clipLen;
+        } else if(seq[i] == '^') {
+            i+=1;
+        }
+        else if(seq[i]=='.' or seq[i]==',') {
+            pseq += refAllele[0];
+            pqual += qual[iq];
+            ++iq;
+        } else if(seq[i] == 'A' or seq[i]== 'G' or seq[i] =='C' or seq[i] == 'T' or seq[i]=='N') {
+            pseq += seq[i];
+            assert(iq<qual.length());
+            pqual += qual[iq];
+            ++iq;
+        } else if(seq[i]=='*' or seq[i]=='#') {
+            // skip deletion ; not modeled (just like insertion)
+            // pseq += seq[i];
+            // pqual += qual[iq];
+            ++iq;
+        }
+    }
+    assert(pseq.length()==pqual.length());
+}
+
 int SimplePileupViewer::ReadPileup(const std::string &filePath) {
 
     int globalIndex=0;
@@ -738,6 +776,12 @@ int SimplePileupViewer::ReadPileup(const std::string &filePath) {
             }
         }
 //        seq=ParsePileupSeq(seq,refAllele);
+        std::string pseq;
+        std::string pqual;
+        ParsePileupSeqBasesOnly(seq, qual, refAllele, pseq, pqual);
+        seq = pseq;
+        qual = pqual;
+        depth = pqual.length(); // count only SNPs, not indels
 
         if(bedTable.find(pChr)==bedTable.end())
             continue;
