@@ -708,6 +708,7 @@ static std::string ParsePileupSeq(std::string seq, std::string refAllele)
 }
 
 // adapted from ParsePileupSeq(..) above to ensure both bases and quals are synchronized
+// https://www.htslib.org/doc/samtools-mpileup.html#Pileup_Format
 static void ParsePileupSeqBasesOnly(std::string seq, std::string qual, std::string refAllele, std::string &pseq, std::string &pqual)
 {
     pseq.clear();
@@ -722,7 +723,7 @@ static void ParsePileupSeqBasesOnly(std::string seq, std::string qual, std::stri
             int digitLen=tmpIndex-(i+1);
             int clipLen=std::stoi(seq.substr(i+1,digitLen));
             i+= digitLen + clipLen;
-        } else if(seq[i] == '^') {
+        } else if(seq[i] == '^' || seq[i] == '$') {
             i+=1;
         }
         else if(seq[i]=='.' or seq[i]==',') {
