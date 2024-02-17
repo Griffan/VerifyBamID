@@ -66,6 +66,16 @@ enable_testing()
 add_test(NAME myTest1
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2)
-#add_test( NAME myTest2
+add_test(NAME myTest2
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sh -c "diff resource/test/expected/result.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
+add_test(NAME myTest3
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --PileupFile resource/test/expected/result.Pileup --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2)
+add_test(NAME myTest4
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sh -c "diff resource/test/expected/result.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
+
+#add_test( NAME myTestPlot
 #          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 #          COMMAND sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/run.plot.sh -i ${CMAKE_CURRENT_SOURCE_DIR}/resource/test/hapmap_3.3.b37.dat.V -o ${CMAKE_CURRENT_SOURCE_DIR}/resource/test/hapmap -r 1000g -g grey)
