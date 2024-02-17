@@ -3,13 +3,11 @@
 .Rhistory
 .RData
 libStatGen
-result*
 Debug
 Release
 build
 samtools/htslib/
-result.selfSM
-cmake-build-debug/
-cmake-build-release/
+cmake-build-debug*
+cmake-build-release*
 VerifyBamID
 *vcf.gz
