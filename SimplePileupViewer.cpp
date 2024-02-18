@@ -712,7 +712,6 @@ static void ParsePileupSeqBasesOnly(std::string seq, std::string qual, std::stri
 {
     pseq.clear();
     pqual.clear();
-    std::transform(seq.begin(), seq.end(), seq.begin(), [](unsigned char c){ return std::toupper(c); });
     for(int i=0, iq=0; i!=seq.size(); ++i) {
         if(seq[i]=='+' or seq[i]=='-') {
             int tmpIndex=i+1;
@@ -726,10 +725,12 @@ static void ParsePileupSeqBasesOnly(std::string seq, std::string qual, std::stri
             i+=1;
         }
         else if(seq[i]=='.' or seq[i]==',') {
-            pseq += refAllele[0];
+            //pseq += refAllele[0]; // FIXME: upper/lower case
+            pseq += seq[i];
             pqual += qual[iq];
             ++iq;
-        } else if(seq[i] == 'A' or seq[i]== 'G' or seq[i] =='C' or seq[i] == 'T' or seq[i]=='N') {
+        } else if(seq[i] == 'A' or seq[i]== 'G' or seq[i] =='C' or seq[i] == 'T' or seq[i]=='N'
+            or seq[i] == 'a' or seq[i]== 'g' or seq[i] =='c' or seq[i] == 't' or seq[i]=='n') {
             pseq += seq[i];
             assert(iq<qual.length());
             pqual += qual[iq];
