@@ -75,6 +75,12 @@ add_test(NAME myTest3
 add_test(NAME myTest4
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND sh -c "diff resource/test/expected/result.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
+add_test(NAME myTest5
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --PileupFile resource/test/test.LongRead.pileup --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2)
+add_test(NAME myTest6
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sh -c "diff resource/test/expected/test.LongRead.pileup.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
 
 #add_test( NAME myTestPlot
 #          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
