@@ -137,7 +137,7 @@ First line: Which model used
 
 Second line: PC coordinates of Contaminating Sample
 
-Third line: PC coordinates of Intended Sample(the sample your are interested)
+Third line: PC coordinates of Intended Sample(the sample in which you are interested)
 
 Fourth line: Estimated contamination level 
 
