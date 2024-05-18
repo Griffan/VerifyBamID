@@ -187,7 +187,23 @@ sh $(VERIFY_BAM_ID_HOME)/bin/run.plot.sh -i ./resource/test/hapmap_3.3.b37.dat.V
 ```
 You may run ``sh $(VERIFY_BAM_ID_HOME)/bin/run.plot.sh -h`` for further help.
 
+## Debugging Mode
 
+If you encounter abnormal errors, e.g. "Segmentation fault", you can try to recompile the build under debugging mode:
+```
+cmake .. -DCMAKE_BUILD_TYPE=Debug
+```
+and then rerun your command line to locate the backtrace message, and then post it to issues page, for example:
+```
+Stack trace (most recent call last):
+#6    Object "VerifyBamID", at 0x10ad9d822, in main + 466
+#5    Object "VerifyBamID", at 0x10ad9b53d, in execute(int, char**) + 8509
+#4    Object "VerifyBamID", at 0x10adc70c7, in ContaminationEstimator::OptimizeLLK(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&) + 903
+#3    Object "VerifyBamID", at 0x10adc9408, in ContaminationEstimator::OptimizeHeter(AmoebaMinimizer&) + 1560
+#2    Object "libsystem_platform.dylib", at 0x7ff8182f0dfc, in _sigtramp + 28
+#1    Object "VerifyBamID", at 0x10ad9e3ed, in backward::SignalHandling::sig_handler(int, __siginfo*, void*) + 13
+#0    Object "VerifyBamID", at 0x10ad9e456, in backward::SignalHandling::handleSignal(int, __siginfo*, void*) + 70
+```
 ## Contributing
 
 1. Fork it!

@@ -30,6 +30,7 @@ SOFTWARE.
 #include "SVDcalculator.h"
 #include "htslib/sam.h"
 #include "params.h"
+#include "backward.hpp"
 
 #define VERSION "2.0.1"
 
@@ -347,7 +348,14 @@ int main(int argc, char** argv) {
     fprintf(stderr, " Copyright (c) 2009-2020 by Hyun Min Kang and Fan Zhang\n");
     fprintf(stderr, " This project is licensed under the terms of the MIT license.\n");
 
-
+#if DEBUG == 1
+    using namespace backward;
+    std::vector<int> signals;
+    signals.push_back(SIGSEGV);
+    SignalHandling sh(signals);
+    std::cout << std::boolalpha << "enable segfault handler... " << sh.loaded() << std::endl;
+    std::cout << std::boolalpha << "sh.loaded() == " << sh.loaded() << std::endl;
+#endif
     int returnVal = 0;
     String compStatus;
     PhoneHome::allThinning = 50;
