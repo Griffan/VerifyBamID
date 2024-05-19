@@ -95,9 +95,9 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
 
             StringArray phred;
 
-            long phred11;
-            long phred12;
-            long phred22;
+            long phred11 = 0;
+            long phred12 = 0;
+            long phred22 = 0;
             std::vector<char> perMarkerGeno(nSamples,-1);
             for (int i = 0; i < nSamples; i++)//for each individual
             {
@@ -105,38 +105,43 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                     if(PLGLGTflag==0)//found PL
                     {
                         phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], ",");
-                        phred11=phred[idx11].AsInteger();
-                        phred12=phred[idx12].AsInteger();
-                        phred22=phred[idx22].AsInteger();
+                        if (phred[0] != ".") {
+                          phred11 = phred[idx11].AsInteger();
+                          phred12 = phred[idx12].AsInteger();
+                          phred22 = phred[idx22].AsInteger();
+                        }
                     }
                     else if(PLGLGTflag == 1)//found GL
                     {
                         phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], ",");
-                        phred11=static_cast<int>(-10. * phred[idx11].AsDouble());
-                        phred12=static_cast<int>(-10. * phred[idx12].AsDouble());
-                        phred22=static_cast<int>(-10. * phred[idx22].AsDouble());
+                        if (phred[0] != ".") {
+                          phred11 =
+                              static_cast<int>(-10. * phred[idx11].AsDouble());
+                          phred12 =
+                              static_cast<int>(-10. * phred[idx12].AsDouble());
+                          phred22 =
+                              static_cast<int>(-10. * phred[idx22].AsDouble());
+                        }
                     }
                     else//found GT
                     {
                         phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], "|/");
-                        long geno=phred[0].AsInteger()+phred[1].AsInteger();
-                        if(geno==0)
-                        {
-                            phred11=0;
-                            phred12=30;
-                            phred22=50;
-                        }
-                        else if(geno==1)
-                        {
-                            phred11=50;
-                            phred12=0;
-                            phred22=50;
-                        }
-                        else
-                        {
-                            phred11=50;
-                            phred12=30;
-                            phred22=0;
+                        if (phred[0] != ".") {
+                          long geno =
+                              phred[0].AsInteger() + phred[1].AsInteger();
+                          if (geno == 0) {
+                            phred11 = 0;
+                            phred12 = 30;
+                            phred22 = 50;
+                          } else if (geno == 1) {
+                            phred11 = 50;
+                            phred12 = 0;
+                            phred22 = 50;
+                          } else {
+                            phred11 = 50;
+                            phred12 = 30;
+                            phred22 = 0;
+                          }
                         }
                     }
 
