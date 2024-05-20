@@ -54,30 +54,31 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
             markerName.printf("%s:%d", pMarker->sChrom.c_str(), pMarker->nPos);
             if(prevMarkerName==markerName)
             {
-                fprintf(stderr,"Duplicated Marker at %s\n",markerName.c_str());
-                exit(EXIT_FAILURE);
+                error("Duplicated Marker: %s",markerName.c_str());
+            }
+            if(pMarker->asFilters.Length()>1 || pMarker->asFilters[0]!="PASS")
+            {
+              warning("Skip filtered (%s) marker: %s",pMarker->asFilters[0].c_str(), markerName.c_str());
+              continue;
+            }
+            if(pMarker->asAlts.Length()>1)
+            {
+              warning("Skip non-Biallelic marker: %s",markerName.c_str());
+              continue;
+            }
+            if(pMarker->sRef.Length()>1 or pMarker->asAlts[0].Length()>1 )
+            {
+                warning("Skip non-SNP marker: %s",markerName.c_str());
+                continue;
             }
             if(acceptChr.find(std::string(pMarker->sChrom.c_str())) == acceptChr.end())
             {
-                fprintf(stderr,"skip non-autosome at %s\n",markerName.c_str());
-                continue;
-            }
-//            if(pMarker->sChrom.Compare("X")==0 or pMarker->sChrom.Compare("chrX")==0 or
-//              pMarker->sChrom.Compare("Y")==0 or pMarker->sChrom.Compare("chrY")==0)
-//            {
-//                fprintf(stderr,"skip non-autosome at %s\n",markerName.c_str());
-//                continue;
-//            }
-            if(pMarker->sRef.Length()>1 or pMarker->asAlts[0].Length()>1 )
-            {
-                fprintf(stderr,"skip indel at %s\n",markerName.c_str());
-                continue;
+              warning("Skip non-autosome marker: %s",markerName.c_str());
+              continue;
             }
             refAllele=pMarker->sRef[0];
             altAllele=pMarker->asAlts[0][0];
 
-            chooseBed[pMarker->sChrom.c_str()][pMarker->nPos]=std::make_pair(refAllele,altAllele);
-            BedVec.push_back(region_t(pMarker->sChrom.c_str(),pMarker->nPos-1,pMarker->nPos));
             int PLidx = pMarker->asFormatKeys.Find("PL");
             int PLGLGTflag = 0;//0 for PL, 1 for GL, 2 for GT
             if (PLidx < 0) {
@@ -89,7 +90,6 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                     else throw VcfFileException("Cannot recognize GT, GL or PL key in FORMAT field");
                 }
             }
-            //printf("reading vcf 1\n\n");
             int formatLength = pMarker->asFormatKeys.Length();
             int idx11 = 0, idx12 = 1, idx22 = 2;
 
@@ -99,22 +99,24 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
             long phred12 = 0;
             long phred22 = 0;
             std::vector<char> perMarkerGeno(nSamples,-1);
+            int nMissingGenoSamples = 0;
             for (int i = 0; i < nSamples; i++)//for each individual
             {
                     if(nMarkers==0) Samples.push_back(pVcf->getSampleID(i).c_str());
                     if(PLGLGTflag==0)//found PL
                     {
                         phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], ",");
-                        if (phred[0] != ".") {
+                        if (phred.Length() == 3 && phred[0] != ".") {
                           phred11 = phred[idx11].AsInteger();
                           phred12 = phred[idx12].AsInteger();
                           phred22 = phred[idx22].AsInteger();
                         }
+                        else nMissingGenoSamples++;
                     }
                     else if(PLGLGTflag == 1)//found GL
                     {
                         phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], ",");
-                        if (phred[0] != ".") {
+                        if (phred.Length() == 3 && phred[0] != ".") {
                           phred11 =
                               static_cast<int>(-10. * phred[idx11].AsDouble());
                           phred12 =
@@ -122,11 +124,12 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                           phred22 =
                               static_cast<int>(-10. * phred[idx22].AsDouble());
                         }
+                        else nMissingGenoSamples++;
                     }
                     else//found GT
                     {
                         phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], "|/");
-                        if (phred[0] != ".") {
+                        if (phred.Length() == 3 && phred[0] != ".") {
                           long geno =
                               phred[0].AsInteger() + phred[1].AsInteger();
                           if (geno == 0) {
@@ -143,6 +146,7 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                             phred22 = 0;
                           }
                         }
+                        else nMissingGenoSamples++;
                     }
 
                     if ((phred11 < 0) || (phred12 < 0) || (phred22 < 0)) {
@@ -155,7 +159,7 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
 //
 //                    printf("phred scores are %f, %f, %f;\tphred11/12/22 %d, %d, %d\n", phred[idx11].AsDouble(), phred[idx12].AsDouble(), phred[idx22].AsDouble(),phred11,phred12,phred22);
                     int minGeno = -1;
-                    int minPhred = maxPhred;
+                    long minPhred = maxPhred;
                     if(phred11 < minPhred)
                     {
                         minPhred = phred11;
@@ -172,10 +176,18 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                         minGeno = 2;
                     }
                     perMarkerGeno[i] = minGeno;
+            }
 
-//                    fprintf(stderr,"marker:%d\t%d\t%d\t%d\n",markerindex,engine.genotypes[personIndices[i]][genoindex],engine.genotypes[personIndices[i]][genoindex + 1],engine.genotypes[personIndices[i]][genoindex + 2] );
+            float genoMissingRate = static_cast<float>(nMissingGenoSamples) / nSamples;
+            if(genoMissingRate > 0.2f)
+            {
+              warning("Skip marker (%s) with high missing rate (%f > 0.2) in genotype fields.",markerName.c_str(), genoMissingRate);
+              continue;
             }
             genotype.push_back(perMarkerGeno);
+            chooseBed[pMarker->sChrom.c_str()][pMarker->nPos]=std::make_pair(refAllele,altAllele);
+            BedVec.push_back(region_t(pMarker->sChrom.c_str(),pMarker->nPos-1,pMarker->nPos));
+
             nMarkers++;
             prevMarkerName = markerName;
         }
@@ -197,8 +209,12 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath)
     ReadVcf(VcfPath, genotype, numIndividual, numMarker);
     MatrixXf genoMatrix(numMarker,numIndividual);
 //    std::cerr<<numMarker<<"\t"<<genotype.size()<<"\t"<<numIndividual<<"\t"<<genotype[0].size()<<std::endl;
-    notice("Number of Markers:%d\n",numMarker);
-    notice("Number of Individuals:%d\n",numIndividual);
+    notice("Number of Markers:%d",numMarker);
+    notice("Number of Individuals:%d",numIndividual);
+    if(numMarker < 5000 || numIndividual < 1000)
+    {
+      error("Insufficient available number of Markers(5000) or Individuals(1000)\n");
+    }
 
     for (int i = 0; i <genotype.size() ; ++i) {//per marker
         for (int j = 0; j <genotype[i].size() ; ++j) {//per sample
