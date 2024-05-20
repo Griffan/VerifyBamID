@@ -166,6 +166,13 @@ For producing customized resource files to be used as the input argument of veri
 VerifyBamID --RefVCF ReferencePanel.vcf.gz --Reference ./resource/test/chr20.fa.gz
 
 ```
+Note that for the ReferencePanel.vcf.gz, VerifyBamID expects each marker:
+* bi-allelic 
+* SNP only 
+* with "PASS" filter label 
+* with valid GT,GL or PL field
+* genotype missing rate less than 20%
+* at least 5000 markers
 
 In the example above, the expected output file names will be ``ReferencePanel.vcf.gz.UD, ReferencePanel.vcf.gz.mu, ReferencePanel.vcf.gz.bed``
 
