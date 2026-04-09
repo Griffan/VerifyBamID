@@ -42,6 +42,7 @@ int execute(int argc, char **argv) {
       SVDPrefix("Empty");
   std::string knownAF("Empty");
   std::string RefVCF("Empty");
+  int numSVDPCs(10);
   std::string fixPC("Empty");
   double fixAlpha(-1.), epsilon(1e-8);
   bool withinAncestry(false), outputPileup(false), verbose(false),
@@ -119,6 +120,9 @@ int execute(int argc, char **argv) {
                     "[String] VCF file from which to extract reference "
                     "panel's genotype matrix[Required if no SVD files "
                     "available]")
+  LONG_INT_PARAM("NumSVDPCs", &numSVDPCs,
+                 "[Int] Number of principal components to write to SVD "
+                 "output files. Set to 0 for all components[default:10]")
   LONG_PARAM_GROUP("Pileup Options", "Arguments for pileup info extraction")
   LONG_INT_PARAM("min-BQ", &mplp.min_baseQ,
                  "[Int] skip bases with baseQ/BAQ smaller than min-BQ")
@@ -186,7 +190,7 @@ int execute(int argc, char **argv) {
     notice("You may specify --SVDPrefix [RefVCF path](or --UDPath [RefVCF "
            "path].UD and --MeanPath [RefVCF path].mu) in future use");
     SVDcalculator calculator;
-    calculator.ProcessRefVCF(RefVCF);
+    calculator.ProcessRefVCF(RefVCF, numSVDPCs);
     UDPath = RefVCF + ".UD";
     MeanPath = RefVCF + ".mu";
     BedPath = RefVCF + ".bed";

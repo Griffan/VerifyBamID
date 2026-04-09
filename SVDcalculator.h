@@ -21,7 +21,8 @@ private:
 public:
     SVDcalculator();
     ~SVDcalculator();
-    void ProcessRefVCF(const std::string& VcfPath);
+    /// @param numSVDPCs  number of PCs to write (0 = all)
+    void ProcessRefVCF(const std::string& VcfPath, int numSVDPCs = 10);
     int ReadVcf(const std::string &VcfPath,
                 std::vector<std::vector<char> >& genotype,
                 int & nSamples, int& nMarkers);
@@ -31,7 +32,8 @@ public:
     std::vector<PCtype> GetMuArray();
     BED GetchooseBed();
     std::vector<region_t> GetBedVec();
-    void WriteSVD(const std::string &VcfPath);
+    /// @param numSVDPCs  number of PCs to write (0 = all available)
+    void WriteSVD(const std::string &VcfPath, int numSVDPCs);
 };
 
 
