@@ -3,6 +3,7 @@
 #include "libVcf/libVcfFile.h"
 #include <Error.h>
 #include <fstream>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 using namespace libVcf;
@@ -192,6 +193,16 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
             prevMarkerName = markerName;
         }
 
+        // Log per-chromosome marker counts
+        std::map<std::string, int> chrCounts;
+        for (const auto& reg : BedVec) {
+            chrCounts[reg.chr]++;
+        }
+        notice("Markers retained across %d chromosome(s):", (int)chrCounts.size());
+        for (const auto& kv : chrCounts) {
+            notice("  %s: %d markers", kv.first.c_str(), kv.second);
+        }
+
         delete pVcf;
         //delete pMarker;
     }
@@ -209,15 +220,16 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath)
     ReadVcf(VcfPath, genotype, numIndividual, numMarker);
     MatrixXf genoMatrix(numMarker,numIndividual);
 //    std::cerr<<numMarker<<"\t"<<genotype.size()<<"\t"<<numIndividual<<"\t"<<genotype[0].size()<<std::endl;
-    notice("Number of Markers:%d",numMarker);
-    notice("Number of Individuals:%d",numIndividual);
+    notice("Number of Markers after filtering: %d",numMarker);
+    notice("Number of Individuals: %d",numIndividual);
     if(numMarker < 5000 || numIndividual < 1000)
     {
       error("Insufficient available number of Markers(5000) or Individuals(1000)\n");
     }
 
-    for (int i = 0; i <genotype.size() ; ++i) {//per marker
-        for (int j = 0; j <genotype[i].size() ; ++j) {//per sample
+    notice("Building genotype matrix (%d markers x %d individuals)...", numMarker, numIndividual);
+    for (int i = 0; i < (int)genotype.size() ; ++i) {//per marker
+        for (int j = 0; j < (int)genotype[i].size() ; ++j) {//per sample
             genoMatrix(i,j)=genotype[i][j];
         }
     }
@@ -229,6 +241,7 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath)
         }
         Mu.push_back(mu(rowIdx));
     }
+    notice("Computing SVD decomposition...");
     JacobiSVD<MatrixXf> svd(genoMatrix, ComputeThinU | ComputeThinV);
     auto matrixD = svd.singularValues().asDiagonal();
     MatrixXf matrixUD = svd.matrixU() * matrixD;//marker X PC
@@ -298,4 +311,6 @@ void SVDcalculator::WriteSVD(const std::string &Prefix) {
     fMu.close();
     fUD.close();
     fPC.close();
+    notice("SVD output files written: %s.UD, %s.mu, %s.bed, %s.V",
+           Prefix.c_str(), Prefix.c_str(), Prefix.c_str(), Prefix.c_str());
 }
