@@ -21,7 +21,9 @@ private:
 public:
     SVDcalculator();
     ~SVDcalculator();
-    void ProcessRefVCF(const std::string& VcfPath);
+    /// @param skipMinSampleCountCheck  if true, < 1000 samples becomes a warning not an error
+    void ProcessRefVCF(const std::string& VcfPath,
+                       bool skipMinSampleCountCheck = false);
     int ReadVcf(const std::string &VcfPath,
                 std::vector<std::vector<char> >& genotype,
                 int & nSamples, int& nMarkers);

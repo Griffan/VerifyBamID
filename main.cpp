@@ -42,6 +42,7 @@ int execute(int argc, char **argv) {
       SVDPrefix("Empty");
   std::string knownAF("Empty");
   std::string RefVCF("Empty");
+  bool skipMinSampleCountCheck(false);
   std::string fixPC("Empty");
   double fixAlpha(-1.), epsilon(1e-8);
   bool withinAncestry(false), outputPileup(false), verbose(false),
@@ -119,6 +120,12 @@ int execute(int argc, char **argv) {
                     "[String] VCF file from which to extract reference "
                     "panel's genotype matrix[Required if no SVD files "
                     "available]")
+  LONG_PARAM("SkipMinSampleCountCheck", &skipMinSampleCountCheck,
+             "[Bool] ADVANCED: skip the minimum sample count check (1000) "
+             "when generating SVD files. Using fewer than 1000 samples may "
+             "produce unreliable contamination estimates unless your "
+             "reference panel adequately captures the population "
+             "structure[default:false]")
   LONG_PARAM_GROUP("Pileup Options", "Arguments for pileup info extraction")
   LONG_INT_PARAM("min-BQ", &mplp.min_baseQ,
                  "[Int] skip bases with baseQ/BAQ smaller than min-BQ")
@@ -186,7 +193,7 @@ int execute(int argc, char **argv) {
     notice("You may specify --SVDPrefix [RefVCF path](or --UDPath [RefVCF "
            "path].UD and --MeanPath [RefVCF path].mu) in future use");
     SVDcalculator calculator;
-    calculator.ProcessRefVCF(RefVCF);
+    calculator.ProcessRefVCF(RefVCF, skipMinSampleCountCheck);
     UDPath = RefVCF + ".UD";
     MeanPath = RefVCF + ".mu";
     BedPath = RefVCF + ".bed";
