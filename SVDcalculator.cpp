@@ -2,6 +2,7 @@
 #include "Eigen/Dense"
 #include "libVcf/libVcfFile.h"
 #include <Error.h>
+#include <algorithm>
 #include <fstream>
 #include <map>
 #include <unordered_map>
@@ -19,7 +20,8 @@ SVDcalculator::~SVDcalculator() {}
 
 int SVDcalculator::ReadVcf(const std::string &VcfPath,
                            std::vector<std::vector<char> >& genotype,
-                           int & nSamples, int& nMarkers) {
+                           int & nSamples, int& nMarkers,
+                           const std::unordered_set<std::string>& includeChr) {
     try {
         int maxPhred=255;
         VcfFile *pVcf = new VcfFile;
@@ -35,12 +37,10 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                                    VcfPath.c_str());
         }
 
-        std::unordered_set<std::string> acceptChr={"1","2","3","4","5","6","7","8","9","10",
-                                              "11","12","13","14","15","16","17","18","19","20",
-                                              "21","22",
-                                              "chr1", "chr2", "chr3","chr4","chr5","chr6","chr7","chr8", "chr9","chr10",
-                                              "chr11","chr12","chr13","chr14","chr15","chr16","chr17", "chr18","chr19",
-                                              "chr20","chr21","chr22"};
+        bool filterByChrom = !includeChr.empty();
+        if (filterByChrom) {
+            notice("Filtering to %d chromosome(s) specified by --IncludeChr", (int)includeChr.size());
+        }
 
         nSamples = pVcf->getSampleCount();
         nMarkers = 0;
@@ -72,9 +72,8 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                 warning("Skip non-SNP marker: %s",markerName.c_str());
                 continue;
             }
-            if(acceptChr.find(std::string(pMarker->sChrom.c_str())) == acceptChr.end())
+            if(filterByChrom && includeChr.find(std::string(pMarker->sChrom.c_str())) == includeChr.end())
             {
-              warning("Skip non-autosome marker: %s",markerName.c_str());
               continue;
             }
             refAllele=pMarker->sRef[0];
@@ -212,19 +211,37 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
     return 0;
 }
 
-void SVDcalculator::ProcessRefVCF(const std::string &VcfPath)
+void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
+                                  const std::unordered_set<std::string>& includeChr, 
+                                  bool skipMinSampleCountCheck,
+                                  int numSVDPCs)
 {
 
     std::vector<std::vector<char> > genotype;//markers X samples
 
-    ReadVcf(VcfPath, genotype, numIndividual, numMarker);
+    ReadVcf(VcfPath, genotype, numIndividual, numMarker, includeChr);
     MatrixXf genoMatrix(numMarker,numIndividual);
-//    std::cerr<<numMarker<<"\t"<<genotype.size()<<"\t"<<numIndividual<<"\t"<<genotype[0].size()<<std::endl;
+
     notice("Number of Markers after filtering: %d",numMarker);
     notice("Number of Individuals: %d",numIndividual);
-    if(numMarker < 5000 || numIndividual < 1000)
+
+    if(numMarker < 5000)
     {
-      error("Insufficient available number of Markers(5000) or Individuals(1000)\n");
+      error("Insufficient number of markers (need >= 5000, have %d)\n", numMarker);
+    }
+
+    if(numIndividual < 1000)
+    {
+      if (skipMinSampleCountCheck) {
+        warning("Only %d individuals in reference panel (recommended minimum is 1000). "
+                "Proceeding because --SkipMinSampleCountCheck is set. Contamination "
+                "estimates may be unreliable if the panel does not adequately capture "
+                "population structure.", numIndividual);
+      } else {
+        error("Insufficient number of individuals (need >= 1000, have %d). If your "
+              "reference panel adequately captures population structure with fewer "
+              "samples, rerun with --SkipMinSampleCountCheck.\n", numIndividual);
+      }
     }
 
     notice("Building genotype matrix (%d markers x %d individuals)...", numMarker, numIndividual);
@@ -243,6 +260,33 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath)
     }
     notice("Computing SVD decomposition...");
     JacobiSVD<MatrixXf> svd(genoMatrix, ComputeThinU | ComputeThinV);
+
+    // Log proportion of variance explained by each principal component.
+    // Variance explained by PC_i = sigma_i^2 / sum(sigma_j^2) where sigma
+    // are the singular values. This helps users choose an appropriate --NumPC.
+    auto singularValues = svd.singularValues();
+    double totalVariance = 0.0;
+    for (int i = 0; i < singularValues.size(); ++i) {
+        totalVariance += (double)singularValues[i] * (double)singularValues[i];
+    }
+    notice("SVD completed. Total singular values: %d", (int)singularValues.size());
+    double cumulative = 0.0;
+    int numToLog = std::min((int)singularValues.size(), 20);
+    if (totalVariance <= 0.0) {
+        warning("Total variance is zero after SVD; skipping variance-explained logging for principal components.");
+    } else {
+        for (int i = 0; i < numToLog; ++i) {
+            double sv = singularValues[i];
+            double varExplained = (sv * sv) / totalVariance;
+            cumulative += varExplained;
+            notice("  PC%d: singular_value=%.4f  variance_explained=%.4f (%.2f%%)  cumulative=%.4f (%.2f%%)",
+                   i + 1, sv, varExplained, varExplained * 100.0, cumulative, cumulative * 100.0);
+        }
+        if ((int)singularValues.size() > numToLog) {
+            notice("  ... (%d more components not shown)", (int)singularValues.size() - numToLog);
+        }
+    }
+
     auto matrixD = svd.singularValues().asDiagonal();
     MatrixXf matrixUD = svd.matrixU() * matrixD;//marker X PC
     UD.resize(matrixUD.rows(),std::vector<double>(matrixUD.cols(),0.f));
@@ -259,7 +303,7 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath)
         }
     }
 
-    WriteSVD(VcfPath);
+    WriteSVD(VcfPath, numSVDPCs);
 }
 
 vector<vector<double>> SVDcalculator::GetUDMatrix() {
@@ -282,7 +326,18 @@ vector<region_t> SVDcalculator::GetBedVec() {
     return BedVec;
 }
 
-void SVDcalculator::WriteSVD(const std::string &Prefix) {
+void SVDcalculator::WriteSVD(const std::string &Prefix, int numSVDPCs) {
+    // Determine how many PCs to write
+    int numAvailable = (numMarker > 0 && !UD.empty()) ? (int)UD[0].size() : 0;
+    int numToWrite;
+    if (numSVDPCs <= 0) {
+        numToWrite = numAvailable;
+    } else {
+        numToWrite = std::min(numSVDPCs, numAvailable);
+    }
+    notice("Writing SVD output files with %d PCs (of %d available) to prefix: %s",
+           numToWrite, numAvailable, Prefix.c_str());
+
     std::ofstream fMu(Prefix+".mu");
     std::ofstream fUD(Prefix+".UD");
     std::ofstream fPC(Prefix+".V");
@@ -295,14 +350,14 @@ void SVDcalculator::WriteSVD(const std::string &Prefix) {
         end=BedVec[i].end;
         fMu<<chr+":"+std::to_string(end)<<"\t"<<Mu[i]<<std::endl;
         fBed<<chr<<"\t"<<beg<<"\t"<<end<<"\t"<<chooseBed[chr][end].first<<"\t"<<chooseBed[chr][end].second<<std::endl;
-        for (int j = 0; j < 10/*UD[i].size()*/ ; ++j) {
+        for (int j = 0; j < numToWrite; ++j) {
             fUD<<UD[i][j]<<"\t";
         }
         fUD<<std::endl;
     }
     for (int k = 0; k <numIndividual; ++k) {
         fPC<<Samples[k]<<"\t";
-        for (int i = 0; i < 10/*PC[k].size()*/; ++i) {
+        for (int i = 0; i < numToWrite; ++i) {
             fPC<<PC[k][i]<<"\t";
         }
         fPC<<std::endl;

@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <map>
+#include <unordered_set>
 #include "SimplePileupViewer.h"
 
 class SVDcalculator {
@@ -21,17 +22,30 @@ private:
 public:
     SVDcalculator();
     ~SVDcalculator();
-    void ProcessRefVCF(const std::string& VcfPath);
+
+    /// Read a reference VCF, compute SVD, and write .UD, .mu, .bed, .V files.
+    /// @param includeChr  if non-empty, only markers on these chromosomes are used
+    /// @param skipMinSampleCountCheck  if true, < 1000 samples becomes a warning not an error
+    /// @param numSVDPCs  number of PCs to write (0 = all)
+    void ProcessRefVCF(const std::string& VcfPath,
+                       const std::unordered_set<std::string>& includeChr,
+                       bool skipMinSampleCountCheck = false,
+                       int numSVDPCs = 10);
+
+    /// Parse a VCF into a genotype matrix.
+    /// @param includeChr  if non-empty, only markers on these chromosomes are used
     int ReadVcf(const std::string &VcfPath,
                 std::vector<std::vector<char> >& genotype,
-                int & nSamples, int& nMarkers);
-//    int Decompose();
-    std::vector<std::vector<double>> GetUDMatrix();//return the matrix
+                int & nSamples, int& nMarkers,
+                const std::unordered_set<std::string>& includeChr);
+
+    std::vector<std::vector<double>> GetUDMatrix();
     std::vector<std::vector<double>> GetPCMatrix();
     std::vector<PCtype> GetMuArray();
     BED GetchooseBed();
     std::vector<region_t> GetBedVec();
-    void WriteSVD(const std::string &VcfPath);
+    /// @param numSVDPCs  number of PCs to write (0 = all available)
+    void WriteSVD(const std::string &VcfPath, int numSVDPCs);
 };
 
 
