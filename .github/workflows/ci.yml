@@ -14,8 +14,12 @@ jobs:
   build:
     if: |
       github.event_name != 'issue_comment' ||
-      (github.event.issue.pull_request && contains(github.event.comment.body, 'retest')) ||
-      (github.event.issue.pull_request && contains(github.event.comment.body, 'jenkins'))
+      (github.event.issue.pull_request && (
+        contains(github.event.comment.body, 'retest') ||
+        contains(github.event.comment.body, 'Retest') ||
+        contains(github.event.comment.body, 'jenkins') ||
+        contains(github.event.comment.body, 'Jenkins')
+      ))
     
     strategy:
       fail-fast: false
