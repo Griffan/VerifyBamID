@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  build:
+    if: |
+      github.event_name != 'issue_comment' ||
+      (github.event.issue.pull_request && contains(github.event.comment.body, 'retest')) ||
+      (github.event.issue.pull_request && contains(github.event.comment.body, 'jenkins'))
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        compiler: [gcc-9, gcc, clang]
+        exclude:
+          # GCC 9 may not be available on macOS, keep only latest gcc and clang
+          - os: macos-latest
+            compiler: gcc-9
+
+    runs-on: ${{ matrix.os }}
+    name: Build on ${{ matrix.os }} with ${{ matrix.compiler }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set compiler environment variables
+        id: compiler
+        run: |
+          case "${{ matrix.compiler }}" in
+            gcc-9)
+              echo "CC=gcc-9" >> $GITHUB_ENV
+              echo "CXX=g++-9" >> $GITHUB_ENV
+              echo "compiler-name=gcc9" >> $GITHUB_OUTPUT
+              ;;
+            gcc)
+              echo "CC=gcc" >> $GITHUB_ENV
+              echo "CXX=g++" >> $GITHUB_ENV
+              echo "compiler-name=gcc-latest" >> $GITHUB_OUTPUT
+              ;;
+            clang)
+              echo "CC=clang" >> $GITHUB_ENV
+              echo "CXX=clang++" >> $GITHUB_ENV
+              echo "compiler-name=clang" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Install dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          APT_GET="apt-get"
+          if command -v sudo >/dev/null 2>&1; then
+            APT_GET="sudo apt-get"
+          fi
+          $APT_GET update
+          $APT_GET install -y \
+            cmake \
+            g++ \
+            gcc-9 \
+            g++-9 \
+            clang \
+            libbz2-dev \
+            libcurl4-openssl-dev \
+            zlib1g-dev \
+            liblzma-dev
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install \
+            cmake \
+            gcc \
+            llvm \
+            bzip2 \
+            curl \
+            xz
+
+      - name: Get commit hash
+        id: commit
+        run: |
+          COMMIT_HASH=$(git rev-parse --short=6 HEAD)
+          echo "short-sha=${COMMIT_HASH}" >> $GITHUB_OUTPUT
+
+      - name: Cache htslib
+        id: cache-htslib
+        uses: actions/cache@v3
+        with:
+          path: |
+            /usr/local/lib/libhts*
+            /usr/local/include/htslib
+          key: htslib-1.11-${{ runner.os }}
+
+      - name: Download and build htslib
+        if: steps.cache-htslib.outputs.cache-hit != 'true'
+        run: |
+          cd /tmp
+          wget -q https://github.com/samtools/htslib/releases/download/1.11/htslib-1.11.tar.bz2
+          tar -xf htslib-1.11.tar.bz2
+          cd htslib-1.11
+          ./configure --prefix=/usr/local
+          make -j"$(nproc || sysctl -n hw.ncpu || echo 2)"
+          if command -v sudo >/dev/null 2>&1; then
+            sudo make install
+          else
+            make install
+          fi
+
+      - name: Create build directory
+        run: mkdir -p build
+
+      - name: Configure CMake
+        run: |
+          cd build
+          cmake \
+            -DCMAKE_C_COMPILER=${{ env.CC }} \
+            -DCMAKE_CXX_COMPILER=${{ env.CXX }} \
+            ..
+
+      - name: Build
+        run: |
+          cd build
+          make
+
+      - name: Run tests
+        run: |
+          cd build
+          make test
+
+      - name: Prepare artifacts
+        if: success()
+        run: |
+          mkdir -p artifacts
+          cp bin/VerifyBamID artifacts/ || true
+          cp -r build/Testing artifacts/test-results || true
+
+      - name: Upload artifacts
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          name: VerifyBamID-${{ runner.os }}-${{ steps.compiler.outputs.compiler-name }}-${{ steps.commit.outputs.short-sha }}-${{ github.run_number }}
+          path: artifacts/
+          retention-days: 30
+
+  test-summary:
+    runs-on: ubuntu-latest
+    needs: build
+    if: always()
+    steps:
+      - name: Check build status
+        run: |
+          if [ "${{ needs.build.result }}" == "success" ]; then
+            echo "✅ All builds passed!"
+            exit 0
+          else
+            echo "❌ Some builds failed"
+            exit 1
+          fi
