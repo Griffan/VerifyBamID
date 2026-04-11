@@ -2,6 +2,7 @@
 #include "Eigen/Dense"
 #include "libVcf/libVcfFile.h"
 #include <Error.h>
+#include <algorithm>
 #include <fstream>
 #include <unordered_map>
 #include <unordered_set>
@@ -201,7 +202,8 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
 
 void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
                                   const std::unordered_set<std::string>& includeChr, 
-                                  bool skipMinSampleCountCheck)
+                                  bool skipMinSampleCountCheck,
+                                  int numSVDPCs)
 {
 
     std::vector<std::vector<char> > genotype;//markers X samples
@@ -244,6 +246,33 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
         Mu.push_back(mu(rowIdx));
     }
     JacobiSVD<MatrixXf> svd(genoMatrix, ComputeThinU | ComputeThinV);
+
+    // Log proportion of variance explained by each principal component.
+    // Variance explained by PC_i = sigma_i^2 / sum(sigma_j^2) where sigma
+    // are the singular values. This helps users choose an appropriate --NumPC.
+    auto singularValues = svd.singularValues();
+    double totalVariance = 0.0;
+    for (int i = 0; i < singularValues.size(); ++i) {
+        totalVariance += (double)singularValues[i] * (double)singularValues[i];
+    }
+    notice("SVD completed. Total singular values: %d", (int)singularValues.size());
+    double cumulative = 0.0;
+    int numToLog = std::min((int)singularValues.size(), 20);
+    if (totalVariance <= 0.0) {
+        warning("Total variance is zero after SVD; skipping variance-explained logging for principal components.");
+    } else {
+        for (int i = 0; i < numToLog; ++i) {
+            double sv = singularValues[i];
+            double varExplained = (sv * sv) / totalVariance;
+            cumulative += varExplained;
+            notice("  PC%d: singular_value=%.4f  variance_explained=%.4f (%.2f%%)  cumulative=%.4f (%.2f%%)",
+                   i + 1, sv, varExplained, varExplained * 100.0, cumulative, cumulative * 100.0);
+        }
+        if ((int)singularValues.size() > numToLog) {
+            notice("  ... (%d more components not shown)", (int)singularValues.size() - numToLog);
+        }
+    }
+
     auto matrixD = svd.singularValues().asDiagonal();
     MatrixXf matrixUD = svd.matrixU() * matrixD;//marker X PC
     UD.resize(matrixUD.rows(),std::vector<double>(matrixUD.cols(),0.f));
@@ -260,7 +289,7 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
         }
     }
 
-    WriteSVD(VcfPath);
+    WriteSVD(VcfPath, numSVDPCs);
 }
 
 vector<vector<double>> SVDcalculator::GetUDMatrix() {
@@ -283,7 +312,18 @@ vector<region_t> SVDcalculator::GetBedVec() {
     return BedVec;
 }
 
-void SVDcalculator::WriteSVD(const std::string &Prefix) {
+void SVDcalculator::WriteSVD(const std::string &Prefix, int numSVDPCs) {
+    // Determine how many PCs to write
+    int numAvailable = (numMarker > 0 && !UD.empty()) ? (int)UD[0].size() : 0;
+    int numToWrite;
+    if (numSVDPCs <= 0) {
+        numToWrite = numAvailable;
+    } else {
+        numToWrite = std::min(numSVDPCs, numAvailable);
+    }
+    notice("Writing SVD output files with %d PCs (of %d available) to prefix: %s",
+           numToWrite, numAvailable, Prefix.c_str());
+
     std::ofstream fMu(Prefix+".mu");
     std::ofstream fUD(Prefix+".UD");
     std::ofstream fPC(Prefix+".V");
@@ -296,14 +336,14 @@ void SVDcalculator::WriteSVD(const std::string &Prefix) {
         end=BedVec[i].end;
         fMu<<chr+":"+std::to_string(end)<<"\t"<<Mu[i]<<std::endl;
         fBed<<chr<<"\t"<<beg<<"\t"<<end<<"\t"<<chooseBed[chr][end].first<<"\t"<<chooseBed[chr][end].second<<std::endl;
-        for (int j = 0; j < 10/*UD[i].size()*/ ; ++j) {
+        for (int j = 0; j < numToWrite; ++j) {
             fUD<<UD[i][j]<<"\t";
         }
         fUD<<std::endl;
     }
     for (int k = 0; k <numIndividual; ++k) {
         fPC<<Samples[k]<<"\t";
-        for (int i = 0; i < 10/*PC[k].size()*/; ++i) {
+        for (int i = 0; i < numToWrite; ++i) {
             fPC<<PC[k][i]<<"\t";
         }
         fPC<<std::endl;
