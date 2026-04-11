@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.5)
 project(VerifyBamID)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
@@ -6,7 +6,12 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -O3 -fPIC -Wno-format-security")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -O3 -fPIC -Wno-unused-variable -Wno-unused-result ")
 
-add_compile_definitions("DEBUG=$<CONFIG:Debug>")
+# Set DEBUG compile definition conditionally based on build type
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    add_definitions(-DDEBUG=1)
+else()
+    add_definitions(-DDEBUG=0)
+endif()
 
 add_definitions(-D__STDC_LIMIT_MACROS)
 add_definitions(-D__ZLIB_AVAILABLE__)
