@@ -200,19 +200,34 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
 }
 
 void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
-                                  const std::unordered_set<std::string>& includeChr)
+                                  const std::unordered_set<std::string>& includeChr, 
+                                  bool skipMinSampleCountCheck)
 {
 
     std::vector<std::vector<char> > genotype;//markers X samples
 
     ReadVcf(VcfPath, genotype, numIndividual, numMarker, includeChr);
     MatrixXf genoMatrix(numMarker,numIndividual);
-//    std::cerr<<numMarker<<"\t"<<genotype.size()<<"\t"<<numIndividual<<"\t"<<genotype[0].size()<<std::endl;
     notice("Number of Markers:%d",numMarker);
     notice("Number of Individuals:%d",numIndividual);
-    if(numMarker < 5000 || numIndividual < 1000)
+
+    if(numMarker < 5000)
     {
-      error("Insufficient available number of Markers(5000) or Individuals(1000)\n");
+      error("Insufficient number of markers (need >= 5000, have %d)\n", numMarker);
+    }
+
+    if(numIndividual < 1000)
+    {
+      if (skipMinSampleCountCheck) {
+        warning("Only %d individuals in reference panel (recommended minimum is 1000). "
+                "Proceeding because --SkipMinSampleCountCheck is set. Contamination "
+                "estimates may be unreliable if the panel does not adequately capture "
+                "population structure.", numIndividual);
+      } else {
+        error("Insufficient number of individuals (need >= 1000, have %d). If your "
+              "reference panel adequately captures population structure with fewer "
+              "samples, rerun with --SkipMinSampleCountCheck.\n", numIndividual);
+      }
     }
 
     for (int i = 0; i <genotype.size() ; ++i) {//per marker

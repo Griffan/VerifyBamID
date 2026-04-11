@@ -25,8 +25,10 @@ public:
 
     /// Read a reference VCF, compute SVD, and write .UD, .mu, .bed, .V files.
     /// @param includeChr  if non-empty, only markers on these chromosomes are used
+    /// @param skipMinSampleCountCheck  if true, < 1000 samples becomes a warning not an error
     void ProcessRefVCF(const std::string& VcfPath,
-                       const std::unordered_set<std::string>& includeChr);
+                       const std::unordered_set<std::string>& includeChr,
+                       bool skipMinSampleCountCheck = false);
 
     /// Parse a VCF into a genotype matrix.
     /// @param includeChr  if non-empty, only markers on these chromosomes are used

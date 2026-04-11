@@ -43,6 +43,7 @@ int execute(int argc, char **argv) {
       SVDPrefix("Empty");
   std::string knownAF("Empty");
   std::string RefVCF("Empty");
+  bool skipMinSampleCountCheck(false);
   // Default to human autosomes (both with and without "chr" prefix).
   // Override with --IncludeChr for non-human species.
   std::string includeChrStr("1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,"
@@ -126,6 +127,12 @@ int execute(int argc, char **argv) {
                     "[String] VCF file from which to extract reference "
                     "panel's genotype matrix[Required if no SVD files "
                     "available]")
+  LONG_PARAM("SkipMinSampleCountCheck", &skipMinSampleCountCheck,
+             "[Bool] ADVANCED: skip the minimum sample count check (1000) "
+             "when generating SVD files. Using fewer than 1000 samples may "
+             "produce unreliable contamination estimates unless your "
+             "reference panel adequately captures the population "
+             "structure[default:false]")
   LONG_STRING_PARAM("IncludeChr", &includeChrStr,
                     "[String] Comma-separated list of chromosome names to "
                     "include when building SVD from --RefVCF. "
@@ -208,12 +215,8 @@ int execute(int argc, char **argv) {
         }
     }
     notice("--IncludeChr: filtering to %d chromosome name(s)", (int)includeChrSet.size());
-
     SVDcalculator calculator;
-    calculator.ProcessRefVCF(RefVCF, includeChrSet);
-    UDPath = RefVCF + ".UD";
-    MeanPath = RefVCF + ".mu";
-    BedPath = RefVCF + ".bed";
+    calculator.ProcessRefVCF(RefVCF, includeChrSet, skipMinSampleCountCheck);
     notice("Success!");
     return 0;
   }
