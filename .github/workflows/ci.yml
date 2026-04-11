@@ -95,7 +95,7 @@ jobs:
 
       - name: Cache htslib
         id: cache-htslib
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             /usr/local/lib/libhts*
@@ -147,7 +147,7 @@ jobs:
 
       - name: Upload artifacts
         if: success()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: VerifyBamID-${{ runner.os }}-${{ steps.compiler.outputs.compiler-name }}-${{ steps.commit.outputs.short-sha }}-${{ github.run_number }}
           path: artifacts/
