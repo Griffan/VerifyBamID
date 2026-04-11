@@ -18,7 +18,8 @@ SVDcalculator::~SVDcalculator() {}
 
 int SVDcalculator::ReadVcf(const std::string &VcfPath,
                            std::vector<std::vector<char> >& genotype,
-                           int & nSamples, int& nMarkers) {
+                           int & nSamples, int& nMarkers,
+                           const std::unordered_set<std::string>& includeChr) {
     try {
         int maxPhred=255;
         VcfFile *pVcf = new VcfFile;
@@ -34,12 +35,10 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                                    VcfPath.c_str());
         }
 
-        std::unordered_set<std::string> acceptChr={"1","2","3","4","5","6","7","8","9","10",
-                                              "11","12","13","14","15","16","17","18","19","20",
-                                              "21","22",
-                                              "chr1", "chr2", "chr3","chr4","chr5","chr6","chr7","chr8", "chr9","chr10",
-                                              "chr11","chr12","chr13","chr14","chr15","chr16","chr17", "chr18","chr19",
-                                              "chr20","chr21","chr22"};
+        bool filterByChrom = !includeChr.empty();
+        if (filterByChrom) {
+            notice("Filtering to %d chromosome(s) specified by --IncludeChr", (int)includeChr.size());
+        }
 
         nSamples = pVcf->getSampleCount();
         nMarkers = 0;
@@ -71,9 +70,8 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                 warning("Skip non-SNP marker: %s",markerName.c_str());
                 continue;
             }
-            if(acceptChr.find(std::string(pMarker->sChrom.c_str())) == acceptChr.end())
+            if(filterByChrom && includeChr.find(std::string(pMarker->sChrom.c_str())) == includeChr.end())
             {
-              warning("Skip non-autosome marker: %s",markerName.c_str());
               continue;
             }
             refAllele=pMarker->sRef[0];
@@ -201,12 +199,13 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
     return 0;
 }
 
-void SVDcalculator::ProcessRefVCF(const std::string &VcfPath)
+void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
+                                  const std::unordered_set<std::string>& includeChr)
 {
 
     std::vector<std::vector<char> > genotype;//markers X samples
 
-    ReadVcf(VcfPath, genotype, numIndividual, numMarker);
+    ReadVcf(VcfPath, genotype, numIndividual, numMarker, includeChr);
     MatrixXf genoMatrix(numMarker,numIndividual);
 //    std::cerr<<numMarker<<"\t"<<genotype.size()<<"\t"<<numIndividual<<"\t"<<genotype[0].size()<<std::endl;
     notice("Number of Markers:%d",numMarker);

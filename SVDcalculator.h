@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <map>
+#include <unordered_set>
 #include "SimplePileupViewer.h"
 
 class SVDcalculator {
@@ -21,12 +22,20 @@ private:
 public:
     SVDcalculator();
     ~SVDcalculator();
-    void ProcessRefVCF(const std::string& VcfPath);
+
+    /// Read a reference VCF, compute SVD, and write .UD, .mu, .bed, .V files.
+    /// @param includeChr  if non-empty, only markers on these chromosomes are used
+    void ProcessRefVCF(const std::string& VcfPath,
+                       const std::unordered_set<std::string>& includeChr);
+
+    /// Parse a VCF into a genotype matrix.
+    /// @param includeChr  if non-empty, only markers on these chromosomes are used
     int ReadVcf(const std::string &VcfPath,
                 std::vector<std::vector<char> >& genotype,
-                int & nSamples, int& nMarkers);
-//    int Decompose();
-    std::vector<std::vector<double>> GetUDMatrix();//return the matrix
+                int & nSamples, int& nMarkers,
+                const std::unordered_set<std::string>& includeChr);
+
+    std::vector<std::vector<double>> GetUDMatrix();
     std::vector<std::vector<double>> GetPCMatrix();
     std::vector<PCtype> GetMuArray();
     BED GetchooseBed();
