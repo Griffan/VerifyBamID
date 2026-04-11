@@ -4,6 +4,7 @@
 #include <Error.h>
 #include <algorithm>
 #include <fstream>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 using namespace libVcf;
@@ -191,6 +192,16 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
             prevMarkerName = markerName;
         }
 
+        // Log per-chromosome marker counts
+        std::map<std::string, int> chrCounts;
+        for (const auto& reg : BedVec) {
+            chrCounts[reg.chr]++;
+        }
+        notice("Markers retained across %d chromosome(s):", (int)chrCounts.size());
+        for (const auto& kv : chrCounts) {
+            notice("  %s: %d markers", kv.first.c_str(), kv.second);
+        }
+
         delete pVcf;
         //delete pMarker;
     }
@@ -210,8 +221,9 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
 
     ReadVcf(VcfPath, genotype, numIndividual, numMarker, includeChr);
     MatrixXf genoMatrix(numMarker,numIndividual);
-    notice("Number of Markers:%d",numMarker);
-    notice("Number of Individuals:%d",numIndividual);
+
+    notice("Number of Markers after filtering: %d",numMarker);
+    notice("Number of Individuals: %d",numIndividual);
 
     if(numMarker < 5000)
     {
@@ -232,8 +244,9 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
       }
     }
 
-    for (int i = 0; i <genotype.size() ; ++i) {//per marker
-        for (int j = 0; j <genotype[i].size() ; ++j) {//per sample
+    notice("Building genotype matrix (%d markers x %d individuals)...", numMarker, numIndividual);
+    for (int i = 0; i < (int)genotype.size() ; ++i) {//per marker
+        for (int j = 0; j < (int)genotype[i].size() ; ++j) {//per sample
             genoMatrix(i,j)=genotype[i][j];
         }
     }
@@ -245,6 +258,7 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
         }
         Mu.push_back(mu(rowIdx));
     }
+    notice("Computing SVD decomposition...");
     JacobiSVD<MatrixXf> svd(genoMatrix, ComputeThinU | ComputeThinV);
 
     // Log proportion of variance explained by each principal component.
@@ -352,4 +366,6 @@ void SVDcalculator::WriteSVD(const std::string &Prefix, int numSVDPCs) {
     fMu.close();
     fUD.close();
     fPC.close();
+    notice("SVD output files written: %s.UD, %s.mu, %s.bed, %s.V",
+           Prefix.c_str(), Prefix.c_str(), Prefix.c_str(), Prefix.c_str());
 }
