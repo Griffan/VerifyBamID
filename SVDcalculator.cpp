@@ -258,15 +258,19 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
     notice("SVD completed. Total singular values: %d", (int)singularValues.size());
     double cumulative = 0.0;
     int numToLog = std::min((int)singularValues.size(), 20);
-    for (int i = 0; i < numToLog; ++i) {
-        double sv = singularValues[i];
-        double varExplained = (sv * sv) / totalVariance;
-        cumulative += varExplained;
-        notice("  PC%d: singular_value=%.4f  variance_explained=%.4f (%.2f%%)  cumulative=%.4f (%.2f%%)",
-               i + 1, sv, varExplained, varExplained * 100.0, cumulative, cumulative * 100.0);
-    }
-    if ((int)singularValues.size() > numToLog) {
-        notice("  ... (%d more components not shown)", (int)singularValues.size() - numToLog);
+    if (totalVariance <= 0.0) {
+        warning("Total variance is zero after SVD; skipping variance-explained logging for principal components.");
+    } else {
+        for (int i = 0; i < numToLog; ++i) {
+            double sv = singularValues[i];
+            double varExplained = (sv * sv) / totalVariance;
+            cumulative += varExplained;
+            notice("  PC%d: singular_value=%.4f  variance_explained=%.4f (%.2f%%)  cumulative=%.4f (%.2f%%)",
+                   i + 1, sv, varExplained, varExplained * 100.0, cumulative, cumulative * 100.0);
+        }
+        if ((int)singularValues.size() > numToLog) {
+            notice("  ... (%d more components not shown)", (int)singularValues.size() - numToLog);
+        }
     }
 
     auto matrixD = svd.singularValues().asDiagonal();
