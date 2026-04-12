@@ -108,7 +108,7 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                     // Try PL: phred-scaled genotype likelihoods (3 comma-separated ints)
                     if (!parsed && idxPL >= 0) {
                         phred.ReplaceTokens(pMarker->asSampleValues[idxPL + i * formatLength], ",");
-                        if (phred.Length() == 3 && phred[0] != ".") {
+                        if (phred.Length() == 3 && phred[0] != "." && phred[1] != "." && phred[2] != ".") {
                           phred11 = phred[0].AsInteger();
                           phred12 = phred[1].AsInteger();
                           phred22 = phred[2].AsInteger();
@@ -119,7 +119,7 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                     // converted to phred scale
                     if (!parsed && idxGL >= 0) {
                         phred.ReplaceTokens(pMarker->asSampleValues[idxGL + i * formatLength], ",");
-                        if (phred.Length() == 3 && phred[0] != ".") {
+                        if (phred.Length() == 3 && phred[0] != "." && phred[1] != "." && phred[2] != ".") {
                           phred11 =
                               static_cast<int>(-10. * phred[0].AsDouble());
                           phred12 =
@@ -135,7 +135,7 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                     if (!parsed && idxGT >= 0) {
                         StringArray alleles;
                         alleles.ReplaceTokens(pMarker->asSampleValues[idxGT + i * formatLength], "|/");
-                        if (alleles.Length() == 2 && alleles[0] != ".") {
+                        if (alleles.Length() == 2 && alleles[0] != "." && alleles[1] != ".") {
                           long geno =
                               alleles[0].AsInteger() + alleles[1].AsInteger();
                           if (geno == 0) {        // 0/0: homozygous ref
