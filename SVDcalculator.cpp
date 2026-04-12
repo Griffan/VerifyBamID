@@ -79,74 +79,85 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
             refAllele=pMarker->sRef[0];
             altAllele=pMarker->asAlts[0][0];
 
-            int PLidx = pMarker->asFormatKeys.Find("PL");
-            int PLGLGTflag = 0;//0 for PL, 1 for GL, 2 for GT
-            if (PLidx < 0) {
-                PLidx = pMarker->asFormatKeys.Find("GL");
-                if (PLidx >= 0) PLGLGTflag = 1;//found GL
-                else {
-                    PLidx = pMarker->asFormatKeys.Find("GT");
-                    if(PLidx >= 0) PLGLGTflag = 2;//found GT
-                    else throw VcfFileException("Cannot recognize GT, GL or PL key in FORMAT field");
-                }
+            // Look up FORMAT field indices for genotype data. A marker's FORMAT
+            // may contain any combination of PL, GL, and GT. Individual samples
+            // may have missing values for some fields, so we try each per-sample
+            // in priority order: PL > GL > GT.
+            int idxPL = pMarker->asFormatKeys.Find("PL");
+            int idxGL = pMarker->asFormatKeys.Find("GL");
+            int idxGT = pMarker->asFormatKeys.Find("GT");
+            if (idxPL < 0 && idxGL < 0 && idxGT < 0) {
+                throw VcfFileException("Cannot recognize GT, GL or PL key in FORMAT field");
             }
             int formatLength = pMarker->asFormatKeys.Length();
-            int idx11 = 0, idx12 = 1, idx22 = 2;
-
             StringArray phred;
 
-            long phred11 = 0;
-            long phred12 = 0;
-            long phred22 = 0;
             std::vector<char> perMarkerGeno(nSamples,-1);
             int nMissingGenoSamples = 0;
             for (int i = 0; i < nSamples; i++)//for each individual
             {
                     if(nMarkers==0) Samples.push_back(pVcf->getSampleID(i).c_str());
-                    if(PLGLGTflag==0)//found PL
-                    {
-                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], ",");
-                        if (phred.Length() == 3 && phred[0] != ".") {
-                          phred11 = phred[idx11].AsInteger();
-                          phred12 = phred[idx12].AsInteger();
-                          phred22 = phred[idx22].AsInteger();
+
+                    // Phred-scaled likelihoods for the three diploid genotypes:
+                    // phred11 = P(data|0/0), phred12 = P(data|0/1), phred22 = P(data|1/1)
+                    long phred11 = 0;
+                    long phred12 = 0;
+                    long phred22 = 0;
+                    bool parsed = false;
+
+                    // Try PL: phred-scaled genotype likelihoods (3 comma-separated ints)
+                    if (!parsed && idxPL >= 0) {
+                        phred.ReplaceTokens(pMarker->asSampleValues[idxPL + i * formatLength], ",");
+                        if (phred.Length() == 3 && phred[0] != "." && phred[1] != "." && phred[2] != ".") {
+                          phred11 = phred[0].AsInteger();
+                          phred12 = phred[1].AsInteger();
+                          phred22 = phred[2].AsInteger();
+                          parsed = true;
                         }
-                        else nMissingGenoSamples++;
                     }
-                    else if(PLGLGTflag == 1)//found GL
-                    {
-                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], ",");
-                        if (phred.Length() == 3 && phred[0] != ".") {
+                    // Try GL: log10 genotype likelihoods (3 comma-separated floats),
+                    // converted to phred scale
+                    if (!parsed && idxGL >= 0) {
+                        phred.ReplaceTokens(pMarker->asSampleValues[idxGL + i * formatLength], ",");
+                        if (phred.Length() == 3 && phred[0] != "." && phred[1] != "." && phred[2] != ".") {
                           phred11 =
-                              static_cast<int>(-10. * phred[idx11].AsDouble());
+                              static_cast<int>(-10. * phred[0].AsDouble());
                           phred12 =
-                              static_cast<int>(-10. * phred[idx12].AsDouble());
+                              static_cast<int>(-10. * phred[1].AsDouble());
                           phred22 =
-                              static_cast<int>(-10. * phred[idx22].AsDouble());
+                              static_cast<int>(-10. * phred[2].AsDouble());
+                          parsed = true;
                         }
-                        else nMissingGenoSamples++;
                     }
-                    else//found GT
-                    {
-                        phred.ReplaceTokens(pMarker->asSampleValues[PLidx + i * formatLength], "|/");
-                        if (phred.Length() == 3 && phred[0] != ".") {
+                    // Try GT: hard-call genotype (two allele indices separated by
+                    // / or |). Synthesize high-confidence phred scores from the
+                    // hard call since no likelihoods are available.
+                    if (!parsed && idxGT >= 0) {
+                        StringArray alleles;
+                        alleles.ReplaceTokens(pMarker->asSampleValues[idxGT + i * formatLength], "|/");
+                        if (alleles.Length() == 2 && alleles[0] != "." && alleles[1] != ".") {
                           long geno =
-                              phred[0].AsInteger() + phred[1].AsInteger();
-                          if (geno == 0) {
+                              alleles[0].AsInteger() + alleles[1].AsInteger();
+                          if (geno == 0) {        // 0/0: homozygous ref
                             phred11 = 0;
                             phred12 = 30;
                             phred22 = 50;
-                          } else if (geno == 1) {
+                          } else if (geno == 1) { // 0/1: heterozygous
                             phred11 = 50;
                             phred12 = 0;
                             phred22 = 50;
-                          } else {
+                          } else {                // 1/1: homozygous alt
                             phred11 = 50;
                             phred12 = 30;
                             phred22 = 0;
                           }
+                          parsed = true;
                         }
-                        else nMissingGenoSamples++;
+                    }
+
+                    if (!parsed) {
+                        nMissingGenoSamples++;
+                        continue;
                     }
 
                     if ((phred11 < 0) || (phred12 < 0) || (phred22 < 0)) {
@@ -156,8 +167,8 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                     if (phred11 > maxPhred) phred11 = maxPhred;
                     if (phred12 > maxPhred) phred12 = maxPhred;
                     if (phred22 > maxPhred) phred22 = maxPhred;
-//
-//                    printf("phred scores are %f, %f, %f;\tphred11/12/22 %d, %d, %d\n", phred[idx11].AsDouble(), phred[idx12].AsDouble(), phred[idx22].AsDouble(),phred11,phred12,phred22);
+
+                    // Pick the most likely genotype (lowest phred = highest likelihood)
                     int minGeno = -1;
                     long minPhred = maxPhred;
                     if(phred11 < minPhred)

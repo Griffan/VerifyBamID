@@ -1,0 +1,20 @@
+##fileformat=VCFv4.1
+##INFO=<ID=TESTDESC,Number=1,Type=String,Description="Description of what this VCF row tests">
+##INFO=<ID=EXPECTED_AF,Number=1,Type=Float,Description="Expected alt allele frequency computed from correctly parsed genotypes">
+##INFO=<ID=EXPECTED_N_MISSING,Number=1,Type=Integer,Description="Expected number of samples with missing genotypes after parsing">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Phred-scaled genotype likelihoods">
+##FORMAT=<ID=GL,Number=G,Type=Float,Description="Log10-scaled genotype likelihoods">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	S01	S02	S03	S04	S05	S06	S07	S08	S09	S10
+20	100000	.	A	T	60	PASS	TESTDESC=PL_only_all_present;EXPECTED_AF=0.45;EXPECTED_N_MISSING=0	PL	0,30,50	0,30,50	50,0,50	50,0,50	50,30,0	50,30,0	0,30,50	50,0,50	50,30,0	0,30,50
+20	101000	.	A	T	60	PASS	TESTDESC=GL_only_all_present;EXPECTED_AF=0.45;EXPECTED_N_MISSING=0	GL	0,-3,-5	0,-3,-5	-5,0,-5	-5,0,-5	-5,-3,0	-5,-3,0	0,-3,-5	-5,0,-5	-5,-3,0	0,-3,-5
+20	102000	.	A	T	60	PASS	TESTDESC=GT_only_all_present;EXPECTED_AF=0.45;EXPECTED_N_MISSING=0	GT	0/0	0/0	0/1	0/1	1/1	1/1	0/0	0/1	1/1	0/0
+20	103000	.	A	T	60	PASS	TESTDESC=PL_missing_falls_back_to_GT;EXPECTED_AF=0.45;EXPECTED_N_MISSING=0	GT:PL	0/0:0,30,50	0/0:.	0/1:50,0,50	0/1:.	1/1:50,30,0	1/1:.	0/0:0,30,50	0/1:50,0,50	1/1:50,30,0	0/0:0,30,50
+20	104000	.	A	T	60	PASS	TESTDESC=GL_missing_falls_back_to_GT;EXPECTED_AF=0.45;EXPECTED_N_MISSING=0	GT:GL	0/0:0,-3,-5	0/0:.	0/1:-5,0,-5	0/1:.	1/1:-5,-3,0	1/1:.	0/0:0,-3,-5	0/1:-5,0,-5	1/1:-5,-3,0	0/0:0,-3,-5
+20	105000	.	A	T	60	PASS	TESTDESC=PL_GL_GT_cascade_fallback;EXPECTED_AF=0.45;EXPECTED_N_MISSING=0	GT:PL:GL	0/0:0,30,50:0,-3,-5	0/1:.:-5,0,-5	1/1:.:.	0/0:0,30,50:0,-3,-5	0/1:.:-5,0,-5	1/1:.:.	0/0:0,30,50:0,-3,-5	0/1:.:-5,0,-5	1/1:50,30,0:-5,-3,0	0/0:.:0,-3,-5
+20	106000	.	A	T	60	PASS	TESTDESC=PL_partial_missing_falls_back_to_GT;EXPECTED_AF=0.35;EXPECTED_N_MISSING=0	GT:PL	0/0:50,.,.	0/0:0,30,50	0/1:50,0,50	0/0:50,.,30	0/1:50,0,50	1/1:50,30,0	0/0:0,30,50	0/1:50,0,50	1/1:50,30,0	0/0:0,30,50
+20	107000	.	A	T	60	PASS	TESTDESC=GL_partial_missing_falls_back_to_GT;EXPECTED_AF=0.35;EXPECTED_N_MISSING=0	GT:GL	0/0:-5,.,.	0/0:0,-3,-5	0/1:-5,0,-5	0/0:-5,.,0	0/1:-5,0,-5	1/1:-5,-3,0	0/0:0,-3,-5	0/1:-5,0,-5	1/1:-5,-3,0	0/0:0,-3,-5
+20	108000	.	A	T	60	PASS	TESTDESC=GT_partial_missing_one_allele;EXPECTED_AF=0.5;EXPECTED_N_MISSING=1	GT	0/0	./1	0/1	0/1	1/1	1/1	0/0	0/1	1/1	0/0
+20	109000	.	A	T	60	PASS	TESTDESC=GT_phased_genotypes;EXPECTED_AF=0.45;EXPECTED_N_MISSING=0	GT	0|0	0|0	0|1	1|0	1|1	1|1	0|0	0|1	1|1	0|0
+20	110000	.	A	T	60	PASS	TESTDESC=all_fields_missing_two_samples;EXPECTED_AF=0.4375;EXPECTED_N_MISSING=2	GT:PL:GL	0/0:0,30,50:0,-3,-5	0/1:50,0,50:-5,0,-5	./.:.:.	1/1:50,30,0:-5,-3,0	0/0:0,30,50:0,-3,-5	./.:.:.	0/1:50,0,50:-5,0,-5	1/1:50,30,0:-5,-3,0	0/0:0,30,50:0,-3,-5	0/1:50,0,50:-5,0,-5
+20	111000	.	A	T	60	PASS	TESTDESC=PL_takes_priority_over_GL;EXPECTED_AF=0.45;EXPECTED_N_MISSING=0	GT:PL:GL	0/0:0,30,50:-5,0,-5	0/1:50,0,50:0,-3,-5	1/1:50,30,0:-5,-3,0	0/0:0,30,50:-5,0,-5	0/1:50,0,50:0,-3,-5	1/1:50,30,0:-5,-3,0	0/0:0,30,50:-5,0,-5	0/1:50,0,50:0,-3,-5	1/1:50,30,0:-5,-3,0	0/0:0,30,50:0,-3,-5
