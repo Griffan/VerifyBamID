@@ -92,17 +92,17 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
             int formatLength = pMarker->asFormatKeys.Length();
             StringArray phred;
 
-            // Phred-scaled likelihoods for the three diploid genotypes:
-            // phred11 = P(data|0/0), phred12 = P(data|0/1), phred22 = P(data|1/1)
-            long phred11 = 0;
-            long phred12 = 0;
-            long phred22 = 0;
             std::vector<char> perMarkerGeno(nSamples,-1);
             int nMissingGenoSamples = 0;
             for (int i = 0; i < nSamples; i++)//for each individual
             {
                     if(nMarkers==0) Samples.push_back(pVcf->getSampleID(i).c_str());
 
+                    // Phred-scaled likelihoods for the three diploid genotypes:
+                    // phred11 = P(data|0/0), phred12 = P(data|0/1), phred22 = P(data|1/1)
+                    long phred11 = 0;
+                    long phred12 = 0;
+                    long phred22 = 0;
                     bool parsed = false;
 
                     // Try PL: phred-scaled genotype likelihoods (3 comma-separated ints)
@@ -155,7 +155,10 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
                         }
                     }
 
-                    if (!parsed) nMissingGenoSamples++;
+                    if (!parsed) {
+                        nMissingGenoSamples++;
+                        continue;
+                    }
 
                     if ((phred11 < 0) || (phred12 < 0) || (phred22 < 0)) {
                         error("Negative PL or Positive GL observed");
