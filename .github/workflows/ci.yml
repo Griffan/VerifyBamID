@@ -164,10 +164,14 @@ jobs:
     steps:
       - name: Check build status
         run: |
-          if [ "${{ needs.build.result }}" == "success" ]; then
-            echo "✅ All builds passed!"
-            exit 0
-          else
+          result="${{ needs.build.result }}"
+          if [ "$result" == "failure" ]; then
             echo "❌ Some builds failed"
             exit 1
+          elif [ "$result" == "cancelled" ]; then
+            echo "⚠️ Build was cancelled"
+            exit 1
+          else
+            echo "✅ All builds passed or skipped!"
+            exit 0
           fi
