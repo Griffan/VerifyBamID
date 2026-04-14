@@ -221,8 +221,8 @@ public:
                     continue;
                 }
 
-                std::vector<char> tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                std::vector<char> tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
+                const std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
+                const std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
 
                 if (tmpBase.size() == 0) continue;
 
