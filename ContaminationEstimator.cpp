@@ -1,8 +1,28 @@
 #include "ContaminationEstimator.h"
+#include <chrono>
 #include <fstream>
 #include <sstream>
 #include <cmath>
 #include <algorithm>
+
+// Simple RAII timer that logs elapsed wall-clock time for a named phase.
+namespace {
+struct PhaseTimer {
+    std::string name;
+    std::chrono::steady_clock::time_point start;
+
+    explicit PhaseTimer(const std::string &phaseName)
+        : name(phaseName), start(std::chrono::steady_clock::now()) {
+        notice("  Starting phase: %s", name.c_str());
+    }
+
+    ~PhaseTimer() {
+        auto end = std::chrono::steady_clock::now();
+        double secs = std::chrono::duration<double>(end - start).count();
+        notice("  Finished phase: %s  [%.3f seconds]", name.c_str(), secs);
+    }
+};
+} // anonymous namespace
 
 ContaminationEstimator::ContaminationEstimator() {
 
@@ -29,45 +49,69 @@ ContaminationEstimator::ContaminationEstimator(int nPC, const char *bedFile, int
 int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
     AmoebaMinimizer myMinimizer;
 
-    fn.Initialize();
+    {
+        PhaseTimer t("Initialize likelihood");
+        fn.Initialize();
+    }
+
     if (!isHeter) {
         if (isPCFixed) {
             std::cout << "Estimation from OptimizeHomoFixedPC:" << std::endl;
+            PhaseTimer t("OptimizeHomoFixedPC");
             OptimizeHomoFixedPC(myMinimizer);
         } else if (isAlphaFixed) {
+            PhaseTimer t("OptimizeHomoFixedAlpha");
             OptimizeHomoFixedAlpha(myMinimizer);
         } else {
             std::cout << "Estimation from OptimizeHomo:" << std::endl;
+            PhaseTimer t("OptimizeHomo");
             OptimizeHomo(myMinimizer);
         }
     } else//contamination source from different population
     {
         if (isPCFixed) {
             std::cout << "Estimation from OptimizeHeterFixedPC:" << std::endl;
+            PhaseTimer t("OptimizeHeterFixedPC");
             OptimizeHeterFixedPC(myMinimizer);
         } else if (isAlphaFixed) {
             std::cout << "Estimation from OptimizeHeterFixedAlpha:" << std::endl;
-            isHeter = false;
-            OptimizeHomoFixedAlpha(myMinimizer);
-            PC[1] = PC[0];
-            fn.globalPC2 = fn.globalPC;
-            isHeter = true;
-            OptimizeHeterFixedAlpha(myMinimizer);
+            {
+                PhaseTimer t("OptimizeHomoFixedAlpha (initial)");
+                isHeter = false;
+                OptimizeHomoFixedAlpha(myMinimizer);
+                PC[1] = PC[0];
+                fn.globalPC2 = fn.globalPC;
+                isHeter = true;
+            }
+            {
+                PhaseTimer t("OptimizeHeterFixedAlpha");
+                OptimizeHeterFixedAlpha(myMinimizer);
+            }
         } else {
             std::cout << "Estimation from OptimizeHeter:" << std::endl;
-            isHeter = false;
-            OptimizeHomo(myMinimizer);
-            PC[1] = PC[0];
-            fn.globalPC2 = fn.globalPC;
-            isHeter = true;
-            OptimizeHeter(myMinimizer);
+            {
+                PhaseTimer t("OptimizeHomo (initial)");
+                isHeter = false;
+                OptimizeHomo(myMinimizer);
+                PC[1] = PC[0];
+                fn.globalPC2 = fn.globalPC;
+                isHeter = true;
+            }
+            {
+                PhaseTimer t("OptimizeHeter");
+                OptimizeHeter(myMinimizer);
+            }
         }
         if (fn.globalAlpha >= 0.5) {
             std::swap(fn.globalPC[0], fn.globalPC2[0]);
             std::swap(fn.globalPC[1], fn.globalPC2[1]);
         }
     }
-    fn.CalculateLLK0();
+
+    {
+        PhaseTimer t("Calculate null-model LLK");
+        fn.CalculateLLK0();
+    }
     std::cout << "Contaminating Sample ";
     for (int i = 0; i < numPC; ++i) {
         std::cout << "PC" << i + 1 << ":" << fn.globalPC[i] << "\t";

@@ -20,6 +20,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
  */
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -34,6 +35,23 @@ SOFTWARE.
 #include "backward.hpp"
 
 #define VERSION "2.0.1"
+
+// Simple RAII timer that logs elapsed wall-clock time for a named phase.
+struct PhaseTimer {
+    std::string name;
+    std::chrono::steady_clock::time_point start;
+
+    explicit PhaseTimer(const std::string &phaseName)
+        : name(phaseName), start(std::chrono::steady_clock::now()) {
+        notice("Starting phase: %s", name.c_str());
+    }
+
+    ~PhaseTimer() {
+        auto end = std::chrono::steady_clock::now();
+        double secs = std::chrono::duration<double>(end - start).count();
+        notice("Finished phase: %s  [%.3f seconds]", name.c_str(), secs);
+    }
+};
 
 int execute(int argc, char **argv) {
 
@@ -289,13 +307,19 @@ int execute(int argc, char **argv) {
         Estimator.ReadAF(knownAF);
     }
 
-    Estimator.ReadSVDMatrix(UDPath, PCPath, MeanPath);
+    {
+        PhaseTimer t("Load SVD reference data");
+        Estimator.ReadSVDMatrix(UDPath, PCPath, MeanPath);
+    }
 
-    if(nfiles)
-      Estimator.ReadBam(BamFile.c_str(), RefPath.c_str(), BedPath.c_str(),
-                        &mplp);
-    else
-        Estimator.ReadPileup(PileupFile);
+    {
+        PhaseTimer t(nfiles ? "Read BAM/CRAM" : "Read pileup");
+        if(nfiles)
+          Estimator.ReadBam(BamFile.c_str(), RefPath.c_str(), BedPath.c_str(),
+                            &mplp);
+        else
+            Estimator.ReadPileup(PileupFile);
+    }
 
 
     if(outputPileup)
@@ -334,6 +358,7 @@ int execute(int argc, char **argv) {
     }
 
     if(!disableSanityCheck) {
+        PhaseTimer t("Marker sanity check");
         if (Estimator.IsSanityCheckOK())
             notice("Passing Marker Sanity Check...");
         else {
@@ -342,7 +367,10 @@ int execute(int argc, char **argv) {
         }
     }
 
-    Estimator.OptimizeLLK(outputPrefix);
+    {
+        PhaseTimer t("Optimize likelihood");
+        Estimator.OptimizeLLK(outputPrefix);
+    }
 
     {//output vb1 compatible result
         const char *headers = "#SEQ_ID\tRG\tCHIP_ID\t#SNPS\t#READS\tAVG_DP\tFREEMIX\tFREELK1\tFREELK0\tFREE_RH\tFREE_RA\tCHIPMIX\tCHIPLK1\tCHIPLK0\tCHIP_RH\tCHIP_RA\tDPREF\tRDPHET\tRDPALT";
