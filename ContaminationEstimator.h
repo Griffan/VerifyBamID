@@ -56,6 +56,20 @@ public:
         return pow(10.0, x / -10.0);
     }
 
+    // Precomputed Phred error probabilities for quality scores 0-93 (after ASCII-33 offset).
+    // Avoids repeated pow() calls in the hot loop.
+    static const double* getPhredTable() {
+        static double table[94];
+        static bool initialized = false;
+        if (!initialized) {
+            for (int i = 0; i < 94; ++i) {
+                table[i] = pow(10.0, i / -10.0);
+            }
+            initialized = true;
+        }
+        return table;
+    }
+
     class FullLLKFunc : public VectorFunc {
     public:
         double min_af;
@@ -70,6 +84,7 @@ public:
         std::vector<double> globalPC2;//best result holder
         double globalAlpha;//best result holder
         const char *Base;
+        const double *phredTable;
 
         FullLLKFunc() {
             FullLLKFunc::Base = "actg";
@@ -78,6 +93,7 @@ public:
             llk1 = 0;
             ptr = nullptr;
             fixAlpha = 0;
+            phredTable = getPhredTable();
             std::cerr << "Initialize from FullLLKFunc()" << std::endl;
 
         }
@@ -91,6 +107,7 @@ public:
             ptr = contPtr;
             fixAlpha = 0.;
             globalAlpha = 0.;
+            phredTable = getPhredTable();
             std::cerr << "Initialize from FullLLKFunc(int dim, ContaminationEstimator* contPtr)" << std::endl;
         }
 
@@ -258,19 +275,26 @@ public:
 
                 char altBase = ptr->ChooseBed[chr][pos].second;
 
+                // Precompute per-base phred error probabilities so they are
+                // looked up once per base rather than 9x (once per genotype pair).
+                const int depth = tmpBase.size();
+                std::vector<double> phredErr(depth);
+                std::vector<double> phredNoErr(depth);
+                for (int j = 0; j < depth; ++j) {
+                    phredErr[j] = phredTable[static_cast<unsigned char>(tmpQual[j]) - 33];
+                    phredNoErr[j] = 1.0 - phredErr[j];
+                }
+
                 for (int geno1 = 0; geno1 < 3; ++geno1)
                     for (int geno2 = 0; geno2 < 3; ++geno2) {
                         double baseLK(0);
-                        for (int j = 0; j < tmpBase.size(); ++j) {
+                        for (int j = 0; j < depth; ++j) {
                             baseLK += log((alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
                                            (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
-                                          Phred(tmpQual[j] - 33)
+                                          phredErr[j]
                                           + (alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
                                              (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
-                                            (1 - Phred(tmpQual[j] - 33)));
-//                            std::cerr <<i<<"th marker\t"<<tmpBase[j]<<"\t"<<tmpQual[j]<<"\t"<<altBase<<"\tlocalAlpha:"<<localAlpha<<"\tgeno1:"<<geno1<<"\tgeno2:"<<geno2
-//                            <<"\tgetConditionalBaseLK1:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 1)<<"\t"<< getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)<<"\tPhred:"<<Phred(tmpQual[j] - 33)
-//                            <<"\tgetConditionalBaseLK0:"<<getConditionalBaseLK(tmpBase[j], geno1, altBase, 0)<<"\t"<<getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)<< std::endl;
+                                            phredNoErr[j]);
                         }
                         markerLK += exp(baseLK) * GF[geno1] * GF2[geno2];
                     }
