@@ -95,6 +95,38 @@ add_test(NAME myTest6
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND sh -c "diff resource/test/expected/test.LongRead.pileup.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
 
+# Test WithinAncestry model (OptimizeHomo)
+add_test(NAME testWithinAncestryRun
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --WithinAncestry)
+add_test(NAME testWithinAncestryDiff
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sh -c "diff resource/test/expected/test.WithinAncestry.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
+
+# Test WithinAncestry + FixPC (OptimizeHomoFixedPC)
+add_test(NAME testWithinAncestryFixPCRun
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --WithinAncestry --FixPC 0.034756:0.0193)
+add_test(NAME testWithinAncestryFixPCDiff
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sh -c "diff resource/test/expected/test.WithinAncestry.FixPC.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
+
+# Test FixAlpha (OptimizeHomoFixedAlpha initial + OptimizeHeterFixedAlpha)
+add_test(NAME testFixAlphaRun
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --FixAlpha 0.1)
+add_test(NAME testFixAlphaDiff
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sh -c "diff resource/test/expected/test.FixAlpha.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
+
+# Test FixPC in BetweenAncestry mode (OptimizeHeterFixedPC)
+add_test(NAME testHeterFixPCRun
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --FixPC 0.034756:0.0193)
+add_test(NAME testHeterFixPCDiff
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sh -c "diff resource/test/expected/test.HeterFixPC.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
+
 #add_test( NAME myTestPlot
 #          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 #          COMMAND sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/run.plot.sh -i ${CMAKE_CURRENT_SOURCE_DIR}/resource/test/hapmap_3.3.b37.dat.V -o ${CMAKE_CURRENT_SOURCE_DIR}/resource/test/hapmap -r 1000g -g grey)
