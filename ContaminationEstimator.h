@@ -191,6 +191,40 @@ public:
         inline double
         ComputeMixLLKs(const std::vector<double> &tPC1, const std::vector<double> &tPC2, const double alpha) {
 
+            // Precompute log-likelihood contributions for every possible combination
+            // of (base_class, quality_score, g1, g2).
+            //
+            // The per-base log-likelihood under a genotype pair (g1, g2) is:
+            //   log( [alpha*P(b|g1,err) + (1-alpha)*P(b|g2,err)] * P(err)
+            //      + [alpha*P(b|g1,ok)  + (1-alpha)*P(b|g2,ok) ] * P(ok) )
+            //
+            // Within a single call alpha is constant, and the remaining inputs are
+            // all discrete with small domains:
+            //   - base_class (ref/alt/other):  3 values — determines P(b|g,err/ok)
+            //   - quality score (Phred 0-93): 94 values — determines P(err), P(ok)
+            //   - g1, g2 (genotype pair):      3 x 3 = 9 combinations
+            //
+            // Total: 3 x 94 x 9 = 2,538 entries.  Building this table costs 2,538
+            // log() calls, but replaces millions (depth x markers x 9) in the inner
+            // loop — typically a ~500x reduction in log() calls.
+            const double oneMinusAlpha = 1.0 - alpha;
+            double logLkTable[3][94][3][3];
+            for (int bc = 0; bc < 3; ++bc) {
+                const double lkErr[3]   = { COND_LK[1][0][bc], COND_LK[1][1][bc], COND_LK[1][2][bc] };
+                const double lkNoErr[3] = { COND_LK[0][0][bc], COND_LK[0][1][bc], COND_LK[0][2][bc] };
+                for (int q = 0; q < 94; ++q) {
+                    const double pErr   = phredTable[q];
+                    const double pNoErr = 1.0 - pErr;
+                    for (int g1 = 0; g1 < 3; ++g1) {
+                        for (int g2 = 0; g2 < 3; ++g2) {
+                            double val = (alpha * lkErr[g1] + oneMinusAlpha * lkErr[g2]) * pErr
+                                       + (alpha * lkNoErr[g1] + oneMinusAlpha * lkNoErr[g2]) * pNoErr;
+                            logLkTable[bc][q][g1][g2] = log(val);
+                        }
+                    }
+                }
+            }
+
             double sumLLK(0);
 #ifdef _OPENMP
             omp_set_num_threads(ptr->numThread);
@@ -238,42 +272,23 @@ public:
 
                 char altBase = rm.altBase;
 
-                // For each observed base at this marker, compute its contribution to the
-                // log-likelihood under all 9 genotype-pair combinations (g1, g2) where
-                // g1 is the contaminating sample's genotype and g2 is the intended sample's.
+                // Accumulate log-likelihoods across all observed bases at this marker.
+                // For each base we classify it (ref/alt/other), extract its quality
+                // score, and use those two values to index into the precomputed
+                // logLkTable — one addition per genotype pair instead of a log() call.
                 //
-                // The likelihood of observing a base given a genotype pair is a mixture:
-                //   P(base | g1, g2, alpha) =
-                //       [alpha * P(base|g1,err) + (1-alpha) * P(base|g2,err)] * P(err)
-                //     + [alpha * P(base|g1,ok)  + (1-alpha) * P(base|g2,ok) ] * P(ok)
-                //
-                // where P(err) is the Phred-scaled base error probability and P(ok) = 1 - P(err).
-                // The conditional probabilities P(base|genotype,err/ok) depend only on whether
-                // the base is ref, alt, or other — looked up from the COND_LK table.
-                //
-                // baseLKAccum[g1][g2] accumulates sum-of-log-likelihoods across all bases,
-                // which equals the log of the product of per-base likelihoods.
+                // baseLKAccum[g1][g2] = sum_j log P(base_j | g1, g2, alpha)
+                //                     = log product_j P(base_j | g1, g2, alpha)
                 const int depth = tmpBase.size();
                 double baseLKAccum[3][3] = {};
 
                 for (int j = 0; j < depth; ++j) {
-                    // Classify base once: ref (./,), alt, or other
                     const int bc = classifyBase(tmpBase[j], altBase);
-                    const double pErr   = phredTable[static_cast<unsigned char>(tmpQual[j]) - 33];
-                    const double pNoErr = 1.0 - pErr;
+                    const int q  = static_cast<unsigned char>(tmpQual[j]) - 33;
 
-                    // Look up conditional likelihoods for each genotype (0=hom-ref, 1=het, 2=hom-alt)
-                    const double lkErr[3]   = { COND_LK[1][0][bc], COND_LK[1][1][bc], COND_LK[1][2][bc] };
-                    const double lkNoErr[3] = { COND_LK[0][0][bc], COND_LK[0][1][bc], COND_LK[0][2][bc] };
-
-                    // Accumulate log-likelihood for all 9 genotype-pair combinations
-                    for (int g1 = 0; g1 < 3; ++g1) {
-                        for (int g2 = 0; g2 < 3; ++g2) {
-                            double val = (alpha * lkErr[g1] + (1.0 - alpha) * lkErr[g2]) * pErr
-                                       + (alpha * lkNoErr[g1] + (1.0 - alpha) * lkNoErr[g2]) * pNoErr;
-                            baseLKAccum[g1][g2] += log(val);
-                        }
-                    }
+                    for (int g1 = 0; g1 < 3; ++g1)
+                        for (int g2 = 0; g2 < 3; ++g2)
+                            baseLKAccum[g1][g2] += logLkTable[bc][q][g1][g2];
                 }
 
                 // Marginalize over genotype pairs, weighting each by its prior
