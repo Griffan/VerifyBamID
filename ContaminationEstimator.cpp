@@ -24,6 +24,10 @@ struct PhaseTimer {
 };
 } // anonymous namespace
 
+// Out-of-class definition required in C++11 for static constexpr members that
+// are ODR-used.  Without this, GCC's linker reports an undefined reference.
+constexpr double ContaminationEstimator::FullLLKFunc::COND_LK[2][3][3];
+
 ContaminationEstimator::ContaminationEstimator() {
 
 }
