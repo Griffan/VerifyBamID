@@ -198,16 +198,11 @@ public:
 #endif
             for (size_t i = 0; i < ptr->NumMarker; ++i) {
 
-                std::string chr = ptr->PosVec[i].first;
-                int pos = ptr->PosVec[i].second;
-                if (ptr->viewer.posIndex.find(chr) == ptr->viewer.posIndex.end()) {
-                    continue;
-                } else if (ptr->viewer.posIndex[chr].find(pos) == ptr->viewer.posIndex[chr].end()) {
-                    continue;
-                }
+                const ContaminationEstimator::ResolvedMarker& rm = ptr->resolvedMarkers[i];
+                if (rm.baseInfoIndex < 0) continue;
 
-                const std::vector<char>& tmpBase = ptr->viewer.GetBaseInfoAt(chr, pos);
-                const std::vector<char>& tmpQual = ptr->viewer.GetQualInfoAt(chr, pos);
+                const std::vector<char>& tmpBase = ptr->viewer.baseInfo[rm.baseInfoIndex];
+                const std::vector<char>& tmpQual = ptr->viewer.qualInfo[rm.baseInfoIndex];
 
                 if (tmpBase.size() == 0) continue;
 
@@ -217,7 +212,7 @@ public:
                     continue;
 
                 if (ptr->isAFknown) {
-                    ptr->AFs[i] = ptr->AF2s[i] = ptr->knownAF[chr][pos];
+                    ptr->AFs[i] = ptr->AF2s[i] = rm.knownAFValue;
                 } else {
                     ptr->AFs[i] = 0.;
                     for (int k = 0; k < tPC1.size(); ++k) {
@@ -241,7 +236,7 @@ public:
                 InitialGF(ptr->AFs[i], GF);
                 InitialGF(ptr->AF2s[i], GF2);
 
-                char altBase = ptr->ChooseBed[chr][pos].second;
+                char altBase = rm.altBase;
 
                 // For each observed base at this marker, compute its contribution to the
                 // log-likelihood under all 9 genotype-pair combinations (g1, g2) where
@@ -443,6 +438,16 @@ public:
     std::vector<region_t> BedVec;//serialized BED info, convenient for bam reading
     std::vector<std::pair<std::string, int> > PosVec;
 
+    // Per-marker data resolved once by BuildResolvedMarkers() so that
+    // ComputeMixLLKs can use flat vector indexing instead of repeated
+    // nested hash map lookups (posIndex, ChooseBed, knownAF).
+    struct ResolvedMarker {
+        int baseInfoIndex;   // index into viewer.baseInfo/qualInfo, or -1 if marker absent
+        char altBase;        // alternate allele from ChooseBed
+        double knownAFValue; // allele frequency from knownAF (0.0 if !isAFknown)
+    };
+    std::vector<ResolvedMarker> resolvedMarkers;
+
     ContaminationEstimator();
 
     ContaminationEstimator(int nPC, const char *bedFile, int nThread, double ep);
@@ -491,6 +496,8 @@ public:
                          const std::string &ReadGroup);
     */
     int ReadSVDMatrix(const std::string &UDpath, const std::string &PCpath, const std::string &Mean);
+
+    void BuildResolvedMarkers();
 
     /*
     int FromBamtoPileup();

@@ -46,8 +46,45 @@ ContaminationEstimator::ContaminationEstimator(int nPC, const char *bedFile, int
 
 }
 
+// Resolve per-marker data that is constant across all optimization iterations.
+//
+// During optimization, ComputeMixLLKs is called tens of thousands of times.
+// Each call iterates over all markers and previously performed nested hash map
+// lookups (posIndex[chr][pos], ChooseBed[chr][pos], knownAF[chr][pos]) on every
+// iteration.  Since none of these values change between calls, we resolve them
+// once here into a flat vector indexed by marker ordinal.
+//
+// For markers not present in the viewer (e.g. the BAM had no reads at that
+// position), baseInfoIndex is set to -1 so ComputeMixLLKs can skip them with
+// a single integer comparison instead of two hash lookups.
+//
+// Must be called after data loading (ReadBam/ReadPileup) and before the
+// optimization loop in OptimizeLLK.
+void ContaminationEstimator::BuildResolvedMarkers() {
+    resolvedMarkers.resize(NumMarker);
+    for (size_t i = 0; i < NumMarker; ++i) {
+        const std::string& chr = PosVec[i].first;
+        int pos = PosVec[i].second;
+        ResolvedMarker& rm = resolvedMarkers[i];
+
+        auto chrIt = viewer.posIndex.find(chr);
+        if (chrIt == viewer.posIndex.end()) { rm.baseInfoIndex = -1; continue; }
+        auto posIt = chrIt->second.find(pos);
+        if (posIt == chrIt->second.end()) { rm.baseInfoIndex = -1; continue; }
+
+        rm.baseInfoIndex = posIt->second;
+        rm.altBase = ChooseBed[chr][pos].second;
+        rm.knownAFValue = 0.0;
+        if (isAFknown) {
+            rm.knownAFValue = knownAF[chr][pos];
+        }
+    }
+}
+
 int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
     AmoebaMinimizer myMinimizer;
+
+    BuildResolvedMarkers();
 
     {
         PhaseTimer t("Initialize likelihood");
