@@ -156,60 +156,28 @@ public:
             return Base[maxIndex];
         }
 
-        inline double getConditionalBaseLK(char base, int genotype, char altBase, bool is_error) {
-            if (!is_error) {
-                if (genotype == 0) {
-                    if (base == '.' || base == ',') {
-                        return 1;
-                    } else
-                        return 0;
-                } else if (genotype == 1) {
-                    if (base == '.' || base == ',') {
-                        return 0.5;
-                    } else if (toupper(base) == toupper(altBase)) {
-                        return 0.5;
-                    } else
-                        return 0;
-                } else if (genotype == 2) {
-                    if (toupper(base) == toupper(altBase)) {
-                        return 1;
-                    } else
-                        return 0;
-                } else {
-                    std::cerr << "genotype error!" << std::endl;
-                    exit(EXIT_FAILURE);
-                }
-            } else {
-                if (genotype == 0) {
-                    if (base == '.' || base == ',') {
-                        return 0;
-                    } else if (toupper(base) == toupper(altBase)) {
-                        return 1. / 3.;
-                    } else
-                        return 2. / 3.;
-                } else if (genotype == 1) {
-                    if (base == '.' || base == ',') {
-                        return 1. / 6.;
-                    } else if (toupper(base) == toupper(altBase)) {
-                        return 1. / 6.;
-                    } else
-                        return 2. / 3.;
-                } else if (genotype == 2) {
-                    if (base == '.' || base == ',') {
-                        return 1. / 3.;
-                    }
-                    if (toupper(base) == toupper(altBase)) {
-                        return 0;
-                    } else
-                        return 2. / 3.;
-                } else {
-                    std::cerr << "genotype error!" << std::endl;
-                    exit(EXIT_FAILURE);
-                }
+        // Conditional base likelihood lookup table indexed by [is_error][genotype][base_class].
+        // base_class: 0=ref (./,), 1=alt (matches altBase), 2=other
+        static constexpr double COND_LK[2][3][3] = {
+            // is_error = 0 (no sequencing error)
+            {
+                /* geno 0 (hom ref) */ {1.0,     0.0,     0.0},
+                /* geno 1 (het)     */ {0.5,     0.5,     0.0},
+                /* geno 2 (hom alt) */ {0.0,     1.0,     0.0},
+            },
+            // is_error = 1 (sequencing error)
+            {
+                /* geno 0 (hom ref) */ {0.0,     1.0/3.0, 2.0/3.0},
+                /* geno 1 (het)     */ {1.0/6.0, 1.0/6.0, 2.0/3.0},
+                /* geno 2 (hom alt) */ {1.0/3.0, 0.0,     2.0/3.0},
+            },
+        };
 
-            }
-
-
+        // Classify a base as ref (0), alt (1), or other (2).
+        static inline int classifyBase(char base, char altBase) {
+            if (base == '.' || base == ',') return 0;
+            if (toupper(base) == toupper(altBase)) return 1;
+            return 2;
         }
 
         void InitialGF(double AF, double *GF) const {
@@ -275,29 +243,49 @@ public:
 
                 char altBase = ptr->ChooseBed[chr][pos].second;
 
-                // Precompute per-base phred error probabilities so they are
-                // looked up once per base rather than 9x (once per genotype pair).
+                // For each observed base at this marker, compute its contribution to the
+                // log-likelihood under all 9 genotype-pair combinations (g1, g2) where
+                // g1 is the contaminating sample's genotype and g2 is the intended sample's.
+                //
+                // The likelihood of observing a base given a genotype pair is a mixture:
+                //   P(base | g1, g2, alpha) =
+                //       [alpha * P(base|g1,err) + (1-alpha) * P(base|g2,err)] * P(err)
+                //     + [alpha * P(base|g1,ok)  + (1-alpha) * P(base|g2,ok) ] * P(ok)
+                //
+                // where P(err) is the Phred-scaled base error probability and P(ok) = 1 - P(err).
+                // The conditional probabilities P(base|genotype,err/ok) depend only on whether
+                // the base is ref, alt, or other — looked up from the COND_LK table.
+                //
+                // baseLKAccum[g1][g2] accumulates sum-of-log-likelihoods across all bases,
+                // which equals the log of the product of per-base likelihoods.
                 const int depth = tmpBase.size();
-                std::vector<double> phredErr(depth);
-                std::vector<double> phredNoErr(depth);
+                double baseLKAccum[3][3] = {};
+
                 for (int j = 0; j < depth; ++j) {
-                    phredErr[j] = phredTable[static_cast<unsigned char>(tmpQual[j]) - 33];
-                    phredNoErr[j] = 1.0 - phredErr[j];
+                    // Classify base once: ref (./,), alt, or other
+                    const int bc = classifyBase(tmpBase[j], altBase);
+                    const double pErr   = phredTable[static_cast<unsigned char>(tmpQual[j]) - 33];
+                    const double pNoErr = 1.0 - pErr;
+
+                    // Look up conditional likelihoods for each genotype (0=hom-ref, 1=het, 2=hom-alt)
+                    const double lkErr[3]   = { COND_LK[1][0][bc], COND_LK[1][1][bc], COND_LK[1][2][bc] };
+                    const double lkNoErr[3] = { COND_LK[0][0][bc], COND_LK[0][1][bc], COND_LK[0][2][bc] };
+
+                    // Accumulate log-likelihood for all 9 genotype-pair combinations
+                    for (int g1 = 0; g1 < 3; ++g1) {
+                        for (int g2 = 0; g2 < 3; ++g2) {
+                            double val = (alpha * lkErr[g1] + (1.0 - alpha) * lkErr[g2]) * pErr
+                                       + (alpha * lkNoErr[g1] + (1.0 - alpha) * lkNoErr[g2]) * pNoErr;
+                            baseLKAccum[g1][g2] += log(val);
+                        }
+                    }
                 }
 
-                for (int geno1 = 0; geno1 < 3; ++geno1)
-                    for (int geno2 = 0; geno2 < 3; ++geno2) {
-                        double baseLK(0);
-                        for (int j = 0; j < depth; ++j) {
-                            baseLK += log((alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 1) +
-                                           (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 1)) *
-                                          phredErr[j]
-                                          + (alpha * getConditionalBaseLK(tmpBase[j], geno1, altBase, 0) +
-                                             (1. - alpha) * getConditionalBaseLK(tmpBase[j], geno2, altBase, 0)) *
-                                            phredNoErr[j]);
-                        }
-                        markerLK += exp(baseLK) * GF[geno1] * GF2[geno2];
-                    }
+                // Marginalize over genotype pairs, weighting each by its prior
+                // probability under Hardy-Weinberg (GF for contaminating, GF2 for intended).
+                for (int g1 = 0; g1 < 3; ++g1)
+                    for (int g2 = 0; g2 < 3; ++g2)
+                        markerLK += exp(baseLKAccum[g1][g2]) * GF[g1] * GF2[g2];
                 if (markerLK > 0)
                     sumLLK += log(markerLK);
             }
