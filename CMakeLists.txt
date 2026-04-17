@@ -78,22 +78,25 @@ add_test(NAME testReadVcf
         COMMAND TestReadVcf resource/test/test_readvcf.vcf)
 add_test(NAME myTest1
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2)
+        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --Output result.myTest1)
 add_test(NAME myTest2
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMAND sh -c "diff resource/test/expected/result.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
+        COMMAND sh -c "diff resource/test/expected/result.Ancestry result.myTest1.Ancestry && rm result.myTest1.Ancestry result.myTest1.selfSM")
+set_tests_properties(myTest2 PROPERTIES DEPENDS myTest1)
 add_test(NAME myTest3
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMAND VerifyBamID --DisableSanityCheck --PileupFile resource/test/expected/result.Pileup --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2)
+        COMMAND VerifyBamID --DisableSanityCheck --PileupFile resource/test/expected/result.Pileup --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --Output result.myTest3)
 add_test(NAME myTest4
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMAND sh -c "diff resource/test/expected/result.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
+        COMMAND sh -c "diff resource/test/expected/result.Ancestry result.myTest3.Ancestry && rm result.myTest3.Ancestry result.myTest3.selfSM")
+set_tests_properties(myTest4 PROPERTIES DEPENDS myTest3)
 add_test(NAME myTest5
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMAND VerifyBamID --DisableSanityCheck --PileupFile resource/test/test.LongRead.pileup --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2)
+        COMMAND VerifyBamID --DisableSanityCheck --PileupFile resource/test/test.LongRead.pileup --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --Output result.myTest5)
 add_test(NAME myTest6
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMAND sh -c "diff resource/test/expected/test.LongRead.pileup.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
+        COMMAND sh -c "diff resource/test/expected/test.LongRead.pileup.Ancestry result.myTest5.Ancestry && rm result.myTest5.Ancestry result.myTest5.selfSM")
+set_tests_properties(myTest6 PROPERTIES DEPENDS myTest5)
 
 # Each new test pair below uses its own --Output prefix so tests can run in
 # parallel without racing on the shared "result.*" filenames, and the Diff
