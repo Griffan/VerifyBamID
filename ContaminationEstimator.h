@@ -24,6 +24,7 @@ SOFTWARE.
 #ifndef CONTAMINATIONESTIMATOR_H_
 #define CONTAMINATIONESTIMATOR_H_
 
+#include <array>
 #include <string>
 #include <unordered_map>
 //#include <tkDecls.h>
@@ -57,17 +58,19 @@ public:
     }
 
     // Precomputed Phred error probabilities for quality scores 0-93 (after ASCII-33 offset).
-    // Avoids repeated pow() calls in the hot loop.
+    // Avoids repeated pow() calls in the hot loop.  C++11 guarantees that
+    // initialization of a local static is thread-safe, so using an
+    // immediately-invoked lambda ensures the table is built exactly once even
+    // under concurrent first callers.
     static const double* getPhredTable() {
-        static double table[94];
-        static bool initialized = false;
-        if (!initialized) {
+        static const std::array<double, 94> table = []() {
+            std::array<double, 94> t{};
             for (int i = 0; i < 94; ++i) {
-                table[i] = pow(10.0, i / -10.0);
+                t[i] = pow(10.0, i / -10.0);
             }
-            initialized = true;
-        }
-        return table;
+            return t;
+        }();
+        return table.data();
     }
 
     class FullLLKFunc : public VectorFunc {
@@ -284,7 +287,15 @@ public:
 
                 for (int j = 0; j < depth; ++j) {
                     const int bc = classifyBase(tmpBase[j], altBase);
-                    const int q  = static_cast<unsigned char>(tmpQual[j]) - 33;
+                    // Clamp quality to [0, 93] before indexing the lookup
+                    // table.  BAM-derived qualities are guaranteed in-range,
+                    // but --PileupFile inputs are ASCII and may carry values
+                    // outside the expected Phred+33 window if the file is
+                    // malformed or uses a different encoding; clamping avoids
+                    // out-of-bounds access without rejecting the record.
+                    int q = static_cast<unsigned char>(tmpQual[j]) - 33;
+                    if (q < 0) q = 0;
+                    else if (q > 93) q = 93;
 
                     for (int g1 = 0; g1 < 3; ++g1)
                         for (int g2 = 0; g2 < 3; ++g2)
