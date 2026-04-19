@@ -1,8 +1,32 @@
 #include "ContaminationEstimator.h"
+#include <chrono>
 #include <fstream>
 #include <sstream>
 #include <cmath>
 #include <algorithm>
+
+// Simple RAII timer that logs elapsed wall-clock time for a named phase.
+namespace {
+struct PhaseTimer {
+    std::string name;
+    std::chrono::steady_clock::time_point start;
+
+    explicit PhaseTimer(const std::string &phaseName)
+        : name(phaseName), start(std::chrono::steady_clock::now()) {
+        notice("  Starting phase: %s", name.c_str());
+    }
+
+    ~PhaseTimer() {
+        auto end = std::chrono::steady_clock::now();
+        double secs = std::chrono::duration<double>(end - start).count();
+        notice("  Finished phase: %s  [%.3f seconds]", name.c_str(), secs);
+    }
+};
+} // anonymous namespace
+
+// Out-of-class definition required in C++11 for static constexpr members that
+// are ODR-used.  Without this, GCC's linker reports an undefined reference.
+constexpr double ContaminationEstimator::FullLLKFunc::COND_LK[2][3][3];
 
 ContaminationEstimator::ContaminationEstimator() {
 
@@ -26,48 +50,109 @@ ContaminationEstimator::ContaminationEstimator(int nPC, const char *bedFile, int
 
 }
 
+// Resolve per-marker data that is constant across all optimization iterations.
+//
+// During optimization, ComputeMixLLKs is called tens of thousands of times.
+// Each call iterates over all markers and previously performed nested hash map
+// lookups (posIndex[chr][pos], ChooseBed[chr][pos], knownAF[chr][pos]) on every
+// iteration.  Since none of these values change between calls, we resolve them
+// once here into a flat vector indexed by marker ordinal.
+//
+// For markers not present in the viewer (e.g. the BAM had no reads at that
+// position), baseInfoIndex is set to -1 so ComputeMixLLKs can skip them with
+// a single integer comparison instead of two hash lookups.
+//
+// Must be called after data loading (ReadBam/ReadPileup) and before the
+// optimization loop in OptimizeLLK.
+void ContaminationEstimator::BuildResolvedMarkers() {
+    resolvedMarkers.resize(NumMarker);
+    for (size_t i = 0; i < NumMarker; ++i) {
+        const std::string& chr = PosVec[i].first;
+        int pos = PosVec[i].second;
+        ResolvedMarker& rm = resolvedMarkers[i];
+
+        auto chrIt = viewer.posIndex.find(chr);
+        if (chrIt == viewer.posIndex.end()) { rm.baseInfoIndex = -1; continue; }
+        auto posIt = chrIt->second.find(pos);
+        if (posIt == chrIt->second.end()) { rm.baseInfoIndex = -1; continue; }
+
+        rm.baseInfoIndex = posIt->second;
+        rm.altBase = ChooseBed[chr][pos].second;
+        rm.knownAFValue = 0.0;
+        if (isAFknown) {
+            rm.knownAFValue = knownAF[chr][pos];
+        }
+    }
+}
+
 int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
     AmoebaMinimizer myMinimizer;
 
-    fn.Initialize();
+    BuildResolvedMarkers();
+
+    {
+        PhaseTimer t("Initialize likelihood");
+        fn.Initialize();
+    }
+
     if (!isHeter) {
         if (isPCFixed) {
             std::cout << "Estimation from OptimizeHomoFixedPC:" << std::endl;
+            PhaseTimer t("OptimizeHomoFixedPC");
             OptimizeHomoFixedPC(myMinimizer);
         } else if (isAlphaFixed) {
+            PhaseTimer t("OptimizeHomoFixedAlpha");
             OptimizeHomoFixedAlpha(myMinimizer);
         } else {
             std::cout << "Estimation from OptimizeHomo:" << std::endl;
+            PhaseTimer t("OptimizeHomo");
             OptimizeHomo(myMinimizer);
         }
     } else//contamination source from different population
     {
         if (isPCFixed) {
             std::cout << "Estimation from OptimizeHeterFixedPC:" << std::endl;
+            PhaseTimer t("OptimizeHeterFixedPC");
             OptimizeHeterFixedPC(myMinimizer);
         } else if (isAlphaFixed) {
             std::cout << "Estimation from OptimizeHeterFixedAlpha:" << std::endl;
-            isHeter = false;
-            OptimizeHomoFixedAlpha(myMinimizer);
-            PC[1] = PC[0];
-            fn.globalPC2 = fn.globalPC;
-            isHeter = true;
-            OptimizeHeterFixedAlpha(myMinimizer);
+            {
+                PhaseTimer t("OptimizeHomoFixedAlpha (initial)");
+                isHeter = false;
+                OptimizeHomoFixedAlpha(myMinimizer);
+                PC[1] = PC[0];
+                fn.globalPC2 = fn.globalPC;
+                isHeter = true;
+            }
+            {
+                PhaseTimer t("OptimizeHeterFixedAlpha");
+                OptimizeHeterFixedAlpha(myMinimizer);
+            }
         } else {
             std::cout << "Estimation from OptimizeHeter:" << std::endl;
-            isHeter = false;
-            OptimizeHomo(myMinimizer);
-            PC[1] = PC[0];
-            fn.globalPC2 = fn.globalPC;
-            isHeter = true;
-            OptimizeHeter(myMinimizer);
+            {
+                PhaseTimer t("OptimizeHomo (initial)");
+                isHeter = false;
+                OptimizeHomo(myMinimizer);
+                PC[1] = PC[0];
+                fn.globalPC2 = fn.globalPC;
+                isHeter = true;
+            }
+            {
+                PhaseTimer t("OptimizeHeter");
+                OptimizeHeter(myMinimizer);
+            }
         }
         if (fn.globalAlpha >= 0.5) {
             std::swap(fn.globalPC[0], fn.globalPC2[0]);
             std::swap(fn.globalPC[1], fn.globalPC2[1]);
         }
     }
-    fn.CalculateLLK0();
+
+    {
+        PhaseTimer t("Calculate null-model LLK");
+        fn.CalculateLLK0();
+    }
     std::cout << "Contaminating Sample ";
     for (int i = 0; i < numPC; ++i) {
         std::cout << "PC" << i + 1 << ":" << fn.globalPC[i] << "\t";

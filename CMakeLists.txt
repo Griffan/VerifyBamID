@@ -78,22 +78,66 @@ add_test(NAME testReadVcf
         COMMAND TestReadVcf resource/test/test_readvcf.vcf)
 add_test(NAME myTest1
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2)
+        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --Output result.myTest1)
 add_test(NAME myTest2
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMAND sh -c "diff resource/test/expected/result.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
+        COMMAND sh -c "diff resource/test/expected/result.Ancestry result.myTest1.Ancestry && rm result.myTest1.Ancestry result.myTest1.selfSM")
+set_tests_properties(myTest2 PROPERTIES DEPENDS myTest1)
 add_test(NAME myTest3
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMAND VerifyBamID --DisableSanityCheck --PileupFile resource/test/expected/result.Pileup --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2)
+        COMMAND VerifyBamID --DisableSanityCheck --PileupFile resource/test/expected/result.Pileup --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --Output result.myTest3)
 add_test(NAME myTest4
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMAND sh -c "diff resource/test/expected/result.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
+        COMMAND sh -c "diff resource/test/expected/result.Ancestry result.myTest3.Ancestry && rm result.myTest3.Ancestry result.myTest3.selfSM")
+set_tests_properties(myTest4 PROPERTIES DEPENDS myTest3)
 add_test(NAME myTest5
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMAND VerifyBamID --DisableSanityCheck --PileupFile resource/test/test.LongRead.pileup --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2)
+        COMMAND VerifyBamID --DisableSanityCheck --PileupFile resource/test/test.LongRead.pileup --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --Output result.myTest5)
 add_test(NAME myTest6
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMAND sh -c "diff resource/test/expected/test.LongRead.pileup.Ancestry result.Ancestry && rm result.Ancestry result.selfSM")
+        COMMAND sh -c "diff resource/test/expected/test.LongRead.pileup.Ancestry result.myTest5.Ancestry && rm result.myTest5.Ancestry result.myTest5.selfSM")
+set_tests_properties(myTest6 PROPERTIES DEPENDS myTest5)
+
+# Each new test pair below uses its own --Output prefix so tests can run in
+# parallel without racing on the shared "result.*" filenames, and the Diff
+# test is marked as DEPENDS on its Run so CTest always sequences them
+# correctly regardless of scheduling.
+
+# Test WithinAncestry model (OptimizeHomo)
+add_test(NAME testWithinAncestryRun
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --WithinAncestry --Output result.WithinAncestry)
+add_test(NAME testWithinAncestryDiff
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sh -c "diff resource/test/expected/test.WithinAncestry.Ancestry result.WithinAncestry.Ancestry && rm result.WithinAncestry.Ancestry result.WithinAncestry.selfSM")
+set_tests_properties(testWithinAncestryDiff PROPERTIES DEPENDS testWithinAncestryRun)
+
+# Test WithinAncestry + FixPC (OptimizeHomoFixedPC)
+add_test(NAME testWithinAncestryFixPCRun
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --WithinAncestry --FixPC 0.034756:0.0193 --Output result.WithinAncestryFixPC)
+add_test(NAME testWithinAncestryFixPCDiff
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sh -c "diff resource/test/expected/test.WithinAncestry.FixPC.Ancestry result.WithinAncestryFixPC.Ancestry && rm result.WithinAncestryFixPC.Ancestry result.WithinAncestryFixPC.selfSM")
+set_tests_properties(testWithinAncestryFixPCDiff PROPERTIES DEPENDS testWithinAncestryFixPCRun)
+
+# Test FixAlpha (OptimizeHomoFixedAlpha initial + OptimizeHeterFixedAlpha)
+add_test(NAME testFixAlphaRun
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --FixAlpha 0.1 --Output result.FixAlpha)
+add_test(NAME testFixAlphaDiff
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sh -c "diff resource/test/expected/test.FixAlpha.Ancestry result.FixAlpha.Ancestry && rm result.FixAlpha.Ancestry result.FixAlpha.selfSM")
+set_tests_properties(testFixAlphaDiff PROPERTIES DEPENDS testFixAlphaRun)
+
+# Test FixPC in BetweenAncestry mode (OptimizeHeterFixedPC)
+add_test(NAME testHeterFixPCRun
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --FixPC 0.034756:0.0193 --Output result.HeterFixPC)
+add_test(NAME testHeterFixPCDiff
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sh -c "diff resource/test/expected/test.HeterFixPC.Ancestry result.HeterFixPC.Ancestry && rm result.HeterFixPC.Ancestry result.HeterFixPC.selfSM")
+set_tests_properties(testHeterFixPCDiff PROPERTIES DEPENDS testHeterFixPCRun)
 
 #add_test( NAME myTestPlot
 #          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
