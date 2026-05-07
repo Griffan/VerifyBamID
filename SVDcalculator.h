@@ -24,13 +24,21 @@ public:
     ~SVDcalculator();
 
     /// Read a reference VCF, compute SVD, and write .UD, .mu, .bed, .V files.
+    /// @param VcfPath  path to the reference panel VCF
     /// @param includeChr  if non-empty, only markers on these chromosomes are used
     /// @param skipMinSampleCountCheck  if true, < 1000 samples becomes a warning not an error
     /// @param numSVDPCs  number of PCs to write (0 = all)
+    /// @param useGramSVD  if true, use Gram matrix (A^T*A) eigendecomposition instead
+    ///     of JacobiSVD.  This is mathematically equivalent but dramatically reduces
+    ///     peak memory for tall-skinny matrices (M markers >> N samples) because only
+    ///     an N*N Gram matrix and M*K result columns are allocated, rather than full
+    ///     M*N internal SVD matrices.  The A^T*A multiply also benefits from Eigen's
+    ///     OpenMP parallelization.
     void ProcessRefVCF(const std::string& VcfPath,
                        const std::unordered_set<std::string>& includeChr,
                        bool skipMinSampleCountCheck = false,
-                       int numSVDPCs = 10);
+                       int numSVDPCs = 10,
+                       bool useGramSVD = false);
 
     /// Parse a VCF into a genotype matrix.
     /// @param includeChr  if non-empty, only markers on these chromosomes are used

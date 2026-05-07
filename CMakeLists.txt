@@ -72,10 +72,16 @@ target_link_libraries(VerifyBamID statgen Vcf ${HTS_LIBRARIES} samtools ${ZLIB} 
 add_executable(TestReadVcf TestReadVcf.cpp SVDcalculator.cpp)
 target_link_libraries(TestReadVcf statgen Vcf ${HTS_LIBRARIES} samtools ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
 
+add_executable(TestGramSVD TestGramSVD.cpp)
+target_include_directories(TestGramSVD PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 enable_testing()
 add_test(NAME testReadVcf
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND TestReadVcf resource/test/test_readvcf.vcf)
+add_test(NAME testGramSVD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND TestGramSVD)
 add_test(NAME myTest1
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --Output result.myTest1)
