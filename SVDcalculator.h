@@ -32,8 +32,10 @@ public:
     ///     of JacobiSVD.  This is mathematically equivalent but dramatically reduces
     ///     peak memory for tall-skinny matrices (M markers >> N samples) because only
     ///     an N*N Gram matrix and M*K result columns are allocated, rather than full
-    ///     M*N internal SVD matrices.  The A^T*A multiply also benefits from Eigen's
-    ///     OpenMP parallelization.
+    ///     M*N internal SVD matrices.  Note this is only a win when M >> N; for panels
+    ///     with large N the N*N Gram matrix and its eigendecomposition dominate.  The
+    ///     A^T*A multiplication also benefits from OpenMP parallelization, which Eigen
+    ///     applies automatically to the matrix product.
     void ProcessRefVCF(const std::string& VcfPath,
                        const std::unordered_set<std::string>& includeChr,
                        bool skipMinSampleCountCheck = false,

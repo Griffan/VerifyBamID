@@ -160,10 +160,14 @@ int execute(int argc, char **argv) {
              "structure[default:false]")
   LONG_PARAM("GramSVD", &gramSVD,
              "[Bool] Use Gram matrix (A^T*A eigendecomposition) instead of "
-             "JacobiSVD for SVD computation. Reduces peak memory from "
-             "O(M*N) to O(N^2 + M*K) for M markers, N samples, K PCs, and "
-             "the dominant matrix multiply benefits from OpenMP "
-             "parallelism. Recommended for large panels[default:false]")
+             "JacobiSVD for SVD computation. For M markers, N samples, K PCs, "
+             "peak memory is O(N^2 + M*K) versus JacobiSVD's O(M*N); this is "
+             "only a reduction when there are many more markers than samples "
+             "(M >> N). For panels with large N it can use more memory, since "
+             "the N^2 Gram matrix and its eigendecomposition dominate. The "
+             "dominant matrix multiply also benefits from OpenMP parallelism. "
+             "Recommended for panels with many markers and relatively few "
+             "samples[default:false]")
   LONG_STRING_PARAM("IncludeChr", &includeChrStr,
                     "[String] Comma-separated list of chromosome names to "
                     "include when building SVD from --RefVCF. "

@@ -224,18 +224,16 @@ int SVDcalculator::ReadVcf(const std::string &VcfPath,
 }
 
 /// Log the proportion of variance explained by the top principal components.
-/// Accepts either singular values (from JacobiSVD) or eigenvalues (from
-/// Gram matrix eigendecomposition) and normalizes them to variance fractions.
-/// @param values  singular values or eigenvalues, in descending order
-/// @param areSingularValues  if true, values are singular values (variance =
-///     sigma^2); if false, values are eigenvalues (variance = lambda directly,
-///     clamped to zero to handle floating-point noise)
-static void logVarianceExplained(const VectorXf& values, bool areSingularValues) {
+/// Variance explained by PC_i = sigma_i^2 / sum(sigma_j^2). Callers using the
+/// Gram path should convert eigenvalues to singular values (sigma = sqrt(lambda))
+/// before calling so this only ever deals with singular values.
+/// @param singularValues  singular values, in descending order
+static void logVarianceExplained(const VectorXf& singularValues) {
     double totalVariance = 0.0;
-    int n = (int)values.size();
+    int n = (int)singularValues.size();
     for (int i = 0; i < n; ++i) {
-        double v = (double)values[i];
-        totalVariance += areSingularValues ? (v * v) : std::max(v, 0.0);
+        double sv = (double)singularValues[i];
+        totalVariance += sv * sv;
     }
 
     int numToLog = std::min(n, 20);
@@ -246,11 +244,9 @@ static void logVarianceExplained(const VectorXf& values, bool areSingularValues)
 
     double cumulative = 0.0;
     for (int i = 0; i < numToLog; ++i) {
-        double v = (double)values[i];
-        double variance = areSingularValues ? (v * v) : std::max(v, 0.0);
-        double varExplained = variance / totalVariance;
+        double sv = (double)singularValues[i];
+        double varExplained = (sv * sv) / totalVariance;
         cumulative += varExplained;
-        double sv = areSingularValues ? v : std::sqrt(std::max(v, 0.0));
         notice("  PC%d: singular_value=%.4f  variance_explained=%.4f (%.2f%%)  cumulative=%.4f (%.2f%%)",
                i + 1, sv, varExplained, varExplained * 100.0, cumulative, cumulative * 100.0);
     }
@@ -345,7 +341,12 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
         // JacobiSVD is inherently single-threaded.
 
         notice("Computing Gram matrix G = A^T*A (%d x %d)...", numIndividual, numIndividual);
-        MatrixXf G = genoMatrix.transpose() * genoMatrix;
+        // G = A^T*A is symmetric, so populate only the lower triangle via a
+        // rank update (rankUpdate(A^T) computes A^T*A).  This roughly halves
+        // the multiply's work versus a full product, and SelfAdjointEigenSolver
+        // reads only the lower triangle anyway.
+        MatrixXf G = MatrixXf::Zero(numIndividual, numIndividual);
+        G.selfadjointView<Eigen::Lower>().rankUpdate(genoMatrix.transpose());
 
         notice("Eigendecomposing Gram matrix...");
         SelfAdjointEigenSolver<MatrixXf> eigSolver(G);
@@ -358,7 +359,11 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
         MatrixXf eigenvectors = eigSolver.eigenvectors().rowwise().reverse();
 
         notice("Gram SVD completed. Extracting top %d principal components...", numPCs);
-        logVarianceExplained(eigenvalues, /*areSingularValues=*/false);
+        // Convert eigenvalues to singular values (sigma = sqrt(lambda)) for
+        // logging.  Clamp to zero first: tiny negative eigenvalues can arise
+        // from floating-point arithmetic error on near-zero variance PCs.
+        VectorXf singularValues = eigenvalues.cwiseMax(0.0f).cwiseSqrt();
+        logVarianceExplained(singularValues);
 
         // Compute UD = A * V_k using only the first numPCs eigenvectors.
         // This produces an M x K matrix (~100 MB for K=10) instead of the
@@ -395,7 +400,7 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
 
         auto singularValues = svd.singularValues();
         notice("SVD completed. Total singular values: %d", (int)singularValues.size());
-        logVarianceExplained(singularValues, /*areSingularValues=*/true);
+        logVarianceExplained(singularValues);
 
         auto matrixD = svd.singularValues().asDiagonal();
         MatrixXf matrixUD = svd.matrixU() * matrixD;//marker X PC
