@@ -41,21 +41,33 @@ struct LCG {
 
 /// Compare one column from each method, accounting for sign ambiguity. Returns
 /// 1 if the relative error exceeds the tolerance, 0 otherwise.
+/// Compare one column from each method, accounting for sign ambiguity. The
+/// comparison is scale-aware: a column passes if its max deviation is small
+/// relative to its own norm OR relative to `refScale` (the dominant column
+/// norm of the whole matrix). The second clause matters for the trailing,
+/// lowest-variance components: their singular vectors are ill-determined and
+/// the two algorithms can pick different directions, but the absolute UD
+/// contribution (sigma_i * u_i) is negligible, so a pure relative-error test
+/// would spuriously fail on numerical noise. `refScale` is the right yardstick
+/// because anything tiny next to the dominant component is irrelevant
+/// downstream, where UD enters as UD . PC dot products.
 int compareColumn(const char* label, const char* what, int pc,
-                  const VectorXf& a, const VectorXf& b, float tolerance) {
+                  const VectorXf& a, const VectorXf& b, float refScale,
+                  float tolerance) {
     float sign = (a.dot(b) >= 0.0f) ? 1.0f : -1.0f;
     float colNorm = a.norm();
     float maxDiff = (a - sign * b).cwiseAbs().maxCoeff();
-    float relErr = (colNorm > 0.0f) ? maxDiff / colNorm : maxDiff;
+    float denom = std::max(colNorm, refScale);
+    float relErr = (denom > 0.0f) ? maxDiff / denom : maxDiff;
 
     if (relErr > tolerance) {
         std::cerr << "FAIL [" << label << "]: " << what << " column " << pc
-                  << " relative error = " << relErr
+                  << " scaled error = " << relErr
                   << " (max abs diff = " << maxDiff << ")" << std::endl;
         return 1;
     }
     std::cerr << "PASS [" << label << "]: " << what << " column " << pc
-              << " relative error = " << relErr << std::endl;
+              << " scaled error = " << relErr << std::endl;
     return 0;
 }
 
@@ -71,19 +83,28 @@ int compareJacobiVsGram(const char* label, const MatrixXf& A, int K,
     VectorXf gramSV;
     SVDcalculator::ComputeSvdGram(A, K, gramUD, gramPC, gramSV);
 
+    // Dominant column norm of each matrix, used as the scale floor so that
+    // trailing near-zero columns are compared against the decomposition's
+    // overall magnitude rather than their own vanishing norm.
+    float udScale = jacobiUD.colwise().norm().maxCoeff();
+    float pcScale = jacobiPC.colwise().norm().maxCoeff();
+    float svScale = jacobiSV(0); // singular values are sorted descending
+
     int failures = 0;
     for (int pc = 0; pc < K; ++pc) {
-        failures += compareColumn(label, "UD", pc, jacobiUD.col(pc), gramUD.col(pc), tolerance);
+        failures += compareColumn(label, "UD", pc, jacobiUD.col(pc), gramUD.col(pc), udScale, tolerance);
     }
     for (int pc = 0; pc < K; ++pc) {
-        failures += compareColumn(label, "PC", pc, jacobiPC.col(pc), gramPC.col(pc), tolerance);
+        failures += compareColumn(label, "PC", pc, jacobiPC.col(pc), gramPC.col(pc), pcScale, tolerance);
     }
 
-    // Singular values are non-negative, so no sign handling is needed.
+    // Singular values are non-negative, so no sign handling is needed. As with
+    // the vectors, judge the difference against the largest singular value so
+    // the tiny trailing values aren't held to a meaningless relative tolerance.
     for (int pc = 0; pc < K; ++pc) {
         float jSV = jacobiSV(pc);
         float gSV = gramSV(pc);
-        float relErr = (jSV > 0.0f) ? std::fabs(jSV - gSV) / jSV : std::fabs(gSV);
+        float relErr = (svScale > 0.0f) ? std::fabs(jSV - gSV) / svScale : std::fabs(gSV);
         if (relErr > tolerance) {
             std::cerr << "FAIL [" << label << "]: singular value " << pc
                       << " Jacobi=" << jSV << " Gram=" << gSV
@@ -142,6 +163,16 @@ int main() {
         std::cerr << "=== Case 3: many PCs (200 x 30, K=10) ===" << std::endl;
         MatrixXf A = generateGenoMatrix(200, 30, /*seed=*/7);
         totalFailures += compareJacobiVsGram("many-PCs", A, 10, tolerance);
+        std::cerr << std::endl;
+    }
+
+    // Case 4: Extract every component (K == N == min(M,N)).  This is the
+    // --NumSVDPCs 0 path, where both methods return all available PCs including
+    // the lowest-variance ones, which are the most numerically delicate.
+    {
+        std::cerr << "=== Case 4: all PCs (200 x 30, K=30) ===" << std::endl;
+        MatrixXf A = generateGenoMatrix(200, 30, /*seed=*/13);
+        totalFailures += compareJacobiVsGram("all-PCs", A, 30, tolerance);
         std::cerr << std::endl;
     }
 

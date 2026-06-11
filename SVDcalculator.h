@@ -60,9 +60,11 @@ public:
     /// @param numPCs        number of principal components (columns) to return
     /// @param matrixUD[out] M x numPCs matrix, UD = A * V_k (== U * diag(sigma))
     /// @param matrixPC[out] N x numPCs matrix of right singular vectors (loadings)
-    /// @param singularValues[out] all min(M,N) singular values, descending. The
-    ///     full set (not just the top numPCs) is returned so callers can compute
-    ///     the variance-explained denominator correctly.
+    /// @param singularValues[out] the full singular-value spectrum, descending
+    ///     (length min(M,N) from Jacobi; length N from Gram, where any surplus
+    ///     entries beyond min(M,N) are ~0).  The full set, not just the top
+    ///     numPCs, is returned so callers compute the variance-explained
+    ///     denominator over every component.  numPCs must be in [1, min(M,N)].
     static void ComputeSvdGram(const Eigen::MatrixXf& centered, int numPCs,
                                Eigen::MatrixXf& matrixUD, Eigen::MatrixXf& matrixPC,
                                Eigen::VectorXf& singularValues);

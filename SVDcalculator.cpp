@@ -285,6 +285,10 @@ void SVDcalculator::ComputeSvdGram(const MatrixXf& centered, int numPCs,
     // automatically parallelized by Eigen when compiled with OpenMP, whereas
     // JacobiSVD is inherently single-threaded.
     int numIndividual = (int)centered.cols();
+    int maxPCs = std::min((int)centered.rows(), numIndividual);
+    if (numPCs < 1 || numPCs > maxPCs) {
+        error("ComputeSvdGram: numPCs (%d) must be in [1, min(M,N)=%d]", numPCs, maxPCs);
+    }
     notice("Computing Gram matrix G = A^T*A (%d x %d)...", numIndividual, numIndividual);
     // G = A^T*A is symmetric, so populate only the lower triangle via a rank
     // update (rankUpdate(A^T) computes A^T*A).  This roughly halves the
@@ -324,11 +328,16 @@ void SVDcalculator::ComputeSvdJacobi(const MatrixXf& centered, int numPCs,
                                      MatrixXf& matrixUD, MatrixXf& matrixPC,
                                      VectorXf& singularValues)
 {
+    int maxPCs = std::min((int)centered.rows(), (int)centered.cols());
+    if (numPCs < 1 || numPCs > maxPCs) {
+        error("ComputeSvdJacobi: numPCs (%d) must be in [1, min(M,N)=%d]", numPCs, maxPCs);
+    }
     notice("Computing SVD decomposition (JacobiSVD)...");
     JacobiSVD<MatrixXf> svd(centered, ComputeThinU | ComputeThinV);
 
     singularValues = svd.singularValues();
-    notice("SVD completed. Total singular values: %d", (int)singularValues.size());
+    notice("SVD completed. %d singular values total; keeping top %d.",
+           (int)singularValues.size(), numPCs);
 
     // Keep only the top numPCs components so both decomposition paths return
     // identically-shaped UD/PC matrices.
@@ -386,10 +395,12 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
         Mu.push_back(mu(rowIdx));
     }
 
-    // Clamp numPCs to numIndividual (the rank of the Gram matrix / number of
-    // singular values from thin SVD).  When numSVDPCs == 0 the user requested
-    // all components; for the Gram path this means the full N x N eigenbasis.
-    int numPCs = (numSVDPCs > 0) ? std::min(numSVDPCs, numIndividual) : numIndividual;
+    // Clamp numPCs to the number of non-trivial components, which is the rank
+    // of the thin SVD / Gram eigenbasis: min(numMarker, numIndividual).  Using
+    // numIndividual alone would over-request columns when there are fewer
+    // markers than samples.  numSVDPCs == 0 means "all available components".
+    int maxPCs = std::min(numMarker, numIndividual);
+    int numPCs = (numSVDPCs > 0) ? std::min(numSVDPCs, maxPCs) : maxPCs;
 
     // Decompose the mean-centered matrix into its top numPCs principal
     // components.  Both paths return identical results (up to floating-point
