@@ -255,6 +255,88 @@ static void logVarianceExplained(const VectorXf& singularValues) {
     }
 }
 
+void SVDcalculator::ComputeSvdGram(const MatrixXf& centered, int numPCs,
+                                   MatrixXf& matrixUD, MatrixXf& matrixPC,
+                                   VectorXf& singularValues)
+{
+    // Instead of computing the full SVD of the M x N genotype matrix A
+    // (where M = markers, N = samples, and typically M >> N), exploit the
+    // relationship between the SVD and the Gram matrix:
+    //
+    //   SVD:   A = U * S * V^T
+    //   Gram:  A^T * A = V * S^2 * V^T
+    //
+    // So the eigendecomposition of the N x N Gram matrix yields:
+    //   - eigenvalues  = sigma_i^2 (squared singular values)
+    //   - eigenvectors = columns of V (right singular vectors / PC loadings)
+    //
+    // The UD matrix (U * diag(sigma)) used downstream is recovered as
+    //   A * V = U * S * V^T * V = U * S = UD
+    // without ever materializing U or inverting S.  This produces the same UD
+    // values as the Jacobi path, up to floating-point precision and per-column
+    // sign conventions.
+    //
+    // Memory advantage: the Gram matrix is only N x N (e.g. 2500 x 2500 =
+    // 25 MB) vs the thin-U matrix from JacobiSVD which is M x N (e.g.
+    // 2.5M x 2500 = 25 GB).  Only the top numPCs columns of UD (M x numPCs)
+    // are extracted, not the full M x N result.
+    //
+    // Performance advantage: the A^T * A multiply is the dominant cost and is
+    // automatically parallelized by Eigen when compiled with OpenMP, whereas
+    // JacobiSVD is inherently single-threaded.
+    int numIndividual = (int)centered.cols();
+    notice("Computing Gram matrix G = A^T*A (%d x %d)...", numIndividual, numIndividual);
+    // G = A^T*A is symmetric, so populate only the lower triangle via a rank
+    // update (rankUpdate(A^T) computes A^T*A).  This roughly halves the
+    // multiply's work versus a full product, and SelfAdjointEigenSolver reads
+    // only the lower triangle anyway.
+    MatrixXf G = MatrixXf::Zero(numIndividual, numIndividual);
+    G.selfadjointView<Eigen::Lower>().rankUpdate(centered.transpose());
+
+    notice("Eigendecomposing Gram matrix...");
+    SelfAdjointEigenSolver<MatrixXf> eigSolver(G);
+    { MatrixXf().swap(G); } // release Gram matrix memory
+
+    // SelfAdjointEigenSolver returns eigenvalues and eigenvectors in ascending
+    // order.  Reverse to descending so the top principal components (highest
+    // variance explained) appear first.
+    VectorXf eigenvalues = eigSolver.eigenvalues().reverse();
+    MatrixXf eigenvectors = eigSolver.eigenvectors().rowwise().reverse();
+
+    // Convert eigenvalues to singular values (sigma = sqrt(lambda)).  Clamp to
+    // zero first: tiny negative eigenvalues can arise from floating-point
+    // arithmetic error on near-zero variance PCs.
+    singularValues = eigenvalues.cwiseMax(0.0f).cwiseSqrt();
+
+    notice("Gram SVD completed. Extracting top %d principal components...", numPCs);
+    // Sign-consistency note: both matrixUD and matrixPC are derived from the
+    // same eigenvector columns without any intermediate sign normalization.
+    // SVD singular vectors have sign ambiguity (both v and -v are valid), but
+    // the downstream likelihood uses the dot product UD[i,:] * PC[sample,:],
+    // which is invariant under per-column sign flips as long as UD and PC are
+    // consistent.  That holds because any sign chosen by the eigensolver
+    // propagates identically into both matrices.
+    matrixPC = eigenvectors.leftCols(numPCs);
+    matrixUD = centered * matrixPC;
+}
+
+void SVDcalculator::ComputeSvdJacobi(const MatrixXf& centered, int numPCs,
+                                     MatrixXf& matrixUD, MatrixXf& matrixPC,
+                                     VectorXf& singularValues)
+{
+    notice("Computing SVD decomposition (JacobiSVD)...");
+    JacobiSVD<MatrixXf> svd(centered, ComputeThinU | ComputeThinV);
+
+    singularValues = svd.singularValues();
+    notice("SVD completed. Total singular values: %d", (int)singularValues.size());
+
+    // Keep only the top numPCs components so both decomposition paths return
+    // identically-shaped UD/PC matrices.
+    VectorXf topSingularValues = singularValues.head(numPCs);
+    matrixUD = svd.matrixU().leftCols(numPCs) * topSingularValues.asDiagonal();
+    matrixPC = svd.matrixV().leftCols(numPCs);
+}
+
 void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
                                   const std::unordered_set<std::string>& includeChr,
                                   bool skipMinSampleCountCheck,
@@ -309,113 +391,32 @@ void SVDcalculator::ProcessRefVCF(const std::string &VcfPath,
     // all components; for the Gram path this means the full N x N eigenbasis.
     int numPCs = (numSVDPCs > 0) ? std::min(numSVDPCs, numIndividual) : numIndividual;
 
+    // Decompose the mean-centered matrix into its top numPCs principal
+    // components.  Both paths return identical results (up to floating-point
+    // precision and per-column sign); they differ only in memory and speed.
+    MatrixXf matrixUD, matrixPC;
+    VectorXf singularValues;
     if (useGramSVD) {
-        // Gram matrix SVD approach (--GramSVD flag).
-        //
-        // Instead of computing the full SVD of the M x N genotype matrix A
-        // (where M = numMarker, N = numIndividual, and typically M >> N),
-        // we exploit the relationship between SVD and the Gram matrix:
-        //
-        //   SVD:   A = U * S * V^T
-        //   Gram:  A^T * A = V * S^2 * V^T
-        //
-        // So the eigendecomposition of the N x N Gram matrix yields:
-        //   - eigenvalues  = sigma_i^2 (squared singular values)
-        //   - eigenvectors = columns of V (right singular vectors / PC loadings)
-        //
-        // The UD matrix (U * diag(sigma)) used downstream can be recovered as:
-        //   A * V = U * S * V^T * V = U * S = UD
-        // i.e. UD = A * V, without needing to compute U or invert S.
-        //
-        // Because A * V = U * S (from the SVD definition), this produces the
-        // same UD values as the Jacobi path, up to floating-point precision and
-        // per-column sign conventions.
-        //
-        // Memory advantage: the Gram matrix is only N x N (e.g. 2500 x 2500 =
-        // 25 MB) vs the thin-U matrix from JacobiSVD which is M x N (e.g.
-        // 2.5M x 2500 = 25 GB).  We also only extract the top K PC columns of
-        // UD (M x K) instead of the full M x N result.
-        //
-        // Performance advantage: the A^T * A multiply is the dominant cost and
-        // is automatically parallelized by Eigen when compiled with OpenMP.
-        // JacobiSVD is inherently single-threaded.
-
-        notice("Computing Gram matrix G = A^T*A (%d x %d)...", numIndividual, numIndividual);
-        // G = A^T*A is symmetric, so populate only the lower triangle via a
-        // rank update (rankUpdate(A^T) computes A^T*A).  This roughly halves
-        // the multiply's work versus a full product, and SelfAdjointEigenSolver
-        // reads only the lower triangle anyway.
-        MatrixXf G = MatrixXf::Zero(numIndividual, numIndividual);
-        G.selfadjointView<Eigen::Lower>().rankUpdate(genoMatrix.transpose());
-
-        notice("Eigendecomposing Gram matrix...");
-        SelfAdjointEigenSolver<MatrixXf> eigSolver(G);
-        { MatrixXf().swap(G); } // release Gram matrix memory
-
-        // SelfAdjointEigenSolver returns eigenvalues and eigenvectors in
-        // ascending order.  Reverse to descending so the top principal
-        // components (highest variance explained) appear first.
-        VectorXf eigenvalues = eigSolver.eigenvalues().reverse();
-        MatrixXf eigenvectors = eigSolver.eigenvectors().rowwise().reverse();
-
-        notice("Gram SVD completed. Extracting top %d principal components...", numPCs);
-        // Convert eigenvalues to singular values (sigma = sqrt(lambda)) for
-        // logging.  Clamp to zero first: tiny negative eigenvalues can arise
-        // from floating-point arithmetic error on near-zero variance PCs.
-        VectorXf singularValues = eigenvalues.cwiseMax(0.0f).cwiseSqrt();
-        logVarianceExplained(singularValues);
-
-        // Compute UD = A * V_k using only the first numPCs eigenvectors.
-        // This produces an M x K matrix (~100 MB for K=10) instead of the
-        // M x N matrix (~25 GB) that the Jacobi path produces.
-        //
-        // Sign-consistency note: both UD and PC below are derived from the
-        // same `eigenvectors` columns without any intermediate sign-
-        // normalization.  SVD singular vectors have sign ambiguity (both v
-        // and -v are valid), but the downstream likelihood computation uses
-        // the dot product UD[i,:] * PC[sample,:], which is invariant under
-        // per-column sign flips as long as UD and PC are consistent.  That
-        // invariant holds here because any sign choice made by the eigen-
-        // solver propagates identically into both matrices.
-        MatrixXf V_k = eigenvectors.leftCols(numPCs);
-        MatrixXf matrixUD = genoMatrix * V_k;
-
-        UD.resize(numMarker, std::vector<double>(numPCs, 0.0));
-        for (int i = 0; i < numMarker; ++i) {
-            for (int j = 0; j < numPCs; ++j) {
-                UD[i][j] = matrixUD(i, j);
-            }
-        }
-
-        PC.resize(numIndividual, std::vector<double>(numPCs, 0.0));
-        for (int i = 0; i < numIndividual; ++i) {
-            for (int j = 0; j < numPCs; ++j) {
-                PC[i][j] = eigenvectors(i, j);
-            }
-        }
+        ComputeSvdGram(genoMatrix, numPCs, matrixUD, matrixPC, singularValues);
     } else {
-        // Original JacobiSVD approach
-        notice("Computing SVD decomposition (JacobiSVD)...");
-        JacobiSVD<MatrixXf> svd(genoMatrix, ComputeThinU | ComputeThinV);
+        ComputeSvdJacobi(genoMatrix, numPCs, matrixUD, matrixPC, singularValues);
+    }
 
-        auto singularValues = svd.singularValues();
-        notice("SVD completed. Total singular values: %d", (int)singularValues.size());
-        logVarianceExplained(singularValues);
+    // singularValues holds the full spectrum, so the variance-explained
+    // denominator is computed over all components, not just the top numPCs.
+    logVarianceExplained(singularValues);
 
-        auto matrixD = svd.singularValues().asDiagonal();
-        MatrixXf matrixUD = svd.matrixU() * matrixD;//marker X PC
-        UD.resize(matrixUD.rows(),std::vector<double>(matrixUD.cols(),0.f));
-        for (int rowIdx = 0; rowIdx <matrixUD.rows(); ++rowIdx) {
-            for (int colIdx = 0; colIdx <matrixUD.cols(); ++colIdx) {
-                UD[rowIdx][colIdx] = matrixUD(rowIdx,colIdx);
-            }
+    int numCols = (int)matrixUD.cols();
+    UD.assign(numMarker, std::vector<double>(numCols, 0.0));
+    for (int i = 0; i < numMarker; ++i) {
+        for (int j = 0; j < numCols; ++j) {
+            UD[i][j] = matrixUD(i, j);
         }
-        MatrixXf matrixV = svd.matrixV();
-        PC.resize(numIndividual,std::vector<double>(matrixUD.cols(),0.f));
-        for (int sampleIdx = 0; sampleIdx < numIndividual ; ++sampleIdx) {
-            for (int pcIdx = 0; pcIdx <matrixUD.cols() ; ++pcIdx) {
-                PC[sampleIdx][pcIdx] = matrixV(sampleIdx,pcIdx);
-            }
+    }
+    PC.assign(numIndividual, std::vector<double>(numCols, 0.0));
+    for (int i = 0; i < numIndividual; ++i) {
+        for (int j = 0; j < numCols; ++j) {
+            PC[i][j] = matrixPC(i, j);
         }
     }
 

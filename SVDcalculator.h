@@ -6,6 +6,7 @@
 #include <map>
 #include <unordered_set>
 #include "SimplePileupViewer.h"
+#include "Eigen/Dense"
 
 class SVDcalculator {
 private:
@@ -48,6 +49,28 @@ public:
                 std::vector<std::vector<char> >& genotype,
                 int & nSamples, int& nMarkers,
                 const std::unordered_set<std::string>& includeChr);
+
+    /// Decompose a mean-centered M x N genotype matrix into its top `numPCs`
+    /// principal components via the Gram matrix (A^T*A) eigendecomposition.
+    /// Mathematically equivalent to ComputeSvdJacobi but avoids materializing
+    /// the M x N thin-U matrix; see ProcessRefVCF's @param useGramSVD for the
+    /// memory/performance trade-offs.  Implemented as a free-standing static
+    /// method so it can be unit-tested directly against ComputeSvdJacobi.
+    /// @param centered      mean-centered genotype matrix (M markers x N samples)
+    /// @param numPCs        number of principal components (columns) to return
+    /// @param matrixUD[out] M x numPCs matrix, UD = A * V_k (== U * diag(sigma))
+    /// @param matrixPC[out] N x numPCs matrix of right singular vectors (loadings)
+    /// @param singularValues[out] all min(M,N) singular values, descending. The
+    ///     full set (not just the top numPCs) is returned so callers can compute
+    ///     the variance-explained denominator correctly.
+    static void ComputeSvdGram(const Eigen::MatrixXf& centered, int numPCs,
+                               Eigen::MatrixXf& matrixUD, Eigen::MatrixXf& matrixPC,
+                               Eigen::VectorXf& singularValues);
+
+    /// Same contract as ComputeSvdGram, but using Eigen's JacobiSVD directly.
+    static void ComputeSvdJacobi(const Eigen::MatrixXf& centered, int numPCs,
+                                 Eigen::MatrixXf& matrixUD, Eigen::MatrixXf& matrixPC,
+                                 Eigen::VectorXf& singularValues);
 
     std::vector<std::vector<double>> GetUDMatrix();
     std::vector<std::vector<double>> GetPCMatrix();

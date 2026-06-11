@@ -72,8 +72,9 @@ target_link_libraries(VerifyBamID statgen Vcf ${HTS_LIBRARIES} samtools ${ZLIB} 
 add_executable(TestReadVcf TestReadVcf.cpp SVDcalculator.cpp)
 target_link_libraries(TestReadVcf statgen Vcf ${HTS_LIBRARIES} samtools ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
 
-add_executable(TestGramSVD TestGramSVD.cpp)
+add_executable(TestGramSVD TestGramSVD.cpp SVDcalculator.cpp)
 target_include_directories(TestGramSVD PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(TestGramSVD statgen Vcf ${HTS_LIBRARIES} samtools ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
 
 enable_testing()
 add_test(NAME testReadVcf

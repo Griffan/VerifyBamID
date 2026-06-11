@@ -1,25 +1,28 @@
 /// Test that the Gram matrix SVD approach (A^T*A eigendecomposition) produces
 /// mathematically equivalent results to Eigen's JacobiSVD.
 ///
-/// Generates a deterministic synthetic genotype matrix (500 markers x 50
-/// samples, values in {0,1,2}), mean-centers it (matching ProcessRefVCF), then
-/// computes the decomposition both ways and compares:
-///   1. UD columns  (U * diag(sigma) from Jacobi  vs  A * V_k from Gram)
-///   2. V columns   (right singular vectors)
-///   3. Singular values  (direct from Jacobi  vs  sqrt(eigenvalues) from Gram)
+/// This test calls the *production* decomposition routines directly --
+/// SVDcalculator::ComputeSvdGram and SVDcalculator::ComputeSvdJacobi -- rather
+/// than reimplementing them, so it validates the code that actually ships.
+///
+/// It generates a deterministic synthetic genotype matrix (values in {0,1,2}),
+/// mean-centers it (matching ProcessRefVCF), runs both decompositions, and
+/// compares:
+///   1. UD columns       (U * diag(sigma)  vs  A * V_k)
+///   2. PC columns        (right singular vectors / loadings)
+///   3. Singular values   (direct from Jacobi  vs  sqrt(eigenvalues) from Gram)
 ///
 /// SVD singular vectors have sign ambiguity -- both v_i and -v_i are valid
 /// decompositions -- so each column comparison determines the sign alignment
 /// via dot product before computing the error.
 ///
-/// The test uses single-precision float (matching the production code's
-/// MatrixXf), so we allow up to 1e-2 relative error per column -- empirically
-/// the two methods agree to ~1e-5, well within this bound.
+/// The decompositions use single-precision float (matching the production
+/// code's MatrixXf), so we allow up to 1e-2 relative error per column --
+/// empirically the two methods agree to ~1e-5, well within this bound.
 
-#include "Eigen/Dense"
+#include "SVDcalculator.h"
 #include <cmath>
 #include <cstdint>
-#include <cstdlib>
 #include <iostream>
 
 using namespace Eigen;
@@ -36,83 +39,59 @@ struct LCG {
     }
 };
 
-/// Compare the top K principal components from JacobiSVD and Gram matrix
-/// approaches on a given mean-centered matrix.  Returns the number of
-/// failures (0 = all comparisons passed).
+/// Compare one column from each method, accounting for sign ambiguity. Returns
+/// 1 if the relative error exceeds the tolerance, 0 otherwise.
+int compareColumn(const char* label, const char* what, int pc,
+                  const VectorXf& a, const VectorXf& b, float tolerance) {
+    float sign = (a.dot(b) >= 0.0f) ? 1.0f : -1.0f;
+    float colNorm = a.norm();
+    float maxDiff = (a - sign * b).cwiseAbs().maxCoeff();
+    float relErr = (colNorm > 0.0f) ? maxDiff / colNorm : maxDiff;
+
+    if (relErr > tolerance) {
+        std::cerr << "FAIL [" << label << "]: " << what << " column " << pc
+                  << " relative error = " << relErr
+                  << " (max abs diff = " << maxDiff << ")" << std::endl;
+        return 1;
+    }
+    std::cerr << "PASS [" << label << "]: " << what << " column " << pc
+              << " relative error = " << relErr << std::endl;
+    return 0;
+}
+
+/// Run both production decompositions on a mean-centered matrix and compare the
+/// top K principal components. Returns the number of failures (0 = all passed).
 int compareJacobiVsGram(const char* label, const MatrixXf& A, int K,
                         float tolerance) {
-    // Method 1: JacobiSVD (existing approach)
-    JacobiSVD<MatrixXf> svd(A, ComputeThinU | ComputeThinV);
-    MatrixXf jacobiUD = svd.matrixU() * svd.singularValues().asDiagonal();
-    MatrixXf jacobiV  = svd.matrixV();
+    MatrixXf jacobiUD, jacobiPC;
+    VectorXf jacobiSV;
+    SVDcalculator::ComputeSvdJacobi(A, K, jacobiUD, jacobiPC, jacobiSV);
 
-    // Method 2: Gram matrix approach
-    MatrixXf G = A.transpose() * A;
-    SelfAdjointEigenSolver<MatrixXf> eigSolver(G);
-    VectorXf eigenvalues  = eigSolver.eigenvalues().reverse();
-    MatrixXf eigenvectors = eigSolver.eigenvectors().rowwise().reverse();
-
-    MatrixXf gramV_k  = eigenvectors.leftCols(K);
-    MatrixXf gramUD_k = A * gramV_k;
+    MatrixXf gramUD, gramPC;
+    VectorXf gramSV;
+    SVDcalculator::ComputeSvdGram(A, K, gramUD, gramPC, gramSV);
 
     int failures = 0;
-
-    // Compare UD columns (accounting for sign ambiguity)
     for (int pc = 0; pc < K; ++pc) {
-        float dot = jacobiUD.col(pc).dot(gramUD_k.col(pc));
-        float sign = (dot >= 0.0f) ? 1.0f : -1.0f;
-
-        float colNorm = jacobiUD.col(pc).norm();
-        float maxDiff = (jacobiUD.col(pc) - sign * gramUD_k.col(pc)).cwiseAbs().maxCoeff();
-        float relErr  = (colNorm > 0.0f) ? maxDiff / colNorm : maxDiff;
-
-        if (relErr > tolerance) {
-            std::cerr << "FAIL [" << label << "]: UD column " << pc
-                      << " relative error = " << relErr
-                      << " (max abs diff = " << maxDiff << ")" << std::endl;
-            failures++;
-        } else {
-            std::cerr << "PASS [" << label << "]: UD column " << pc
-                      << " relative error = " << relErr << std::endl;
-        }
+        failures += compareColumn(label, "UD", pc, jacobiUD.col(pc), gramUD.col(pc), tolerance);
+    }
+    for (int pc = 0; pc < K; ++pc) {
+        failures += compareColumn(label, "PC", pc, jacobiPC.col(pc), gramPC.col(pc), tolerance);
     }
 
-    // Compare V columns
+    // Singular values are non-negative, so no sign handling is needed.
     for (int pc = 0; pc < K; ++pc) {
-        float dot = jacobiV.col(pc).dot(gramV_k.col(pc));
-        float sign = (dot >= 0.0f) ? 1.0f : -1.0f;
-
-        float colNorm = jacobiV.col(pc).norm();
-        float maxDiff = (jacobiV.col(pc) - sign * gramV_k.col(pc)).cwiseAbs().maxCoeff();
-        float relErr  = (colNorm > 0.0f) ? maxDiff / colNorm : maxDiff;
-
-        if (relErr > tolerance) {
-            std::cerr << "FAIL [" << label << "]: V column " << pc
-                      << " relative error = " << relErr
-                      << " (max abs diff = " << maxDiff << ")" << std::endl;
-            failures++;
-        } else {
-            std::cerr << "PASS [" << label << "]: V column " << pc
-                      << " relative error = " << relErr << std::endl;
-        }
-    }
-
-    // Verify singular values match eigenvalues
-    for (int pc = 0; pc < K; ++pc) {
-        float jacobiSV = svd.singularValues()(pc);
-        float gramSV   = std::sqrt(std::max(0.0f, eigenvalues(pc)));
-        float relErr   = (jacobiSV > 0.0f)
-            ? std::fabs(jacobiSV - gramSV) / jacobiSV
-            : std::fabs(gramSV);
-
+        float jSV = jacobiSV(pc);
+        float gSV = gramSV(pc);
+        float relErr = (jSV > 0.0f) ? std::fabs(jSV - gSV) / jSV : std::fabs(gSV);
         if (relErr > tolerance) {
             std::cerr << "FAIL [" << label << "]: singular value " << pc
-                      << " Jacobi=" << jacobiSV << " Gram=" << gramSV
+                      << " Jacobi=" << jSV << " Gram=" << gSV
                       << " relative error=" << relErr << std::endl;
             failures++;
         } else {
             std::cerr << "PASS [" << label << "]: singular value " << pc
-                      << " Jacobi=" << jacobiSV << " Gram=" << gramSV << std::endl;
+                      << " Jacobi=" << jSV << " Gram=" << gSV << std::endl;
         }
     }
 
