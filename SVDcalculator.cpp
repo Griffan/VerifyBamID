@@ -299,6 +299,9 @@ void SVDcalculator::ComputeSvdGram(const MatrixXf& centered, int numPCs,
 
     notice("Eigendecomposing Gram matrix...");
     SelfAdjointEigenSolver<MatrixXf> eigSolver(G);
+    if (eigSolver.info() != Eigen::Success) {
+        error("ComputeSvdGram: Gram matrix eigendecomposition failed to converge");
+    }
     { MatrixXf().swap(G); } // release Gram matrix memory
 
     // SelfAdjointEigenSolver returns eigenvalues and eigenvectors in ascending
