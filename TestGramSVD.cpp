@@ -21,6 +21,7 @@
 /// empirically the two methods agree to ~1e-5, well within this bound.
 
 #include "SVDcalculator.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -39,8 +40,6 @@ struct LCG {
     }
 };
 
-/// Compare one column from each method, accounting for sign ambiguity. Returns
-/// 1 if the relative error exceeds the tolerance, 0 otherwise.
 /// Compare one column from each method, accounting for sign ambiguity. The
 /// comparison is scale-aware: a column passes if its max deviation is small
 /// relative to its own norm OR relative to `refScale` (the dominant column
@@ -168,7 +167,12 @@ int main() {
 
     // Case 4: Extract every component (K == N == min(M,N)).  This is the
     // --NumSVDPCs 0 path, where both methods return all available PCs including
-    // the lowest-variance ones, which are the most numerically delicate.
+    // the lowest-variance ones.  Note this exercises the shape, not small-value
+    // accuracy: forming A^T*A squares the condition number, so the smallest
+    // singular values diverge between the two methods on ill-conditioned input.
+    // The scale-aware tolerance in compareColumn deliberately tolerates that --
+    // those components are negligible in the downstream UD . PC dot products --
+    // so this case does not assert agreement on the trailing singular values.
     {
         std::cerr << "=== Case 4: all PCs (200 x 30, K=30) ===" << std::endl;
         MatrixXf A = generateGenoMatrix(200, 30, /*seed=*/13);

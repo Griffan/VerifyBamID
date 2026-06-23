@@ -284,6 +284,13 @@ void SVDcalculator::ComputeSvdGram(const MatrixXf& centered, int numPCs,
     // Performance advantage: the A^T * A multiply is the dominant cost and is
     // automatically parallelized by Eigen when compiled with OpenMP, whereas
     // JacobiSVD is inherently single-threaded.
+    //
+    // Numerical caveat: forming A^T*A squares the condition number, so the
+    // smallest singular values are recovered less accurately than JacobiSVD
+    // would (and can be driven to zero on ill-conditioned input).  This is
+    // immaterial for contamination estimation, which uses only the top PCs,
+    // but it makes the Gram path a poor choice if the full, accurate spectrum
+    // matters.
     int numIndividual = (int)centered.cols();
     int maxPCs = std::min((int)centered.rows(), numIndividual);
     if (numPCs < 1 || numPCs > maxPCs) {
@@ -304,16 +311,14 @@ void SVDcalculator::ComputeSvdGram(const MatrixXf& centered, int numPCs,
     }
     { MatrixXf().swap(G); } // release Gram matrix memory
 
-    // SelfAdjointEigenSolver returns eigenvalues and eigenvectors in ascending
-    // order.  Reverse to descending so the top principal components (highest
-    // variance explained) appear first.
-    VectorXf eigenvalues = eigSolver.eigenvalues().reverse();
-    MatrixXf eigenvectors = eigSolver.eigenvectors().rowwise().reverse();
-
-    // Convert eigenvalues to singular values (sigma = sqrt(lambda)).  Clamp to
-    // zero first: tiny negative eigenvalues can arise from floating-point
-    // arithmetic error on near-zero variance PCs.
-    singularValues = eigenvalues.cwiseMax(0.0f).cwiseSqrt();
+    // Convert the full eigenvalue spectrum to singular values (sigma =
+    // sqrt(lambda)).  SelfAdjointEigenSolver returns them ascending, so reverse
+    // to descending (top PCs first).  We keep all N values, not just the top
+    // numPCs, because logVarianceExplained needs the total variance across the
+    // whole spectrum; the vector is only N long so the full reverse is cheap.
+    // cwiseMax(0) guards the sqrt against tiny negative eigenvalues that arise
+    // from floating-point arithmetic error on near-zero variance PCs.
+    singularValues = eigSolver.eigenvalues().reverse().cwiseMax(0.0f).cwiseSqrt();
 
     notice("Gram SVD completed. Extracting top %d principal components...", numPCs);
     // Sign-consistency note: both matrixUD and matrixPC are derived from the
@@ -323,7 +328,13 @@ void SVDcalculator::ComputeSvdGram(const MatrixXf& centered, int numPCs,
     // which is invariant under per-column sign flips as long as UD and PC are
     // consistent.  That holds because any sign chosen by the eigensolver
     // propagates identically into both matrices.
-    matrixPC = eigenvectors.leftCols(numPCs);
+    //
+    // Extract the top numPCs eigenvectors directly from the solver rather than
+    // copying and reversing the full N x N matrix first: the components are in
+    // ascending order, so the top ones are the rightmost columns; taking
+    // rightCols(numPCs) and reversing just those avoids a redundant N x N
+    // allocation that would otherwise undercut the Gram path's memory savings.
+    matrixPC = eigSolver.eigenvectors().rightCols(numPCs).rowwise().reverse();
     matrixUD = centered * matrixPC;
 }
 
