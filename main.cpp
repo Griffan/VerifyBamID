@@ -64,6 +64,7 @@ int execute(int argc, char **argv) {
   
   int numSVDPCs(10);
   bool skipMinSampleCountCheck(false);
+  bool gramSVD(false);
   // Default to human autosomes (both with and without "chr" prefix).
   // Override with --IncludeChr for non-human species.
   std::string includeChrStr("1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,"
@@ -157,6 +158,16 @@ int execute(int argc, char **argv) {
              "produce unreliable contamination estimates unless your "
              "reference panel adequately captures the population "
              "structure[default:false]")
+  LONG_PARAM("GramSVD", &gramSVD,
+             "[Bool] Use Gram matrix (A^T*A eigendecomposition) instead of "
+             "JacobiSVD for SVD computation. For M markers, N samples, K PCs, "
+             "peak memory is O(N^2 + M*K) versus JacobiSVD's O(M*N); this is "
+             "only a reduction when there are many more markers than samples "
+             "(M >> N). For panels with large N it can use more memory, since "
+             "the N^2 Gram matrix and its eigendecomposition dominate. The "
+             "dominant matrix multiply also benefits from OpenMP parallelism. "
+             "Recommended for panels with many markers and relatively few "
+             "samples[default:false]")
   LONG_STRING_PARAM("IncludeChr", &includeChrStr,
                     "[String] Comma-separated list of chromosome names to "
                     "include when building SVD from --RefVCF. "
@@ -240,7 +251,7 @@ int execute(int argc, char **argv) {
     }
     notice("--IncludeChr: filtering to %d chromosome name(s)", (int)includeChrSet.size());
     SVDcalculator calculator;
-    calculator.ProcessRefVCF(RefVCF, includeChrSet, skipMinSampleCountCheck, numSVDPCs);
+    calculator.ProcessRefVCF(RefVCF, includeChrSet, skipMinSampleCountCheck, numSVDPCs, gramSVD);
     notice("Success!");
     return 0;
   }

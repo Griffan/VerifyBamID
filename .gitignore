@@ -10,4 +10,6 @@ samtools/htslib/
 cmake-build-debug*
 cmake-build-release*
 VerifyBamID
+bin/TestGramSVD
+bin/TestReadVcf
 *vcf.gz
