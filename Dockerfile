@@ -1,5 +1,4 @@
 # In this image we do not include the R-based plot scripts.
-# In this image we do not include the R-based plot scripts.
 FROM ubuntu:20.04 AS build
 
 # Set noninterative mode
