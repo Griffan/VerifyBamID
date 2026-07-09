@@ -16,7 +16,7 @@ RUN apt-get update \
         g++ \
         git \
         wget \
-        libbz2-dev=1.0.8-2 \
+        libbz2-dev \
         libcurl4-openssl-dev \
         zlib1g-dev \
         liblzma-dev
@@ -33,9 +33,7 @@ RUN autoheader; autoconf; ./configure --prefix=/usr/local/ \
 
 # Compile VerifyBamID. Version ${VERSION}
 WORKDIR /
-RUN git clone https://github.com/Griffan/VerifyBamID.git && \
-    cd VerifyBamID && \
-    git checkout ${VERSION}
+RUN git clone --depth 1 --branch ${VERSION} https://github.com/Griffan/VerifyBamID.git
 WORKDIR /VerifyBamID/build
 
 # -fsigned-char: VerifyBamID's genotype-missing sentinel relies on `char`
