@@ -38,6 +38,7 @@ ContaminationEstimator::~ContaminationEstimator() {
 ContaminationEstimator::ContaminationEstimator(int nPC, const char *bedFile, int nThread, double ep)
         :
         numPC(nPC), PC(2, std::vector<PCtype>(nPC, 0.)),muv(numPC,0), sdv(numPC,0), fn(nPC, this), numThread(nThread), epsilon(ep) {
+    maxAlpha = 0.5;
     isAFknown = false;
     isPCFixed = false;
     isAlphaFixed = false;
@@ -143,7 +144,7 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
                 OptimizeHeter(myMinimizer);
             }
         }
-        if (fn.globalAlpha >= 0.5) {
+        if (fn.globalAlpha >= maxAlpha) {
             std::swap(fn.globalPC[0], fn.globalPC2[0]);
             std::swap(fn.globalPC[1], fn.globalPC2[1]);
         }
@@ -163,7 +164,14 @@ int ContaminationEstimator::OptimizeLLK(const std::string &OutputPrefix) {
         std::cout << "PC" << i + 1 << ":" << fn.globalPC2[i] << "\t";
     }
     std::cout << std::endl;
-    std::cout << "FREEMIX(Alpha):" << (fn.globalAlpha < 0.5 ? fn.globalAlpha : (1 - fn.globalAlpha)) << std::endl;
+    double reportedAlpha = (fn.globalAlpha < maxAlpha) ? fn.globalAlpha : (1 - fn.globalAlpha);
+    std::cout << "FREEMIX(Alpha):" << reportedAlpha << std::endl;
+    if (fabs(reportedAlpha - maxAlpha) < 0.001 || fabs(fn.globalAlpha - maxAlpha) < 0.001) {
+        std::cerr << "WARNING: FREEMIX estimate (" << reportedAlpha
+                  << ") is at or near the --MaxAlpha boundary (" << maxAlpha
+                  << "). The true contamination may be higher. "
+                  << "Consider rerunning with a higher --MaxAlpha value." << std::endl;
+    }
 
     std::string fileName(OutputPrefix + ".Ancestry");
     std::ofstream fout(fileName);
