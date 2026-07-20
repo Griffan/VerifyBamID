@@ -73,7 +73,7 @@ int execute(int argc, char **argv) {
                             "chr20,chr21,chr22");
 
   std::string fixPC("Empty");
-  double fixAlpha(-1.), epsilon(1e-8);
+  double fixAlpha(-1.), maxAlpha(0.5), epsilon(1e-8);
   bool withinAncestry(false), outputPileup(false), verbose(false),
       disableSanityCheck(false);
   int nfiles(0), seed(12345), nPC(2), nthread(4);
@@ -128,6 +128,11 @@ int execute(int argc, char **argv) {
       "[String] Input fixed PCs to estimate Alpha[format PC1:PC2:PC3...]")
   LONG_DOUBLE_PARAM("FixAlpha", &fixAlpha,
                     "[Double] Input fixed Alpha to estimate PC coordinates")
+  LONG_DOUBLE_PARAM("MaxAlpha", &maxAlpha,
+                    "[Double] Maximum alpha (contamination fraction) for "
+                    "optimization. Default 0.5. Set higher (e.g. 0.99) if "
+                    "contamination may exceed 50%% or if alpha converges to "
+                    "the boundary")
   LONG_STRING_PARAM("KnownAF", &knownAF,
                     "[String] known allele frequency file "
                     "(chr\tpos\tfreq)[Optional]")
@@ -284,6 +289,7 @@ int execute(int argc, char **argv) {
 
     Estimator.verbose=verbose;
     Estimator.seed = seed;
+    Estimator.maxAlpha = maxAlpha;
     Estimator.isHeter = !withinAncestry;
     Estimator.isSanityCheckDisabled = disableSanityCheck;
 
@@ -398,7 +404,7 @@ int execute(int argc, char **argv) {
             fout <<"NA";
         else fout<<Estimator.viewer.numBases;
         fout << "\t" << Estimator.viewer.avgDepth << "\t"
-             << ((Estimator.fn.globalAlpha < 0.5) ? Estimator.fn.globalAlpha : (1.f - Estimator.fn.globalAlpha)) << "\t"
+             << ((Estimator.fn.globalAlpha < Estimator.maxAlpha) ? Estimator.fn.globalAlpha : (1.0 - Estimator.fn.globalAlpha)) << "\t"
              << -Estimator.fn.llk1 << "\t" << -Estimator.fn.llk0 << "\t" << "NA\tNA\t"
              << "NA\tNA\tNA\tNA\tNA\t"
              << "NA\tNA\tNA" << std::endl;
