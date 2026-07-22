@@ -22,43 +22,31 @@
 #include "sample.h"
 #include "samtools.h"
 
-static inline void
+// Encode one pileup observation into tmpBase in genome-forward orientation,
+// following samtools' pileup-string convention: '.'/',' for a reference match
+// on the forward/reverse strand, upper/lower-case ACGTN for a mismatch.
+//
+// Returns true iff a base was pushed. A deletion (is_del) contributes no base,
+// so the caller must not push a paired quality for it — otherwise tmpBase and
+// tmpQual desynchronize and every subsequent base at this marker pairs with the
+// wrong quality. (fp is retained from the samtools original, which streamed the
+// pileup text; all such output here is disabled.)
+static inline bool
 pileup_seq(FILE *fp, const bam_pileup1_t *p, int pos, int ref_len, const char *ref, std::vector<char> &tmpBase) {
-    int j;
-    if (p->is_head) {
-//        putc('^', fp);
-//        putc(p->b->core.qual > 93? 126 : p->b->core.qual + 33, fp);
+    if (p->is_del) return false;
+    int c = p->qpos < p->b->core.l_qseq
+            ? seq_nt16_str[bam_seqi(bam_get_seq(p->b), p->qpos)]
+            : 'N';
+    if (ref) {
+        int rb = pos < ref_len ? ref[pos] : 'N';
+        if (c == '=' || seq_nt16_table[c] == seq_nt16_table[rb]) c = bam_is_rev(p->b) ? ',' : '.';
+        else c = bam_is_rev(p->b) ? tolower(c) : toupper(c);
+    } else {
+        if (c == '=') c = bam_is_rev(p->b) ? ',' : '.';
+        else c = bam_is_rev(p->b) ? tolower(c) : toupper(c);
     }
-    if (!p->is_del) {
-        int c = p->qpos < p->b->core.l_qseq
-                ? seq_nt16_str[bam_seqi(bam_get_seq(p->b), p->qpos)]
-                : 'N';
-        if (ref) {
-            int rb = pos < ref_len ? ref[pos] : 'N';
-            if (c == '=' || seq_nt16_table[c] == seq_nt16_table[rb]) c = bam_is_rev(p->b) ? ',' : '.';
-            else c = bam_is_rev(p->b) ? tolower(c) : toupper(c);
-        } else {
-            if (c == '=') c = bam_is_rev(p->b) ? ',' : '.';
-            else c = bam_is_rev(p->b) ? tolower(c) : toupper(c);
-        }
-//        putc(c, fp);
-        tmpBase.push_back(c);
-    }
-//    else putc(p->is_refskip? (bam_is_rev(p->b)? '<' : '>') : '*', fp);
-    if (p->indel > 0) {//insertion
-//        putc('+', fp); printw(p->indel, fp);
-        for (j = 1; j <= p->indel; ++j) {
-            int c = seq_nt16_str[bam_seqi(bam_get_seq(p->b), p->qpos + j)];
-//            putc(bam_is_rev(p->b)? tolower(c) : toupper(c), fp);
-        }
-    } else if (p->indel < 0) {//deletion
-//        printw(p->indel, fp);
-        for (j = 1; j <= -p->indel; ++j) {
-            int c = (ref && (int) pos + j < ref_len) ? ref[pos + j] : 'N';
-//            putc(bam_is_rev(p->b)? tolower(c) : toupper(c), fp);
-        }
-    }
-//    if (p->is_tail) putc('$', fp);
+    tmpBase.push_back(c);
+    return true;
 }
 
 
@@ -452,6 +440,12 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
                 } else {
                     /*calculate number of reads covering snps*/
 //                    numBases += n_plp[i];
+                    // Push each read's base and quality together in a single
+                    // pass so baseInfo and qualInfo stay in lockstep. A base is
+                    // recorded (and its quality with it) only when pileup_seq
+                    // actually emits one: deletions emit nothing, so pushing a
+                    // quality for them would shift every later quality at this
+                    // marker onto the wrong base.
                     for (j = 0; j < n_plp[i]; ++j) {//each covered read in ith bam file
                         const bam_pileup1_t *p = plp[i] + j;
                         int c = p->qpos < p->b->core.l_qseq
@@ -459,19 +453,10 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
                                 : 0;
                         if (c >= conf->min_baseQ)//SimplePileupViewer Change
                         {
-                            pileup_seq(pileup_fp, plp[i] + j, pos, ref_len, ref, tmpBase);
-                        }
-                    }
-                    //putc('\t', pileup_fp);
-                    for (j = 0; j < n_plp[i]; ++j) {
-                        const bam_pileup1_t *p = plp[i] + j;
-                        int c = p->qpos < p->b->core.l_qseq
-                                ? bam_get_qual(p->b)[p->qpos]
-                                : 0;
-                        if (c >= conf->min_baseQ) {
-                            c = c + 33 < 126 ? c + 33 : 126;
-                            //putc(c, pileup_fp);
-                            tmpQual.push_back(c);
+                            if (pileup_seq(pileup_fp, p, pos, ref_len, ref, tmpBase)) {
+                                int q = c + 33 < 126 ? c + 33 : 126;
+                                tmpQual.push_back(q);
+                            }
                         }
                     }
 //                    if (conf->flag & MPLP_PRINT_MAPQ) {//multiple pileups
