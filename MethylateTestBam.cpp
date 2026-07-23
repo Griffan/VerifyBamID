@@ -60,6 +60,13 @@ int main(int argc, char **argv) {
             if (top && base == C)      set_base(seq, i, T);
             else if (!top && base == G) set_base(seq, i, A);
         }
+        // MD spells out the reference base at every mismatch, so it is
+        // inconsistent once SEQ changes -- drop it. NM is left as-is: a
+        // methyl-aware aligner would not count the introduced C->T/G->A
+        // conversions as mismatches, so the original edit distance stays a
+        // defensible value. (VerifyBamID uses neither; it re-derives mismatches
+        // from SEQ against the reference.)
+        if (uint8_t *md = bam_aux_get(b, "MD")) bam_aux_del(b, md);
         if (sam_write1(out, hdr, b) < 0) { fprintf(stderr, "write error\n"); return 1; }
     }
     bam_destroy1(b);

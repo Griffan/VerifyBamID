@@ -648,8 +648,9 @@ SimplePileupViewer::SimplePileupViewer(std::vector<region_t> *BedPtr,
   bedVec = BedPtr;
   regIndex = 0;
   // Retain the marker allele table so methylation mode can look up each
-  // marker's ref/alt while building the pileup. Empty (and unused) otherwise.
-  bedTable = chooseBed;
+  // marker's ref/alt while building the pileup. Only methylation mode reads it,
+  // so skip the (panel-sized) copy on ordinary runs.
+  if (mplpPtr->methylation) bedTable = chooseBed;
 
   const char *file_list = bamFile;
   char **fn = NULL;
