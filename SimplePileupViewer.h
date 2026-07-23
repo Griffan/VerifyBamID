@@ -44,6 +44,7 @@ typedef struct {
   int min_mq, flag, min_baseQ, capQ_thres, max_depth, max_indel_depth, fmt_flag,
       all, rev_del;
   int rflag_require, rflag_filter;
+  int methylation; // 1 in methylation-seq mode: drop bisulfite-ambiguous observations
   int openQ, extQ, tandemQ, min_support; // for indels
   double min_frac;                       // for indels
   char *reg, *pl_list, *fai_fname, *output_fname;
@@ -109,7 +110,8 @@ public:
 
     SimplePileupViewer(std::vector<region_t> *A, const char *bamFile,
                        const char *faiFile, const char *bedFile,
-                       mplp_conf_t *mplpPtr, int nfiles = 1);
+                       mplp_conf_t *mplpPtr, const BED &chooseBed,
+                       int nfiles = 1);
 
     int SimplePileup(mplp_conf_t *conf, int n, char **fn);
 

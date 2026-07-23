@@ -21,6 +21,7 @@
 #include "htslib/vcf.h"
 #include "sample.h"
 #include "samtools.h"
+#include "MethylationModel.h"
 
 // Encode one pileup observation into tmpBase in genome-forward orientation,
 // following samtools' pileup-string convention: '.'/',' for a reference match
@@ -177,6 +178,16 @@ static int mplp_func(void *data, bam1_t *b) {
             continue;
         }
         if (ma->conf->rflag_filter && ma->conf->rflag_filter & b->core.flag) {
+            skip = 1;
+            continue;
+        }
+        // Methylation mode requires a reliable conversion strand: an aligner
+        // methylation tag, or a proper-pair FLAG inference (single-end reads use
+        // their own strand). Drop reads whose strand cannot be determined -- a
+        // misassigned strand would read converted bases as alt alleles and
+        // inflate the contamination estimate.
+        if (ma->conf->methylation &&
+            conversionStrandOf(b) == ConversionStrand::Unknown) {
             skip = 1;
             continue;
         }
@@ -433,6 +444,22 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
 
             std::vector<char> tmpBase, tmpQual;
 
+            // In methylation mode, resolve this marker's alleles once so each
+            // read's observation can be tested for bisulfite ambiguity below.
+            // Every pileup position corresponds to a panel marker, so the lookup
+            // always succeeds; mRef==0 (not found) fails closed as a safeguard.
+            char mRef = 0, mAlt = 0;
+            if (conf->methylation) {
+                auto chrIt = bedTable.find(chr);
+                if (chrIt != bedTable.end()) {
+                    auto posIt = chrIt->second.find(pos + 1);
+                    if (posIt != chrIt->second.end()) {
+                        mRef = posIt->second.first;
+                        mAlt = posIt->second.second;
+                    }
+                }
+            }
+
             for (i = 0; i < n; ++i) {//for each bam file
                 int j, cnt;
                 if (n_plp[i] == 0) {// if no reads covered
@@ -448,6 +475,15 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
                     // marker onto the wrong base.
                     for (j = 0; j < n_plp[i]; ++j) {//each covered read in ith bam file
                         const bam_pileup1_t *p = plp[i] + j;
+                        // Methylation mode: skip observations that cannot be
+                        // unambiguously assigned to an allele on this read's
+                        // conversion strand (e.g. a T at a C/T marker on a
+                        // C->T-converted read). mRef==0 means the marker's
+                        // alleles were not found, which fails closed.
+                        if (conf->methylation &&
+                            (mRef == 0 ||
+                             !observationUsable(mRef, mAlt, conversionStrandOf(p->b))))
+                            continue;
                         int c = p->qpos < p->b->core.l_qseq
                                 ? bam_get_qual(p->b)[p->qpos]
                                 : 0;
@@ -607,9 +643,13 @@ SimplePileupViewer::SimplePileupViewer() {
 SimplePileupViewer::SimplePileupViewer(std::vector<region_t> *BedPtr,
                                        const char *bamFile, const char *faiFile,
                                        const char *bedFile,
-                                       mplp_conf_t *mplpPtr, int nfiles) {
+                                       mplp_conf_t *mplpPtr, const BED &chooseBed,
+                                       int nfiles) {
   bedVec = BedPtr;
   regIndex = 0;
+  // Retain the marker allele table so methylation mode can look up each
+  // marker's ref/alt while building the pileup. Empty (and unused) otherwise.
+  bedTable = chooseBed;
 
   const char *file_list = bamFile;
   char **fn = NULL;

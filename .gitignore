@@ -12,4 +12,5 @@ cmake-build-release*
 VerifyBamID
 bin/TestGramSVD
 bin/TestReadVcf
+bin/TestMethylationModel
 *vcf.gz

@@ -63,7 +63,7 @@ add_subdirectory(statgen)
 set(LIBSTATGEN_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/statgen")
 add_subdirectory(samtools)
 add_subdirectory(libVcf)
-set(SOURCE_FILES main.cpp SVDcalculator.cpp ContaminationEstimator.cpp MathGenMin.cpp MathGold.cpp Random.cpp SimplePileupViewer.cpp params.cpp )
+set(SOURCE_FILES main.cpp SVDcalculator.cpp ContaminationEstimator.cpp MathGenMin.cpp MathGold.cpp Random.cpp SimplePileupViewer.cpp MethylationModel.cpp params.cpp )
 include_directories(statgen ${HTS_INCLUDE_DIRS} samtools libVcf Eigen)
 add_executable(VerifyBamID ${SOURCE_FILES})
 
@@ -76,6 +76,10 @@ add_executable(TestGramSVD TestGramSVD.cpp SVDcalculator.cpp)
 target_include_directories(TestGramSVD PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(TestGramSVD statgen Vcf ${HTS_LIBRARIES} samtools ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
 
+add_executable(TestMethylationModel TestMethylationModel.cpp MethylationModel.cpp)
+target_include_directories(TestMethylationModel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(TestMethylationModel ${HTS_LIBRARIES} ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
+
 enable_testing()
 add_test(NAME testReadVcf
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -83,6 +87,9 @@ add_test(NAME testReadVcf
 add_test(NAME testGramSVD
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND TestGramSVD)
+add_test(NAME testMethylationModel
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND TestMethylationModel)
 add_test(NAME myTest1
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --Output result.myTest1)

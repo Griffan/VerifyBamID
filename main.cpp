@@ -75,7 +75,7 @@ int execute(int argc, char **argv) {
   std::string fixPC("Empty");
   double fixAlpha(-1.), epsilon(1e-8);
   bool withinAncestry(false), outputPileup(false), verbose(false),
-      disableSanityCheck(false);
+      disableSanityCheck(false), methylation(false);
   int nfiles(0), seed(12345), nPC(2), nthread(4);
   /// mpileup arguments
   mplp_conf_t mplp;
@@ -182,6 +182,10 @@ int execute(int argc, char **argv) {
                  "recommended:50, disable:0")
   LONG_INT_PARAM("max-depth", &mplp.max_depth, "[Int] max per-file depth")
   LONG_PARAM("no-orphans", &noOrphan, "[Bool] do not use anomalous read pairs")
+  LONG_PARAM("Methylation", &methylation,
+             "[Bool] directional bisulfite/EM-seq mode: use only observations "
+             "that unambiguously identify an allele on the read's conversion "
+             "strand; disables MAPQ adjustment and BAQ (see docs)")
   LONG_INT_PARAM("incl-flags", &mplp.flag,
                  "[Int] required flags: skip reads with mask bits unset")
   LONG_INT_PARAM("excl-flags", &mplp.rflag_filter,
@@ -209,6 +213,22 @@ int execute(int argc, char **argv) {
     mplp.flag |= MPLP_NO_ORPHAN;
   else
     mplp.flag &= 0XFFFFFFFF ^ MPLP_NO_ORPHAN;
+
+  mplp.methylation = methylation ? 1 : 0;
+  if (methylation) {
+    // MAPQ capping (sam_cap_mapq) and BAQ (sam_prob_realn) both score reads
+    // against the unconverted reference, so an EM-seq/WGBS read's C->T
+    // conversions look like dense mismatches: capping hard-rejects such reads
+    // (measured: ~99% of usable data lost) and BAQ crushes their base
+    // qualities. Both are htslib functions we cannot make conversion-aware, so
+    // methylation mode disables them. Also exclude supplementary alignments,
+    // whose strand relationship to read 1 is unreliable.
+    mplp.capQ_thres = 0;
+    mplp.flag &= ~MPLP_REALN;
+    mplp.rflag_filter |= BAM_FSUPPLEMENTARY;
+    notice("--Methylation: disabled MAPQ adjustment (--adjust-MQ 0) and BAQ, "
+           "and excluding supplementary alignments");
+  }
   /// End of mpileup parsing
 
   if (RefVCF == "Empty") {
@@ -273,7 +293,17 @@ int execute(int argc, char **argv) {
 //    }
     else if(PileupFile != "Empty")
     {
-
+        if (methylation) {
+            // A samtools pileup exposes only alignment strand, not read1/read2
+            // or aligner tags, so the conversion strand cannot be recovered
+            // here. The mode's depth scaling still applies, but the input must
+            // already contain only methylation-safe observations (e.g. produced
+            // by a prior --Methylation --BamFile ... --OutputPileup run).
+            warning("--Methylation with --PileupFile: conversion-strand "
+                    "filtering cannot run on pileup text; the input must "
+                    "already be filtered to methylation-safe observations, or "
+                    "the contamination estimate will be inflated");
+        }
     }
     else {
         error("--BamFile or --PileupFile is required");
