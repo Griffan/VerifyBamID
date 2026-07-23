@@ -114,6 +114,7 @@ $(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --BamFile [/path/to/bam/or/cram/file] --SV
 /*To construct SVDPrefix auxillary files*/
 --RefVCF         [String] Reference panel VCF with genotype information, for generation of .UD .mu .bed files[Optional]
 /*Pileup information related*/
+--Methylation    [Bool] Directional bisulfite (WGBS) / enzymatic methyl-seq (EM-seq) mode. Uses only observations that unambiguously identify an allele on each read's bisulfite-conversion strand, and disables MAPQ adjustment (--adjust-MQ) and BAQ (both penalize the expected C-to-T/G-to-A conversions). See the "Methylation sequencing" section below. [Optional]
 --no-orphans     [Bool] Skip anomalous read pairs in variant calling. Anomolous read pairs are those marked in the FLAG field as paired in sequencing but without the properly-paired flag set. [Optional]
 --adjust-MQ      [Int] Coefficient for downgrading mapping quality for reads containing excessive mismatches. Given a read with a phred-scaled probability q of being generated from the mapped position, the new mapping quality is about sqrt((INT-q)/INT)*INT. A zero value disables this functionality; if enabled, the recommended value for BWA is 50. [default:40]
 --max-depth      [Int] Setting this limit reduces the amount of memory and time needed to process regions with very high coverage. Passing zero for this option sets it to the highest possible value, effectively removing the depth limit. [8000]
@@ -145,6 +146,39 @@ Fourth line: Estimated contamination level
 Also, upon the completion of each run, you may find two files ending with suffix:
 * “.selfSM” which shares the same format as VB1(https://genome.sph.umich.edu/wiki/VerifyBamID), and the key information FREEMIX indicates the estimated contamination level.
 * “.Ancestry” which contains the PC coordinates for both intended sample and contaminating sample, with each row being one PC.
+
+## Methylation sequencing (bisulfite / EM-seq)
+
+In whole-genome bisulfite sequencing (WGBS) and enzymatic methyl-seq (EM-seq), unmethylated cytosines are read as `T` (and, on reads from the opposite strand, unmethylated `G` positions read as `A`). A regular pileup therefore disagrees with the reference at a large fraction of positions for reasons unrelated to genotype, which would inflate the contamination estimate. The `--Methylation` flag enables a mode that handles this correctly, reusing the same SVD reference panels.
+
+```
+$(VERIFY_BAM_ID_HOME)/bin/VerifyBamID \
+  --Methylation \
+  --SVDPrefix $(VERIFY_BAM_ID_HOME)/resource/1000g.phase3.100k.b38.vcf.gz.dat \
+  --Reference [/path/to/GRCh38.fa] \
+  --BamFile [/path/to/methyl-seq.bam]
+```
+
+### What it does
+
+At each marker, `--Methylation` uses only the observations that still identify an allele unambiguously on the read's conversion strand, and discards the rest:
+
+* **A/T** markers are used from both strands (conversion never touches A or T).
+* **A/C, C/G, G/T** markers are used from the one strand on which conversion cannot mimic the other allele.
+* **A/G and C/T** (transitions) are used only from the single strand that stays informative (A/G from C-to-T-converted reads, C/T from G-to-A-converted reads).
+* Observations that a conversion could make ambiguous are dropped rather than guessed at.
+
+Because ambiguous observations are dropped rather than disambiguated, **the estimate does not depend on the methylation level or on the bisulfite/enzymatic conversion efficiency**, and **CpG context is irrelevant** — no methylation-rate or conversion-rate parameter enters the model. The cost is reduced effective depth (roughly half the observations at transition and most transversion markers), so somewhat higher coverage is recommended than for a standard run.
+
+`--Methylation` also changes read handling to suit converted reads:
+
+* **MAPQ adjustment (`--adjust-MQ`) and BAQ are disabled.** Both score reads against the *unconverted* reference, so an EM-seq/WGBS read's conversions look like dense mismatches; left on, MAPQ capping rejects the great majority of reads outright.
+* **Supplementary alignments are excluded**, and a read is used only when its conversion strand can be determined reliably — from an aligner methylation tag (`YD`, `ZS`, or `XG`) when present, otherwise from a proper-pair FLAG (paired reads must be properly paired; single-end reads use their own strand). A read whose strand cannot be determined is skipped, because a misassigned strand would read converted bases as alternate alleles and inflate the estimate.
+
+### Scope and limitations
+
+* **Directional libraries only.** This covers EM-seq and standard directional (Lister-style) WGBS. Non-directional and PBAT libraries are supported only where the aligner recorded a strand tag; with FLAG-only inference their strand assignment is wrong, so the estimate would be unreliable. Strand is taken from an aligner methylation tag (bismark `XG`, bwa-meth/BISCUIT `YD`, BSMAP `ZS`) when present, otherwise inferred from read-pair orientation. The mode has been validated end-to-end on directional EM-seq (FLAG-inferred strand); tag-based strand assignment for the other aligners is covered by unit tests but not yet exercised on their real output.
+* **`--PileupFile` input.** A pileup text file does not carry read-pair or tag information, so the conversion strand cannot be recovered from it. `--Methylation --PileupFile` is allowed but only for input that has *already* been filtered to methylation-safe observations (for example, a pileup produced by an earlier `--Methylation --BamFile ... --OutputPileup` run); a warning is printed. Feeding an unfiltered pileup will inflate the estimate.
 
 ## Running from docker
 
