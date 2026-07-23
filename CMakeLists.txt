@@ -80,6 +80,12 @@ add_executable(TestMethylationModel TestMethylationModel.cpp MethylationModel.cp
 target_include_directories(TestMethylationModel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(TestMethylationModel ${HTS_LIBRARIES} ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
 
+# Test-only helper: synthesizes a directional methyl-seq BAM from an aligned BAM
+# so the end-to-end --Methylation test can generate its input programmatically.
+add_executable(MethylateTestBam MethylateTestBam.cpp)
+target_include_directories(MethylateTestBam PRIVATE ${HTS_INCLUDE_DIRS})
+target_link_libraries(MethylateTestBam ${HTS_LIBRARIES} ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
+
 enable_testing()
 add_test(NAME testReadVcf
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -152,6 +158,22 @@ add_test(NAME testHeterFixPCDiff
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND sh -c "diff resource/test/expected/test.HeterFixPC.Ancestry result.HeterFixPC.Ancestry && rm result.HeterFixPC.Ancestry result.HeterFixPC.selfSM")
 set_tests_properties(testHeterFixPCDiff PROPERTIES DEPENDS testHeterFixPCRun)
+
+# End-to-end --Methylation test. The methyl-seq input is synthesized from the
+# existing test.bam at test time (no committed test data): MethylateTestBam
+# applies the directional bisulfite conversion, then VerifyBamID --Methylation
+# is diffed against a golden Ancestry file. Chained via DEPENDS.
+add_test(NAME methylMakeBam
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND MethylateTestBam resource/test/test.bam resource/test/test.methyl.bam)
+add_test(NAME testMethylationRun
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --Methylation --BamFile resource/test/test.methyl.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --Output result.Methylation)
+set_tests_properties(testMethylationRun PROPERTIES DEPENDS methylMakeBam)
+add_test(NAME testMethylationDiff
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sh -c "diff resource/test/expected/result.methyl.Ancestry result.Methylation.Ancestry && rm result.Methylation.Ancestry result.Methylation.selfSM")
+set_tests_properties(testMethylationDiff PROPERTIES DEPENDS testMethylationRun)
 
 #add_test( NAME myTestPlot
 #          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

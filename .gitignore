@@ -13,4 +13,7 @@ VerifyBamID
 bin/TestGramSVD
 bin/TestReadVcf
 bin/TestMethylationModel
+bin/MethylateTestBam
+resource/test/test.methyl.bam
+resource/test/test.methyl.bam.bai
 *vcf.gz

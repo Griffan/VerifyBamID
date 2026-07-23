@@ -16,6 +16,7 @@
 #include "MethylationModel.h"
 #include "htslib/sam.h"
 
+#include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <string>
