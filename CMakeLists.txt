@@ -172,7 +172,7 @@ add_test(NAME testMethylationRun
 set_tests_properties(testMethylationRun PROPERTIES DEPENDS methylMakeBam)
 add_test(NAME testMethylationDiff
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMAND sh -c "diff resource/test/expected/result.methyl.Ancestry result.Methylation.Ancestry && rm result.Methylation.Ancestry result.Methylation.selfSM")
+        COMMAND sh -c "diff resource/test/expected/result.methyl.Ancestry result.Methylation.Ancestry && rm result.Methylation.Ancestry result.Methylation.selfSM resource/test/test.methyl.bam resource/test/test.methyl.bam.bai")
 set_tests_properties(testMethylationDiff PROPERTIES DEPENDS testMethylationRun)
 
 #add_test( NAME myTestPlot

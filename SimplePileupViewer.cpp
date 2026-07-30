@@ -181,19 +181,20 @@ static int mplp_func(void *data, bam1_t *b) {
             skip = 1;
             continue;
         }
+        if (ma->conf->bed) { // test overlap
+            skip = !bed_overlap(ma->conf->bed, ma->h->target_name[b->core.tid], b->core.pos, bam_endpos(b));
+            if (skip) continue;
+        }
         // Methylation mode requires a reliable conversion strand: an aligner
         // methylation tag, or a proper-pair FLAG inference (single-end reads use
         // their own strand). Drop reads whose strand cannot be determined -- a
         // misassigned strand would read converted bases as alt alleles and
-        // inflate the contamination estimate.
+        // inflate the contamination estimate. Checked after the BED-overlap test
+        // so aux tags are only parsed for reads that actually cover a marker.
         if (ma->conf->methylation &&
             conversionStrandOf(b) == ConversionStrand::Unknown) {
             skip = 1;
             continue;
-        }
-        if (ma->conf->bed) { // test overlap
-            skip = !bed_overlap(ma->conf->bed, ma->h->target_name[b->core.tid], b->core.pos, bam_endpos(b));
-            if (skip) continue;
         }
         if (ma->conf->rghash) { // exclude read groups
             uint8_t *rg = bam_aux_get(b, "RG");
@@ -475,11 +476,13 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
                     // marker onto the wrong base.
                     for (j = 0; j < n_plp[i]; ++j) {//each covered read in ith bam file
                         const bam_pileup1_t *p = plp[i] + j;
-                        // Methylation mode: skip observations that cannot be
-                        // unambiguously assigned to an allele on this read's
-                        // conversion strand (e.g. a T at a C/T marker on a
-                        // C->T-converted read). mRef==0 means the marker's
-                        // alleles were not found, which fails closed.
+                        // Methylation mode: drop this observation when the
+                        // marker's alleles cannot be told apart on this read's
+                        // conversion strand. The test is per (marker alleles,
+                        // strand), not per observed base -- e.g. every
+                        // observation at a C/T marker is dropped on
+                        // C->T-converted reads, since its C could have converted
+                        // to T. mRef==0 (alleles not found) fails closed.
                         if (conf->methylation &&
                             (mRef == 0 ||
                              !observationUsable(mRef, mAlt, conversionStrandOf(p->b))))

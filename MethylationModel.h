@@ -34,15 +34,20 @@ ConversionStrand strandFromFlag(uint16_t flag);
 // Unknown without falling through, since the aligner has declared it unclear.
 ConversionStrand conversionStrandOf(const bam1_t *b);
 
-// Whether an observation from a read in channel `cs` unambiguously identifies
-// one of the marker's two alleles. An observation is unusable exactly when the
-// channel's conversion could turn one allele into the other:
-//   - Ct  is ambiguous whenever C is an allele (a T could be a converted C);
-//   - Ga  is ambiguous whenever G is an allele (an A could be a converted G).
-// `ref`/`alt` are single-character alleles (case-insensitive). Unknown channel
-// is always unusable. This is the no-collapse selection rule: markers keep only
-// the strand(s) on which they stay unambiguous — A/T both, other transversions
-// and transitions one, C/G neither.
+// Whether an observation from a read in channel `cs` can still identify one of
+// the marker's two alleles unambiguously. The channel's conversion rewrites one
+// base (C->T on Ct reads, G->A on Ga reads), so an allele carrying that base can
+// no longer be told apart from its converted form. A marker is therefore
+// unusable on a channel whenever one of its alleles IS the channel's convertible
+// base -- regardless of what the other allele is:
+//   - Ct  unusable whenever C is an allele (a genomic C may read as C or T);
+//   - Ga  unusable whenever G is an allele (a genomic G may read as G or A).
+// e.g. A/C is unusable on Ct even though the C never becomes the A. Such
+// observations are dropped rather than collapsed back onto their allele -- the
+// "no-collapse" selection rule. `ref`/`alt` are single-character alleles
+// (case-insensitive); the Unknown channel is always unusable. Net effect: A/T
+// usable on both strands, other transversions and transitions on one, C/G on
+// neither.
 bool observationUsable(char ref, char alt, ConversionStrand cs);
 
 #endif // METHYLATIONMODEL_H_
