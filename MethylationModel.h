@@ -11,7 +11,7 @@
 // falls into one of two conversion channels:
 //   - Ct: genomic C may read as C or T (the "top"/OT+CTOT channel);
 //   - Ga: genomic G may read as G or A (the "bottom"/OB+CTOB channel).
-// See docs/methylation-design.md for the full model and derivation.
+// See the "Methylation sequencing" section in README.md for usage and details.
 enum class ConversionStrand : uint8_t { Ct, Ga, Unknown };
 
 // Conversion channel of a read inferred from its FLAG alone, assuming a

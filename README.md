@@ -164,8 +164,9 @@ $(VERIFY_BAM_ID_HOME)/bin/VerifyBamID \
 At each marker, `--Methylation` uses only the observations that still identify an allele unambiguously on the read's conversion strand, and discards the rest:
 
 * **A/T** markers are used from both strands (conversion never touches A or T).
-* **A/C, C/G, G/T** markers are used from the one strand on which conversion cannot mimic the other allele.
-* **A/G and C/T** (transitions) are used only from the single strand that stays informative (A/G from C-to-T-converted reads, C/T from G-to-A-converted reads).
+* **A/C and G/T** markers are used from the one strand on which conversion cannot mimic the other allele (half depth).
+* **A/G and C/T** (transitions) are used only from the single strand that stays informative — A/G from C-to-T-converted reads, C/T from G-to-A-converted reads (half depth).
+* **C/G** markers are **not used**: both strands are ambiguous (C is affected on the C-to-T strand, G on the G-to-A strand), so no observations survive. This affects 2% of the 1000 Genomes panel and 0% of HGDP (which excludes palindromic SNPs). When building a custom marker panel with `--RefVCF`, C/G markers can be excluded up front.
 * Observations that a conversion could make ambiguous are dropped rather than guessed at.
 
 Because ambiguous observations are dropped rather than disambiguated, **the estimate does not depend on the methylation level or on the bisulfite/enzymatic conversion efficiency**, and **CpG context is irrelevant** — no methylation-rate or conversion-rate parameter enters the model. The cost is reduced effective depth (roughly half the observations at transition and most transversion markers), so somewhat higher coverage is recommended than for a standard run.
@@ -179,6 +180,7 @@ Because ambiguous observations are dropped rather than disambiguated, **the esti
 
 * **Directional libraries only.** This covers EM-seq and standard directional (Lister-style) WGBS. Non-directional and PBAT libraries are supported only where the aligner recorded a strand tag; with FLAG-only inference their strand assignment is wrong, so the estimate would be unreliable. Strand is taken from an aligner methylation tag (bismark `XG`, bwa-meth/BISCUIT `YD`, BSMAP `ZS`) when present, otherwise inferred from read-pair orientation. The mode has been validated end-to-end on directional EM-seq (FLAG-inferred strand); tag-based strand assignment for the other aligners is covered by unit tests but not yet exercised on their real output.
 * **`--PileupFile` input.** A pileup text file does not carry read-pair or tag information, so the conversion strand cannot be recovered from it. `--Methylation --PileupFile` is allowed but only for input that has *already* been filtered to methylation-safe observations (for example, a pileup produced by an earlier `--Methylation --BamFile ... --OutputPileup` run); a warning is printed. Feeding an unfiltered pileup will inflate the estimate.
+* **TAPS+ and Illumina 5-base chemistries.** Methods such as TAPS+ and Illumina's 5-base prep convert **methylated** C to T rather than unmethylated C. Because the substitution direction is the same (C→T on the top strand, G→A on the bottom), `--Methylation` mode is applicable and will produce a correct estimate. However, these chemistries convert far fewer positions per read (predominantly CpG-context cytosines) than bisulfite/EM-seq, so `--Methylation` mode is likely more conservative than necessary — it drops observations at all C- or G-containing markers on the affected strand, when in practice only CpG-context markers are at significant risk. For datasets with sufficient coverage `--Methylation` will likely give the cleanest estimate, but the mode has not been broadly tested on TAPS+ or 5-base data. A future version may add a dedicated mode for methylated-C→T chemistries with CpG-context-aware filtering and tuned MAPQ/BAQ thresholds.
 
 ## Running from docker
 

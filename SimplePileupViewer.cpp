@@ -476,6 +476,10 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
                     // marker onto the wrong base.
                     for (j = 0; j < n_plp[i]; ++j) {//each covered read in ith bam file
                         const bam_pileup1_t *p = plp[i] + j;
+                        // Deletions and ref-skips contribute no base; skip them
+                        // before accessing qpos/QUAL (qpos is not meaningful for
+                        // a deletion and could be out of range).
+                        if (p->is_del || p->is_refskip) continue;
                         // Methylation mode: drop this observation when the
                         // marker's alleles cannot be told apart on this read's
                         // conversion strand. The test is per (marker alleles,
