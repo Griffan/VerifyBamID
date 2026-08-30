@@ -5,8 +5,6 @@
 
 # verifyBamID2
 
-The official project name is **verifyBamID2**. The command-line executable is named `VerifyBamID`.
-
 * Motivation: Detecting and estimating inter-sample DNA contamination became a crucial quality assessment step to ensure high quality sequence reads and reliable downstream analysis. Across many existing models, allele frequency usually is used to calculate prior genotype probability. Lack of accurate assignment of allele frequency could result in underestimation of contamination level. Hence we propose this ancestry-agnostic DNA contamination estimation method.
 
 * Results: We applied our method to 1000 Genomes datasets by simulating contamination levels from 1% to 20% and comparing the contamination estimates obtain from different methods. When using pooled allele frequencies, as opposed to population-specific allele frequencies, we observed that the contamination levels are underestimated by 20%, 40%, 51%, and 73% for CEU, YRI, FIN, and CHS populations, respectively. Using our new method, the underestimation bias was reduced to 2-5%.
@@ -17,6 +15,8 @@ The official project name is **verifyBamID2**. The command-line executable is na
 Fan Zhang, Matthew Flickinger, Sarah A. Gagliano Taliun, InPSYght Psychiatric Genetics Consortium, Gonçalo R. Abecasis, Laura J. Scott, Steven A. McCaroll, Carlos N. Pato, Michael Boehnke, and Hyun Min Kang. 2020. “Ancestry-agnostic estimation of DNA sample contamination from sequence reads.” Genome Research. https://doi.org/10.1101/gr.246934.118
 
 ## Installation
+
+The official project name is **verifyBamID2**. The command-line executable is named `VerifyBamID`.
 
 ### From source code
   - mkdir build
