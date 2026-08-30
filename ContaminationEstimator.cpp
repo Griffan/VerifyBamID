@@ -488,7 +488,7 @@ int ContaminationEstimator::ReadAF(const std::string &path) {
 
 int ContaminationEstimator::ReadBam(const char *bamFile, const char *faiFile,
                                     const char *bedFile, mplp_conf_t *mplpPtr) {
-  viewer = SimplePileupViewer(&BedVec, bamFile, faiFile, bedFile, mplpPtr, 1);
+  viewer = SimplePileupViewer(&BedVec, bamFile, faiFile, bedFile, mplpPtr, ChooseBed, 1);
   return 0;
 }
 

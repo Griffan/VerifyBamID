@@ -21,44 +21,33 @@
 #include "htslib/vcf.h"
 #include "sample.h"
 #include "samtools.h"
+#include "MethylationModel.h"
 
-static inline void
+// Encode one pileup observation into tmpBase in genome-forward orientation,
+// following samtools' pileup-string convention: '.'/',' for a reference match
+// on the forward/reverse strand, upper/lower-case ACGTN for a mismatch.
+//
+// Returns true iff a base was pushed. A deletion (is_del) contributes no base,
+// so the caller must not push a paired quality for it — otherwise tmpBase and
+// tmpQual desynchronize and every subsequent base at this marker pairs with the
+// wrong quality. (fp is retained from the samtools original, which streamed the
+// pileup text; all such output here is disabled.)
+static inline bool
 pileup_seq(FILE *fp, const bam_pileup1_t *p, int pos, int ref_len, const char *ref, std::vector<char> &tmpBase) {
-    int j;
-    if (p->is_head) {
-//        putc('^', fp);
-//        putc(p->b->core.qual > 93? 126 : p->b->core.qual + 33, fp);
+    if (p->is_del) return false;
+    int c = p->qpos < p->b->core.l_qseq
+            ? seq_nt16_str[bam_seqi(bam_get_seq(p->b), p->qpos)]
+            : 'N';
+    if (ref) {
+        int rb = pos < ref_len ? ref[pos] : 'N';
+        if (c == '=' || seq_nt16_table[c] == seq_nt16_table[rb]) c = bam_is_rev(p->b) ? ',' : '.';
+        else c = bam_is_rev(p->b) ? tolower(c) : toupper(c);
+    } else {
+        if (c == '=') c = bam_is_rev(p->b) ? ',' : '.';
+        else c = bam_is_rev(p->b) ? tolower(c) : toupper(c);
     }
-    if (!p->is_del) {
-        int c = p->qpos < p->b->core.l_qseq
-                ? seq_nt16_str[bam_seqi(bam_get_seq(p->b), p->qpos)]
-                : 'N';
-        if (ref) {
-            int rb = pos < ref_len ? ref[pos] : 'N';
-            if (c == '=' || seq_nt16_table[c] == seq_nt16_table[rb]) c = bam_is_rev(p->b) ? ',' : '.';
-            else c = bam_is_rev(p->b) ? tolower(c) : toupper(c);
-        } else {
-            if (c == '=') c = bam_is_rev(p->b) ? ',' : '.';
-            else c = bam_is_rev(p->b) ? tolower(c) : toupper(c);
-        }
-//        putc(c, fp);
-        tmpBase.push_back(c);
-    }
-//    else putc(p->is_refskip? (bam_is_rev(p->b)? '<' : '>') : '*', fp);
-    if (p->indel > 0) {//insertion
-//        putc('+', fp); printw(p->indel, fp);
-        for (j = 1; j <= p->indel; ++j) {
-            int c = seq_nt16_str[bam_seqi(bam_get_seq(p->b), p->qpos + j)];
-//            putc(bam_is_rev(p->b)? tolower(c) : toupper(c), fp);
-        }
-    } else if (p->indel < 0) {//deletion
-//        printw(p->indel, fp);
-        for (j = 1; j <= -p->indel; ++j) {
-            int c = (ref && (int) pos + j < ref_len) ? ref[pos + j] : 'N';
-//            putc(bam_is_rev(p->b)? tolower(c) : toupper(c), fp);
-        }
-    }
-//    if (p->is_tail) putc('$', fp);
+    tmpBase.push_back(c);
+    return true;
 }
 
 
@@ -195,6 +184,17 @@ static int mplp_func(void *data, bam1_t *b) {
         if (ma->conf->bed) { // test overlap
             skip = !bed_overlap(ma->conf->bed, ma->h->target_name[b->core.tid], b->core.pos, bam_endpos(b));
             if (skip) continue;
+        }
+        // Methylation mode requires a reliable conversion strand: an aligner
+        // methylation tag, or a proper-pair FLAG inference (single-end reads use
+        // their own strand). Drop reads whose strand cannot be determined -- a
+        // misassigned strand would read converted bases as alt alleles and
+        // inflate the contamination estimate. Checked after the BED-overlap test
+        // so aux tags are only parsed for reads that actually cover a marker.
+        if (ma->conf->methylation &&
+            conversionStrandOf(b) == ConversionStrand::Unknown) {
+            skip = 1;
+            continue;
         }
         if (ma->conf->rghash) { // exclude read groups
             uint8_t *rg = bam_aux_get(b, "RG");
@@ -445,6 +445,22 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
 
             std::vector<char> tmpBase, tmpQual;
 
+            // In methylation mode, resolve this marker's alleles once so each
+            // read's observation can be tested for bisulfite ambiguity below.
+            // Every pileup position corresponds to a panel marker, so the lookup
+            // always succeeds; mRef==0 (not found) fails closed as a safeguard.
+            char mRef = 0, mAlt = 0;
+            if (conf->methylation) {
+                auto chrIt = bedTable.find(chr);
+                if (chrIt != bedTable.end()) {
+                    auto posIt = chrIt->second.find(pos + 1);
+                    if (posIt != chrIt->second.end()) {
+                        mRef = posIt->second.first;
+                        mAlt = posIt->second.second;
+                    }
+                }
+            }
+
             for (i = 0; i < n; ++i) {//for each bam file
                 int j, cnt;
                 if (n_plp[i] == 0) {// if no reads covered
@@ -452,26 +468,38 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
                 } else {
                     /*calculate number of reads covering snps*/
 //                    numBases += n_plp[i];
+                    // Push each read's base and quality together in a single
+                    // pass so baseInfo and qualInfo stay in lockstep. A base is
+                    // recorded (and its quality with it) only when pileup_seq
+                    // actually emits one: deletions emit nothing, so pushing a
+                    // quality for them would shift every later quality at this
+                    // marker onto the wrong base.
                     for (j = 0; j < n_plp[i]; ++j) {//each covered read in ith bam file
                         const bam_pileup1_t *p = plp[i] + j;
+                        // Deletions and ref-skips contribute no base; skip them
+                        // before accessing qpos/QUAL (qpos is not meaningful for
+                        // a deletion and could be out of range).
+                        if (p->is_del || p->is_refskip) continue;
+                        // Methylation mode: drop this observation when the
+                        // marker's alleles cannot be told apart on this read's
+                        // conversion strand. The test is per (marker alleles,
+                        // strand), not per observed base -- e.g. every
+                        // observation at a C/T marker is dropped on
+                        // C->T-converted reads, since its C could have converted
+                        // to T. mRef==0 (alleles not found) fails closed.
+                        if (conf->methylation &&
+                            (mRef == 0 ||
+                             !observationUsable(mRef, mAlt, conversionStrandOf(p->b))))
+                            continue;
                         int c = p->qpos < p->b->core.l_qseq
                                 ? bam_get_qual(p->b)[p->qpos]
                                 : 0;
                         if (c >= conf->min_baseQ)//SimplePileupViewer Change
                         {
-                            pileup_seq(pileup_fp, plp[i] + j, pos, ref_len, ref, tmpBase);
-                        }
-                    }
-                    //putc('\t', pileup_fp);
-                    for (j = 0; j < n_plp[i]; ++j) {
-                        const bam_pileup1_t *p = plp[i] + j;
-                        int c = p->qpos < p->b->core.l_qseq
-                                ? bam_get_qual(p->b)[p->qpos]
-                                : 0;
-                        if (c >= conf->min_baseQ) {
-                            c = c + 33 < 126 ? c + 33 : 126;
-                            //putc(c, pileup_fp);
-                            tmpQual.push_back(c);
+                            if (pileup_seq(pileup_fp, p, pos, ref_len, ref, tmpBase)) {
+                                int q = c + 33 < 126 ? c + 33 : 126;
+                                tmpQual.push_back(q);
+                            }
                         }
                     }
 //                    if (conf->flag & MPLP_PRINT_MAPQ) {//multiple pileups
@@ -622,9 +650,14 @@ SimplePileupViewer::SimplePileupViewer() {
 SimplePileupViewer::SimplePileupViewer(std::vector<region_t> *BedPtr,
                                        const char *bamFile, const char *faiFile,
                                        const char *bedFile,
-                                       mplp_conf_t *mplpPtr, int nfiles) {
+                                       mplp_conf_t *mplpPtr, const BED &chooseBed,
+                                       int nfiles) {
   bedVec = BedPtr;
   regIndex = 0;
+  // Retain the marker allele table so methylation mode can look up each
+  // marker's ref/alt while building the pileup. Only methylation mode reads it,
+  // so skip the (panel-sized) copy on ordinary runs.
+  if (mplpPtr->methylation) bedTable = chooseBed;
 
   const char *file_list = bamFile;
   char **fn = NULL;
