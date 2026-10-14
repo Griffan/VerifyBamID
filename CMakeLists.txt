@@ -175,6 +175,22 @@ add_test(NAME testMethylationDiff
         COMMAND sh -c "diff resource/test/expected/result.methyl.Ancestry result.Methylation.Ancestry && rm result.Methylation.Ancestry result.Methylation.selfSM resource/test/test.methyl.bam resource/test/test.methyl.bam.bai")
 set_tests_properties(testMethylationDiff PROPERTIES DEPENDS testMethylationRun)
 
+# --ignoreRG regression (issue #50). resource/test/test.twoRG.bam carries two
+# read groups with distinct SM tags: by default the tool rejects it as
+# multi-sample, while --ignoreRG wires MPLP_IGNORE_RG so all reads collapse
+# into one sample group named by the input file.
+add_test(NAME testIgnoreRGDefaultFails
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.twoRG.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --Output result.IgnoreRGDefault)
+set_tests_properties(testIgnoreRGDefaultFails PROPERTIES WILL_FAIL TRUE)
+add_test(NAME testIgnoreRGRun
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND VerifyBamID --DisableSanityCheck --ignoreRG --BamFile resource/test/test.twoRG.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --Output result.IgnoreRG)
+add_test(NAME testIgnoreRGDiff
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sh -c "test `tail -n +2 result.IgnoreRG.selfSM | wc -l` -eq 1 && test \"x`head -2 result.IgnoreRG.selfSM | tail -1 | cut -f1`\" = \"xresource/test/test.twoRG.bam\" && rm -f result.IgnoreRG.Ancestry result.IgnoreRG.selfSM")
+set_tests_properties(testIgnoreRGDiff PROPERTIES DEPENDS testIgnoreRGRun)
+
 #add_test( NAME myTestPlot
 #          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 #          COMMAND sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/run.plot.sh -i ${CMAKE_CURRENT_SOURCE_DIR}/resource/test/hapmap_3.3.b37.dat.V -o ${CMAKE_CURRENT_SOURCE_DIR}/resource/test/hapmap -r 1000g -g grey)
