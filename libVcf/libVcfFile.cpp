@@ -929,8 +929,15 @@ void VcfMarker::setSample(int sampleIndex, const String& sampleValue, bool parse
   }
   else {
     tmpTokens.ReplaceColumns(sampleValue,':');
-    if ( tmpTokens.Length() != asFormatKeys.Length() ) {
+    if ( tmpTokens.Length() > asFormatKeys.Length() ) {
       throw VcfFileException("# values = %s do not match with # fields in FORMAT field = %d at sampleIndex = %d",sampleValue.c_str(),asFormatKeys.Length(),sampleIndex);
+    }
+    // VCF spec allows trailing FORMAT fields to be absent for a sample
+    // (e.g. GATK CombineGVCFs drops trailing empty fields); pad them as
+    // missing instead of throwing (issue #13). "." reuses the existing
+    // missing-genotype/dosage handling below and flows through as missing.
+    while ( tmpTokens.Length() < asFormatKeys.Length() ) {
+      tmpTokens.Push(".");
     }
     
     if ( parseValues ) {
