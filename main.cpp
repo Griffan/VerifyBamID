@@ -91,6 +91,7 @@ int execute(int argc, char **argv) {
   mplp.min_frac = 0.002;
   mplp.min_support = 1;
   bool noOrphan = false;
+  bool ignoreRG = false;
   mplp.flag = /*MPLP_NO_ORPHAN |*/ MPLP_REALN | MPLP_SMART_OVERLAPS;
   mplp.rflag_filter = BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP;
   mplp.output_fname = NULL;
@@ -182,6 +183,8 @@ int execute(int argc, char **argv) {
                  "recommended:50, disable:0")
   LONG_INT_PARAM("max-depth", &mplp.max_depth, "[Int] max per-file depth")
   LONG_PARAM("no-orphans", &noOrphan, "[Bool] do not use anomalous read pairs")
+  LONG_PARAM("ignoreRG", &ignoreRG,
+             "[Bool] ignore read-group tags; treat all reads as one sample group")
   LONG_PARAM("Methylation", &methylation,
              "[Bool] directional bisulfite/EM-seq mode: use only observations "
              "that unambiguously identify an allele on the read's conversion "
@@ -213,6 +216,11 @@ int execute(int argc, char **argv) {
     mplp.flag |= MPLP_NO_ORPHAN;
   else
     mplp.flag &= 0XFFFFFFFF ^ MPLP_NO_ORPHAN;
+
+  if (ignoreRG) {
+    mplp.flag |= MPLP_IGNORE_RG;
+    notice("--ignoreRG: ignoring read-group tags; treating all reads as one sample group");
+  }
 
   mplp.methylation = methylation ? 1 : 0;
   if (methylation) {

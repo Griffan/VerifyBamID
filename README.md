@@ -118,6 +118,7 @@ $(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --BamFile [/path/to/bam/or/cram/file] --SV
 /*Pileup information related*/
 --Methylation    [Bool] Directional bisulfite (WGBS) / enzymatic methyl-seq (EM-seq) mode. Uses only observations that unambiguously identify an allele on each read's bisulfite-conversion strand, and disables MAPQ adjustment (--adjust-MQ) and BAQ (both penalize the expected C-to-T/G-to-A conversions). See the "Methylation sequencing" section below. [Optional]
 --no-orphans     [Bool] Skip anomalous read pairs in variant calling. Anomolous read pairs are those marked in the FLAG field as paired in sequencing but without the properly-paired flag set. [Optional]
+--ignoreRG       [Bool] Ignore read-group tags and treat all reads as one sample group regardless of BAM read-group headers. Reads are grouped by the input file name. [Optional]
 --adjust-MQ      [Int] Coefficient for downgrading mapping quality for reads containing excessive mismatches. Given a read with a phred-scaled probability q of being generated from the mapped position, the new mapping quality is about sqrt((INT-q)/INT)*INT. A zero value disables this functionality; if enabled, the recommended value for BWA is 50. [default:40]
 --max-depth      [Int] Setting this limit reduces the amount of memory and time needed to process regions with very high coverage. Passing zero for this option sets it to the highest possible value, effectively removing the depth limit. [8000]
 --incl-flags     [Int] Required flags: skip reads with mask bits unset [null]
