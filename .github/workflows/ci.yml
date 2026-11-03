@@ -25,10 +25,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        compiler: [gcc-9, gcc, clang]
-        exclude:
-          # GCC 9 may not be available on macOS, keep only latest gcc and clang
-          - os: macos-latest
+        compiler: [gcc, clang]
+        include:
+          - os: ubuntu-22.04
             compiler: gcc-9
 
     runs-on: ${{ matrix.os }}
@@ -69,16 +68,25 @@ jobs:
             APT_GET="sudo apt-get"
           fi
           $APT_GET update
-          $APT_GET install -y \
-            cmake \
-            g++ \
-            gcc-9 \
-            g++-9 \
-            clang \
-            libbz2-dev \
-            libcurl4-openssl-dev \
-            zlib1g-dev \
+          packages=(cmake)
+          case "${{ matrix.compiler }}" in
+            gcc-9)
+              packages+=(gcc-9 g++-9)
+              ;;
+            gcc)
+              packages+=(gcc g++)
+              ;;
+            clang)
+              packages+=(clang)
+              ;;
+          esac
+          packages+=(
+            libbz2-dev
+            libcurl4-openssl-dev
+            zlib1g-dev
             liblzma-dev
+          )
+          $APT_GET install -y "${packages[@]}"
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
