@@ -86,6 +86,10 @@ add_executable(MethylateTestBam MethylateTestBam.cpp)
 target_include_directories(MethylateTestBam PRIVATE ${HTS_INCLUDE_DIRS})
 target_link_libraries(MethylateTestBam ${HTS_LIBRARIES} ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
 
+add_executable(TestMixLikelihood TestMixLikelihood.cpp ContaminationEstimator.cpp
+        MathGenMin.cpp MathGold.cpp Random.cpp SimplePileupViewer.cpp MethylationModel.cpp)
+target_link_libraries(TestMixLikelihood statgen Vcf ${HTS_LIBRARIES} samtools ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
+
 enable_testing()
 add_executable(MakeReadFilterTestBam MakeReadFilterTestBam.cpp)
 target_include_directories(MakeReadFilterTestBam PRIVATE ${HTS_INCLUDE_DIRS})
@@ -96,6 +100,7 @@ add_test(NAME testReadFilterFlags
             -DMAKE_BAM=$<TARGET_FILE:MakeReadFilterTestBam>
             -DTEST_DIR=${CMAKE_CURRENT_BINARY_DIR}/read-filter-test
             -P ${CMAKE_CURRENT_SOURCE_DIR}/TestReadFilterFlags.cmake)
+add_test(NAME testMixLikelihood COMMAND TestMixLikelihood)
 add_test(NAME testReadVcf
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND TestReadVcf resource/test/test_readvcf.vcf)

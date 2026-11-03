@@ -266,7 +266,6 @@ public:
                     ptr->AF2s[i] /= 2.0;
                 }
 
-                double markerLK(0);
                 double GF[3];
                 double GF2[3];
 
@@ -302,13 +301,30 @@ public:
                             baseLKAccum[g1][g2] += logLkTable[bc][q][g1][g2];
                 }
 
-                // Marginalize over genotype pairs, weighting each by its prior
-                // probability under Hardy-Weinberg (GF for contaminating, GF2 for intended).
-                for (int g1 = 0; g1 < 3; ++g1)
-                    for (int g2 = 0; g2 < 3; ++g2)
-                        markerLK += exp(baseLKAccum[g1][g2]) * GF[g1] * GF2[g2];
-                if (markerLK > 0)
-                    sumLLK += log(markerLK);
+                // Keep the genotype-prior-weighted terms in log space. Direct
+                // exponentiation can underflow all nine terms at high depth,
+                // causing an informative marker to contribute zero instead.
+                double logGF[3], logGF2[3];
+                for (int g = 0; g < 3; ++g) {
+                    logGF[g] = log(GF[g]);
+                    logGF2[g] = log(GF2[g]);
+                }
+                double terms[9];
+                double maxTerm = -std::numeric_limits<double>::infinity();
+                for (int g1 = 0; g1 < 3; ++g1) {
+                    for (int g2 = 0; g2 < 3; ++g2) {
+                        const double term = baseLKAccum[g1][g2] + logGF[g1] + logGF2[g2];
+                        terms[3 * g1 + g2] = term;
+                        if (term > maxTerm) maxTerm = term;
+                    }
+                }
+                if (maxTerm == -std::numeric_limits<double>::infinity()) {
+                    sumLLK += maxTerm;
+                } else {
+                    double scaledSum = 0;
+                    for (double term : terms) scaledSum += exp(term - maxTerm);
+                    sumLLK += maxTerm + log(scaledSum);
+                }
             }
             return sumLLK;
         }
