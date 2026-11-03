@@ -189,7 +189,7 @@ int execute(int argc, char **argv) {
              "[Bool] directional bisulfite/EM-seq mode: use only observations "
              "that unambiguously identify an allele on the read's conversion "
              "strand; disables MAPQ adjustment and BAQ (see docs)")
-  LONG_INT_PARAM("incl-flags", &mplp.flag,
+  LONG_INT_PARAM("incl-flags", &mplp.rflag_require,
                  "[Int] required flags: skip reads with mask bits unset")
   LONG_INT_PARAM("excl-flags", &mplp.rflag_filter,
                  "[Int] filter flags: skip reads with mask bits set")
