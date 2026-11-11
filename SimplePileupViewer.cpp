@@ -319,6 +319,16 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
     bam_sample_t *sm = bam_smpl_init();
     FILE *pileup_fp = NULL;
 
+    // Decoding only these fields skips CRAM aux tags, such as the large MM/ML
+    // base-modification tags on long reads. Read names and mate fields are
+    // needed to detect overlapping read pairs. Aux tags are still decoded when
+    // BAQ is on, because BAQ reuses a read's existing BQ/ZQ tag, and in
+    // methylation mode, which reads the aligner's conversion-strand tags.
+    int requiredFields = SAM_QNAME | SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR |
+                         SAM_RNEXT | SAM_PNEXT | SAM_TLEN | SAM_SEQ | SAM_QUAL;
+    if (conf->rghash) requiredFields |= SAM_RGAUX;
+    if ((conf->flag & MPLP_REALN) || conf->methylation) requiredFields |= SAM_AUX;
+
     // read the header of each file in the list and Initialize data
     for (i = 0; i < n; ++i) {
         bam_hdr_t *h_tmp;
@@ -330,6 +340,10 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
         }
         if (hts_set_opt(data[i]->fp, CRAM_OPT_DECODE_MD, 0)) {
             fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
+            exit(EXIT_FAILURE);
+        }
+        if (hts_set_opt(data[i]->fp, CRAM_OPT_REQUIRED_FIELDS, requiredFields)) {
+            fprintf(stderr, "Failed to set CRAM_OPT_REQUIRED_FIELDS value\n");
             exit(EXIT_FAILURE);
         }
         if (conf->fai_fname && hts_set_fai_filename(data[i]->fp, conf->fai_fname) != 0) {
