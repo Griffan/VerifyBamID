@@ -27,6 +27,16 @@ constexpr int kReadTypeMaxRecordsExamined = 20000;
 /// short reads, 0 (disabled) for long reads.
 constexpr int kAdjustMQByReadType = -1;
 
+/// Value of --DiscardNearIndel meaning "use the default for the read type":
+/// kLongReadDiscardNearIndel for long reads, 0 (off) for short reads.
+constexpr int kDiscardNearIndelByReadType = -1;
+
+/// Long-read default for --DiscardNearIndel. When an indel error in a long
+/// read sits next to a SNP, the aligner often places it on the far side and
+/// reads the SNP as the reference base, which looks like contamination. BAQ
+/// handles this for short reads but is off for long reads.
+constexpr int kLongReadDiscardNearIndel = 2;
+
 /// The resolved read type and a human-readable reason for it, for logging.
 struct ReadTypeDecision {
     ReadType type;
@@ -66,5 +76,17 @@ bool ReadTypeUsesBaq(ReadType type);
 /// `requested` value is returned unchanged, and kAdjustMQByReadType becomes 40
 /// for short reads and 0 for long reads.
 int ResolveAdjustMQ(ReadType type, int requested);
+
+/// Resolves the --DiscardNearIndel value for a resolved read type: an explicit
+/// `requested` value is returned unchanged, and kDiscardNearIndelByReadType
+/// becomes kLongReadDiscardNearIndel for long reads and 0 for short reads.
+int ResolveDiscardNearIndel(ReadType type, int requested);
+
+/// Whether a resolved read type counts each read at most once per marker. Long
+/// reads can align twice over one position under one name, most often an ONT
+/// fold-back read whose supplementary alignment covers its own primary, and
+/// both copies observe the same molecule. Short reads keep htslib's handling
+/// of overlapping mates.
+bool ReadTypeCountsEachReadOnce(ReadType type);
 
 #endif // VERIFYBAMID_READTYPE_H

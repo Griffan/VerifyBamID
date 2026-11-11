@@ -160,6 +160,27 @@ static void an_explicit_adjust_mq_of_zero_is_kept_for_short_reads() {
     EXPECT(ResolveAdjustMQ(ReadType::Short, 0) == 0);
 }
 
+static void discard_near_indel_by_read_type_is_2_for_long_reads() {
+    EXPECT(ResolveDiscardNearIndel(ReadType::Long, kDiscardNearIndelByReadType) == 2);
+}
+
+static void discard_near_indel_by_read_type_is_off_for_short_reads() {
+    EXPECT(ResolveDiscardNearIndel(ReadType::Short, kDiscardNearIndelByReadType) == 0);
+}
+
+static void an_explicit_discard_near_indel_of_zero_is_kept_for_long_reads() {
+    EXPECT(ResolveDiscardNearIndel(ReadType::Long, 0) == 0);
+}
+
+static void an_explicit_discard_near_indel_is_kept_for_short_reads() {
+    EXPECT(ResolveDiscardNearIndel(ReadType::Short, 3) == 3);
+}
+
+static void each_read_counts_once_only_for_long_reads() {
+    EXPECT(ReadTypeCountsEachReadOnce(ReadType::Long));
+    EXPECT(!ReadTypeCountsEachReadOnce(ReadType::Short));
+}
+
 static void detects_long_reads_in_a_file_without_read_groups() {
     EXPECT(Detect("", {SamRecord("a", 0, 5000), SamRecord("b", 16, 8000), SamRecord("c", 0, 3000)}) ==
            ReadType::Long);
@@ -232,6 +253,14 @@ int main() {
     Run("an_explicit_adjust_mq_is_kept_for_long_reads", an_explicit_adjust_mq_is_kept_for_long_reads);
     Run("an_explicit_adjust_mq_of_zero_is_kept_for_short_reads",
         an_explicit_adjust_mq_of_zero_is_kept_for_short_reads);
+    Run("discard_near_indel_by_read_type_is_2_for_long_reads", discard_near_indel_by_read_type_is_2_for_long_reads);
+    Run("discard_near_indel_by_read_type_is_off_for_short_reads",
+        discard_near_indel_by_read_type_is_off_for_short_reads);
+    Run("an_explicit_discard_near_indel_of_zero_is_kept_for_long_reads",
+        an_explicit_discard_near_indel_of_zero_is_kept_for_long_reads);
+    Run("an_explicit_discard_near_indel_is_kept_for_short_reads",
+        an_explicit_discard_near_indel_is_kept_for_short_reads);
+    Run("each_read_counts_once_only_for_long_reads", each_read_counts_once_only_for_long_reads);
     Run("detects_long_reads_in_a_file_without_read_groups", detects_long_reads_in_a_file_without_read_groups);
     Run("detects_short_reads_with_an_illumina_read_group", detects_short_reads_with_an_illumina_read_group);
     Run("detects_long_reads_from_an_ont_read_group", detects_long_reads_from_an_ont_read_group);

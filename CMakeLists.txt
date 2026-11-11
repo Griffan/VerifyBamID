@@ -132,9 +132,24 @@ add_test(NAME testLongReadsKeepExplicitAdjustMq COMMAND ${CMAKE_COMMAND} -DMODE=
 add_test(NAME testUnknownReadTypeIsRejected COMMAND ${CMAKE_COMMAND} -DMODE=unknown_read_type ${LONG_READ_TEST_ARGS})
 add_test(NAME testAdjustMqBelowMinusOneIsRejected COMMAND ${CMAKE_COMMAND} -DMODE=adjust_mq_below_minus_one ${LONG_READ_TEST_ARGS})
 add_test(NAME testTruncatedBamStopsTheRun COMMAND ${CMAKE_COMMAND} -DMODE=truncated_bam ${LONG_READ_TEST_ARGS})
+add_test(NAME testLongReadsKeepBasesNearIndelsWhenDiscardIsOff
+        COMMAND ${CMAKE_COMMAND} -DMODE=discard_near_indel_off ${LONG_READ_TEST_ARGS})
+add_test(NAME testShortReadsCountEveryAlignment
+        COMMAND ${CMAKE_COMMAND} -DMODE=short_reads_count_every_alignment ${LONG_READ_TEST_ARGS})
+add_test(NAME testShortReadsKeepExplicitDiscardNearIndel
+        COMMAND ${CMAKE_COMMAND} -DMODE=explicit_discard_near_indel ${LONG_READ_TEST_ARGS})
+add_test(NAME testDiscardNearIndelBelowMinusOneIsRejected
+        COMMAND ${CMAKE_COMMAND} -DMODE=discard_near_indel_below_minus_one ${LONG_READ_TEST_ARGS})
+add_test(NAME testLargestDiscardNearIndelSparesReadsWithoutIndels
+        COMMAND ${CMAKE_COMMAND} -DMODE=huge_discard_near_indel ${LONG_READ_TEST_ARGS})
+add_test(NAME testDiscardNearIndelWarnsWithPileupFile
+        COMMAND ${CMAKE_COMMAND} -DMODE=discard_near_indel_with_pileup_file ${LONG_READ_TEST_ARGS})
 set_tests_properties(testLongReadPileupFromBam testLongReadPileupFromCram
         testReadTypeShortKeepsBaqAndAdjustMq testLongReadsKeepExplicitAdjustMq testUnknownReadTypeIsRejected
         testAdjustMqBelowMinusOneIsRejected testTruncatedBamStopsTheRun
+        testLongReadsKeepBasesNearIndelsWhenDiscardIsOff testShortReadsCountEveryAlignment
+        testShortReadsKeepExplicitDiscardNearIndel testDiscardNearIndelBelowMinusOneIsRejected
+        testLargestDiscardNearIndelSparesReadsWithoutIndels testDiscardNearIndelWarnsWithPileupFile
         PROPERTIES DEPENDS testLongReadPileupSetup)
 
 add_test(NAME testMixLikelihood COMMAND TestMixLikelihood)

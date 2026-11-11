@@ -112,3 +112,12 @@ int ResolveAdjustMQ(ReadType type, int requested) {
     if (requested != kAdjustMQByReadType) return requested;
     return type == ReadType::Long ? 0 : 40;
 }
+
+int ResolveDiscardNearIndel(ReadType type, int requested) {
+    if (requested != kDiscardNearIndelByReadType) return requested;
+    return type == ReadType::Long ? kLongReadDiscardNearIndel : 0;
+}
+
+bool ReadTypeCountsEachReadOnce(ReadType type) {
+    return type == ReadType::Long;
+}

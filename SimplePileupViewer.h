@@ -45,6 +45,8 @@ typedef struct {
       all, rev_del;
   int rflag_require, rflag_filter;
   int methylation; // 1 in methylation-seq mode: drop bisulfite-ambiguous observations
+  int discard_near_indel; // >0: discard bases this many or fewer aligned bases from an indel in their read
+  int count_each_read_once; // 1: at most one observation per read name at a marker
   int openQ, extQ, tandemQ, min_support; // for indels
   double min_frac;                       // for indels
   char *reg, *pl_list, *fai_fname, *output_fname;
@@ -93,6 +95,11 @@ public:
 
     BaseInfo baseInfo;
     QualInfo qualInfo;
+
+    // Counts from the near-indel and count-each-read-once filters, for the run log.
+    long discardedNearIndel = 0;    // bases near an indel in their read
+    long repeatedReads = 0;         // times a read was aligned more than once at a marker
+    long discardedDisagreeing = 0;  // of those, times its alignments disagreed and all were discarded
 
     std::string SEQ_SM = "DefaultSampleName";
     int numBases = 0;

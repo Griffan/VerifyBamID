@@ -63,6 +63,143 @@ pileup_seq(FILE *fp, const bam_pileup1_t *p, int pos, int ref_len, const char *r
     return true;
 }
 
+/// One read's entry at a marker: a base, or a deletion when each read counts
+/// once. `usable` means it passed the per-base filters on its own.
+namespace {
+struct Observation {
+    const bam_pileup1_t *p;
+    int qual;
+    bool usable;
+    bool keep;
+};
+}
+
+/// Allele code for the agreement test: a deletion, or no allele information.
+static const int kDeletionAllele = 16;
+static const int kNoAllele = -1;
+
+/// The allele a read shows at this pileup position, as a 4-bit base code with
+/// '=' resolved to the reference base, kDeletionAllele for a deletion, or
+/// kNoAllele for an N.
+static inline int alleleAt(const bam_pileup1_t *p, int refCode) {
+    if (p->is_del) return kDeletionAllele;
+    const int code = p->qpos < p->b->core.l_qseq ? bam_seqi(bam_get_seq(p->b), p->qpos) : 15;
+    if (code == 0) return refCode;
+    return code == 15 ? kNoAllele : code;
+}
+
+/**
+ * Sets `keep` so that each read counts at most once at a marker. Two
+ * alignments of one read, such as an ONT fold-back read whose supplementary
+ * alignment covers its own primary, observe one molecule. If they show
+ * different alleles (a deletion is one; an N is none), at least one is a
+ * sequencing error and none is kept. Otherwise the usable copy with the
+ * highest base quality is kept. Agreement is judged before the per-base
+ * filters, so a filter cannot hide the copy that disagrees and let a misread
+ * copy through. `refCode` is the reference base's 4-bit code. Adds to
+ * `repeated` the reads with more than one entry and to `disagreeing` those
+ * discarded.
+ */
+static void countEachReadOnce(std::vector<Observation> &observations, int refCode, long &repeated,
+                              long &disagreeing) {
+    std::vector<size_t> order(observations.size());
+    for (size_t k = 0; k < order.size(); ++k) order[k] = k;
+    std::sort(order.begin(), order.end(), [&observations](size_t a, size_t b) {
+        const int cmp = strcmp(bam_get_qname(observations[a].p->b), bam_get_qname(observations[b].p->b));
+        return cmp != 0 ? cmp < 0 : a < b;
+    });
+    for (size_t start = 0; start < order.size();) {
+        const char *name = bam_get_qname(observations[order[start]].p->b);
+        size_t end = start + 1;
+        while (end < order.size() && strcmp(bam_get_qname(observations[order[end]].p->b), name) == 0) ++end;
+        // A read name of "*" means the name is missing, so those reads are distinct.
+        if (end - start == 1 || strcmp(name, "*") == 0) {
+            for (size_t k = start; k < end; ++k) observations[order[k]].keep = observations[order[k]].usable;
+        } else {
+            ++repeated;
+            int allele = kNoAllele;
+            bool agree = true;
+            Observation *best = NULL;
+            for (size_t k = start; k < end; ++k) {
+                Observation &o = observations[order[k]];
+                const int a = alleleAt(o.p, refCode);
+                if (a != kNoAllele) {
+                    if (allele == kNoAllele) allele = a;
+                    else if (a != allele) agree = false;
+                }
+                if (o.usable && (!best || o.qual > best->qual)) best = &o;
+            }
+            if (!agree) ++disagreeing;
+            else if (best) best->keep = true;
+        }
+        start = end;
+    }
+}
+
+/**
+ * Pileup constructor that records, for each CIGAR operation of a read, the
+ * query position where it starts. With the operation index htslib gives each
+ * pileup entry (cigar_ind), this finds a base's offset within its operation
+ * without walking the CIGAR at every marker, which matters for long reads with
+ * tens of thousands of operations.
+ */
+static int recordCigarOpStarts(void *, const bam1_t *b, bam_pileup_cd *cd) {
+    const uint32_t *cigar = bam_get_cigar(b);
+    // One spare entry, so a read without a CIGAR does not request malloc(0).
+    int32_t *starts = (int32_t *) malloc((b->core.n_cigar + 1) * sizeof(int32_t));
+    if (!starts) error("Out of memory recording the CIGAR of read %s", bam_get_qname(b));
+    int32_t queryPos = 0;
+    for (uint32_t k = 0; k < b->core.n_cigar; ++k) {
+        starts[k] = queryPos;
+        if (bam_cigar_type(bam_cigar_op(cigar[k])) & 1) queryPos += bam_cigar_oplen(cigar[k]);
+    }
+    cd->p = starts;
+    return 0;
+}
+
+static int freeCigarOpStarts(void *, const bam1_t *, bam_pileup_cd *cd) {
+    free(cd->p);
+    cd->p = NULL;
+    return 0;
+}
+
+static inline bool isAlignedOp(int op) {
+    return op == BAM_CMATCH || op == BAM_CEQUAL || op == BAM_CDIFF;
+}
+
+/**
+ * Whether the base at `p` is `limit` or fewer aligned bases from an insertion
+ * or deletion in its read, counting the base itself, so a base next to an
+ * indel is 1 aligned base from it. Clips and reference skips end the search
+ * on their side, and padding is passed over. Requires the starts recorded by
+ * recordCigarOpStarts in p->cd.
+ */
+static bool isNearIndel(const bam_pileup1_t *p, int limit) {
+    const uint32_t *cigar = bam_get_cigar(p->b);
+    const int nOps = p->b->core.n_cigar;
+    const int k = p->cigar_ind;
+    const int64_t offset = p->qpos - ((const int32_t *) p->cd.p)[k];
+
+    int64_t distance = offset + 1;
+    for (int i = k - 1; i >= 0 && distance <= limit; --i) {
+        const int op = bam_cigar_op(cigar[i]);
+        if (op == BAM_CINS || op == BAM_CDEL) return true;
+        if (op == BAM_CPAD) continue;
+        if (!isAlignedOp(op)) break;
+        distance += bam_cigar_oplen(cigar[i]);
+    }
+
+    distance = bam_cigar_oplen(cigar[k]) - offset;
+    for (int i = k + 1; i < nOps && distance <= limit; ++i) {
+        const int op = bam_cigar_op(cigar[i]);
+        if (op == BAM_CINS || op == BAM_CDEL) return true;
+        if (op == BAM_CPAD) continue;
+        if (!isAlignedOp(op)) break;
+        distance += bam_cigar_oplen(cigar[i]);
+    }
+    return false;
+}
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -411,6 +548,10 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
 
     bam_mplp_t iter = bam_mplp_init(n, mplp_func, (void **) data);
     if (conf->flag & MPLP_SMART_OVERLAPS) bam_mplp_init_overlaps(iter);
+    if (conf->discard_near_indel > 0) {
+        bam_mplp_constructor(iter, recordCigarOpStarts);
+        bam_mplp_destructor(iter, freeCigarOpStarts);
+    }
     // Zero means no limit, as in samtools mpileup.
     const int max_depth = conf->max_depth > 0 ? conf->max_depth : INT_MAX;
     if ((int64_t) max_depth * sm->n > 1 << 20)
@@ -449,6 +590,7 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
             posIndex[chr][pos + 1] = globalIndex++;
 
             std::vector<char> tmpBase, tmpQual;
+            std::vector<Observation> observations;
 
             // In methylation mode, resolve this marker's alleles once so each
             // read's observation can be tested for bisulfite ambiguity below.
@@ -473,18 +615,12 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
                 } else {
                     /*calculate number of reads covering snps*/
 //                    numBases += n_plp[i];
-                    // Push each read's base and quality together in a single
-                    // pass so baseInfo and qualInfo stay in lockstep. A base is
-                    // recorded (and its quality with it) only when pileup_seq
-                    // actually emits one: deletions emit nothing, so pushing a
-                    // quality for them would shift every later quality at this
-                    // marker onto the wrong base.
                     for (j = 0; j < n_plp[i]; ++j) {//each covered read in ith bam file
                         const bam_pileup1_t *p = plp[i] + j;
-                        // Deletions and ref-skips contribute no base; skip them
-                        // before accessing qpos/QUAL (qpos is not meaningful for
-                        // a deletion and could be out of range).
-                        if (p->is_del || p->is_refskip) continue;
+                        if (p->is_refskip) continue;
+                        // A deletion contributes no base, but when each read
+                        // counts once it can show that a read's copies disagree.
+                        if (p->is_del && !conf->count_each_read_once) continue;
                         // Methylation mode: drop this observation when the
                         // marker's alleles cannot be told apart on this read's
                         // conversion strand. The test is per (marker alleles,
@@ -496,16 +632,18 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
                             (mRef == 0 ||
                              !observationUsable(mRef, mAlt, conversionStrandOf(p->b))))
                             continue;
-                        int c = p->qpos < p->b->core.l_qseq
-                                ? bam_get_qual(p->b)[p->qpos]
-                                : 0;
-                        if (c >= conf->min_baseQ)//SimplePileupViewer Change
-                        {
-                            if (pileup_seq(pileup_fp, p, pos, ref_len, ref, tmpBase)) {
-                                int q = c + 33 < 126 ? c + 33 : 126;
-                                tmpQual.push_back(q);
+                        Observation o{p, 0, false, false};
+                        // qpos is not meaningful for a deletion and could be out of range.
+                        if (!p->is_del) {
+                            o.qual = p->qpos < p->b->core.l_qseq ? bam_get_qual(p->b)[p->qpos] : 0;
+                            if (o.qual >= conf->min_baseQ) {
+                                if (conf->discard_near_indel > 0 && isNearIndel(p, conf->discard_near_indel))
+                                    ++discardedNearIndel;
+                                else
+                                    o.usable = true;
                             }
                         }
+                        observations.push_back(o);
                     }
 //                    if (conf->flag & MPLP_PRINT_MAPQ) {//multiple pileups
 //                        putc('\t', pileup_fp);
@@ -532,6 +670,19 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
 //                    }
                 }
             }
+            if (conf->count_each_read_once) {
+                const int refCode = ref && pos < ref_len ? seq_nt16_table[(unsigned char) ref[pos]] : 15;
+                countEachReadOnce(observations, refCode, repeatedReads, discardedDisagreeing);
+            } else {
+                for (Observation &o : observations) o.keep = o.usable;
+            }
+            // Push each base and its quality together so baseInfo and qualInfo
+            // stay in lockstep.
+            for (const Observation &o : observations) {
+                if (!o.keep) continue;
+                if (pileup_seq(pileup_fp, o.p, pos, ref_len, ref, tmpBase))
+                    tmpQual.push_back(o.qual + 33 < 126 ? o.qual + 33 : 126);
+            }
             if(tmpBase.size()>0)
             {
                 effectiveNumSite++;
@@ -550,6 +701,13 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
     avgDepth = double(numBases) / GetNumMarker();
     fprintf(stderr, "[%s] Total Number Bases: %d\n", __func__, numBases);
     fprintf(stderr, "[%s] Total Number Markers: %d\n", __func__, GetNumMarker());
+    if (conf->discard_near_indel > 0)
+        notice("Discarded %ld base(s) within %d aligned base(s) of an indel in their read", discardedNearIndel,
+               conf->discard_near_indel);
+    if (conf->count_each_read_once)
+        notice("Counted each read once per marker: a read was aligned more than once at a marker %ld time(s), "
+               "and %ld of those were discarded because the alignments disagreed", repeatedReads,
+               discardedDisagreeing);
 
     bam_smpl_destroy(sm);
     bam_mplp_destroy(iter);
