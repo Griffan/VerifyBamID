@@ -19,28 +19,37 @@ Fan Zhang, Matthew Flickinger, Sarah A. Gagliano Taliun, InPSYght Psychiatric Ge
 The official project name is **verifyBamID2**. The command-line executable is named `VerifyBamID`.
 
 ### From source code
-VerifyBamID requires [htslib](https://github.com/samtools/htslib) 1.25 or later.
+By default the build downloads [htslib](https://github.com/samtools/htslib) 1.25 and [libdeflate](https://github.com/ebiggers/libdeflate) 1.26 and links them into `VerifyBamID` statically, so it needs network access. htslib is always built with support for remote files (http, https, S3 and Google Cloud Storage) and for CRAM files compressed with lzma or bzip2. Its own dependencies are linked dynamically, so their development files must be installed, along with CMake 3.10 or later and a compiler that can build htslib 1.25 (clang, or GCC 8 or later; GCC 9 or later on 64-bit Arm Linux):
 
-  - mkdir build
-  - cd build
-  - cmake ..
+- Debian or Ubuntu: `apt-get install cmake g++ make libcurl4-openssl-dev libssl-dev zlib1g-dev libbz2-dev liblzma-dev`
+- Fedora, RHEL or Amazon Linux: `dnf install cmake gcc gcc-c++ make libcurl-devel openssl-devel zlib-devel bzip2-devel xz-devel`
+- macOS: the Xcode command-line tools provide everything except CMake, which Homebrew provides: `brew install cmake`
 
 ```
-In case any required libraries is missing, you may specify customized installing path by replacing "cmake .." with:
-
-For libhts:
-  - cmake -DHTS_INCLUDE_DIRS=/hts_absolute_path/include/  -DHTS_LIBRARIES=/hts_absolute_path/lib/libhts.a ..
-
-For bzip2:
-  - cmake -DBZIP2_INCLUDE_DIRS=/bzip2_absolute_path/include/ -DBZIP2_LIBRARIES=/bzip2_absolute_path/lib/libbz2.a ..
-
-For lzma:
-  - cmake -DLZMA_INCLUDE_DIRS=/lzma_absolute_path/include/ -DLZMA_LIBRARIES=/lzma_absolute_path/lib/liblzma.a ..
+mkdir build
+cd build
+cmake ..
+make
+make test
 ```
 
-  - make
-  - make test
-  
+The executable is written to `bin/VerifyBamID`. If the dependencies are installed somewhere CMake doesn't search, for example a conda environment, add `-DCMAKE_PREFIX_PATH=/that/prefix` to the `cmake` command.
+
+#### Building against an installed htslib
+To build without network access, for example when packaging, link an installed htslib 1.25 or later instead:
+
+```
+cmake -DUSE_SYSTEM_HTSLIB=ON ..
+```
+
+If htslib is not found, give its location, using `libhts.dylib` on macOS:
+
+```
+cmake -DUSE_SYSTEM_HTSLIB=ON -DHTS_INCLUDE_DIRS=/hts_absolute_path/include/ -DHTS_LIBRARIES=/hts_absolute_path/lib/libhts.so ..
+```
+
+Passing `HTS_INCLUDE_DIRS` or `HTS_LIBRARIES` the first time a build directory is configured turns on `USE_SYSTEM_HTSLIB` by itself.
+
 ### From bioconda
 conda install -c bioconda verifybamid2 
   

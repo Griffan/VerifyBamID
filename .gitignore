@@ -17,6 +17,7 @@ bin/MethylateTestBam
 bin/MakeReadFilterTestBam
 bin/MakeMaxDepthTestBam
 bin/TestReadType
+bin/TestHtslibFeatures
 bin/MakeLongReadTestData
 resource/test/test.methyl.bam
 resource/test/test.methyl.bam.bai
