@@ -86,7 +86,6 @@ class SimplePileupViewer {
 
 public:
 
-    int regIndex;
     std::vector<region_t>* bedVec;
     BED bedTable;
 
@@ -118,19 +117,6 @@ public:
     SimplePileupViewer(const BED& BedFromEstimator, const std::string &pileupFile);
 
     int ReadPileup(const std::string & filePath);
-
-    region_t GetNextRegion(bool& BedEOF)
-    {
-        BedEOF=false;
-        if(regIndex<bedVec->size()) {
-            if(regIndex==(bedVec->size()-1)) BedEOF=true;
-            return bedVec->at(regIndex++);
-        }
-        else {
-            std::cerr<<"Region number out of bound!\n"<<std::endl;
-            exit(EXIT_FAILURE);
-        }
-    }
 
     int GetNumMarker()
     {
