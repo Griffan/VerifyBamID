@@ -19,6 +19,8 @@ Fan Zhang, Matthew Flickinger, Sarah A. Gagliano Taliun, InPSYght Psychiatric Ge
 The official project name is **verifyBamID2**. The command-line executable is named `VerifyBamID`.
 
 ### From source code
+VerifyBamID requires [htslib](https://github.com/samtools/htslib) 1.25 or later.
+
   - mkdir build
   - cd build
   - cmake ..

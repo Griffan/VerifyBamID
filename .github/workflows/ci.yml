@@ -112,15 +112,15 @@ jobs:
           path: |
             /usr/local/lib/libhts*
             /usr/local/include/htslib
-          key: htslib-1.11-${{ runner.os }}
+          key: htslib-1.25-${{ runner.os }}
 
       - name: Download and build htslib
         if: steps.cache-htslib.outputs.cache-hit != 'true'
         run: |
           cd /tmp
-          wget -q https://github.com/samtools/htslib/releases/download/1.11/htslib-1.11.tar.bz2
-          tar -xf htslib-1.11.tar.bz2
-          cd htslib-1.11
+          wget -q https://github.com/samtools/htslib/releases/download/1.25/htslib-1.25.tar.bz2
+          tar -xf htslib-1.25.tar.bz2
+          cd htslib-1.25
           ./configure --prefix=/usr/local
           make -j"$(nproc || sysctl -n hw.ncpu || echo 2)"
           if command -v sudo >/dev/null 2>&1; then

@@ -27,6 +27,15 @@
 #include "samtools.h"
 #include "MethylationModel.h"
 
+// Pileups read the markers through htslib's multi-region iterator, which had
+// fixes in every release from 1.21 to 1.25: out-of-bounds CRAM reads (1.21),
+// errors reported as end of file (1.22), long alignments dropped by threaded
+// CRAM iterators (1.23), unreliable S3 reads (1.24), and a double free and a
+// leak when building the iterator (1.25).
+#if HTS_VERSION < 102500
+#error "VerifyBamID requires htslib 1.25 or later"
+#endif
+
 // Encode one pileup observation into tmpBase in genome-forward orientation,
 // following samtools' pileup-string convention: '.'/',' for a reference match
 // on the forward/reverse strand, upper/lower-case ACGTN for a mismatch.
@@ -302,6 +311,12 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
     numBases = 0;
     avgDepth = 0;
     sdDepth = 0;
+
+    // A build against htslib 1.25 can still load an older libhts at run time,
+    // because the library's soname has not changed since htslib 1.10.
+    int htsMajor = 0, htsMinor = 0;
+    if (sscanf(hts_version(), "%d.%d", &htsMajor, &htsMinor) != 2 || htsMajor * 100 + htsMinor < 125)
+        error("VerifyBamID requires htslib 1.25 or later, but loaded htslib %s", hts_version());
 
     if (n == 0) {
         fprintf(stderr, "[%s] no input file/data given\n", __func__);
