@@ -29,6 +29,7 @@ SOFTWARE.
 
 #include "ContaminationEstimator.h"
 #include "PhoneHome.h"
+#include "ReadType.h"
 #include "SVDcalculator.h"
 #include "htslib/sam.h"
 #include "params.h"
@@ -82,7 +83,7 @@ int execute(int argc, char **argv) {
   memset(&mplp, 0, sizeof(mplp_conf_t));
   mplp.min_mq = 2;
   mplp.min_baseQ = 13;
-  mplp.capQ_thres = 40;
+  mplp.capQ_thres = kAdjustMQByReadType;
   mplp.max_depth = MPLP_MAX_DEPTH;
   mplp.max_indel_depth = MPLP_MAX_INDEL_DEPTH;
   mplp.openQ = 40;
@@ -95,6 +96,7 @@ int execute(int argc, char **argv) {
   mplp.flag = /*MPLP_NO_ORPHAN |*/ MPLP_REALN | MPLP_SMART_OVERLAPS;
   mplp.rflag_filter = BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP;
   mplp.output_fname = NULL;
+  std::string readTypeStr("auto");
   ///
   paramList pl;
   BEGIN_LONG_PARAMS(longParameters)
@@ -174,13 +176,21 @@ int execute(int argc, char **argv) {
                     "include when building SVD from --RefVCF. "
                     "[default:human autosomes 1-22/chr1-chr22]")
   LONG_PARAM_GROUP("Pileup Options", "Arguments for pileup info extraction")
+  LONG_STRING_PARAM("ReadType", &readTypeStr,
+                    "[String] auto, short or long. Long reads (e.g. ONT, "
+                    "PacBio) get BAQ disabled and --adjust-MQ 0 by default. "
+                    "auto chooses long if every @RG has PL ONT or PACBIO, or "
+                    "if the median length of the first 500 primary mapped "
+                    "reads (excluding duplicates and QC failures) is at least "
+                    "1000 bp. Has no effect with --PileupFile[default:auto]")
   LONG_INT_PARAM("min-BQ", &mplp.min_baseQ,
                  "[Int] skip bases with baseQ/BAQ smaller than min-BQ")
   LONG_INT_PARAM("min-MQ", &mplp.min_mq,
                  "[Int] skip alignments with mapQ smaller than min-MQ")
   LONG_INT_PARAM("adjust-MQ", &mplp.capQ_thres,
                  "[Int] adjust mapping quality; "
-                 "recommended:50, disable:0")
+                 "recommended:50, disable:0, -1 means 40 for short reads "
+                 "and 0 for long reads[default:-1]")
   LONG_INT_PARAM("max-depth", &mplp.max_depth, "[Int] max per-file depth; 0 means no limit")
   LONG_PARAM("no-orphans", &noOrphan, "[Bool] do not use anomalous read pairs")
   LONG_PARAM("ignoreRG", &ignoreRG,
@@ -212,6 +222,9 @@ int execute(int argc, char **argv) {
   pl.Status();
 
   /// Pass along mpileup arguments
+  if (mplp.capQ_thres < kAdjustMQByReadType) {
+    error("--adjust-MQ must be -1 (by read type), 0 (off) or positive, not %d", mplp.capQ_thres);
+  }
   if (mplp.max_depth < 0) {
     error("--max-depth must be 0 (no limit) or positive, not %d", mplp.max_depth);
   }
@@ -239,6 +252,10 @@ int execute(int argc, char **argv) {
     mplp.rflag_filter |= BAM_FSUPPLEMENTARY;
     notice("--Methylation: disabled MAPQ adjustment (--adjust-MQ 0) and BAQ, "
            "and excluding supplementary alignments");
+  }
+  ReadType readType = ReadType::Auto;
+  if (!ParseReadType(readTypeStr, &readType)) {
+    error("--ReadType must be auto, short or long, not '%s'", readTypeStr.c_str());
   }
   /// End of mpileup parsing
 
@@ -362,6 +379,22 @@ int execute(int argc, char **argv) {
     {
         PhaseTimer t("Load SVD reference data");
         Estimator.ReadSVDMatrix(UDPath, PCPath, MeanPath);
+    }
+
+    if (nfiles) {
+        if (readType == ReadType::Auto) {
+            const ReadTypeDecision decision = DetectReadType(BamFile.c_str(), RefPath.c_str());
+            readType = decision.type;
+            notice("Detected %s reads: %s", ReadTypeName(readType), decision.reason.c_str());
+        } else {
+            notice("Using %s reads as set by --ReadType", ReadTypeName(readType));
+        }
+        if (!ReadTypeUsesBaq(readType)) mplp.flag &= ~MPLP_REALN;
+        mplp.capQ_thres = ResolveAdjustMQ(readType, mplp.capQ_thres);
+        notice("Pileup settings: BAQ %s, --adjust-MQ %d",
+               (mplp.flag & MPLP_REALN) ? "on" : "off", mplp.capQ_thres);
+    } else if (readType != ReadType::Auto) {
+        warning("--ReadType has no effect with --PileupFile");
     }
 
     {

@@ -63,7 +63,7 @@ add_subdirectory(statgen)
 set(LIBSTATGEN_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/statgen")
 add_subdirectory(samtools)
 add_subdirectory(libVcf)
-set(SOURCE_FILES main.cpp SVDcalculator.cpp ContaminationEstimator.cpp MathGenMin.cpp MathGold.cpp Random.cpp SimplePileupViewer.cpp MethylationModel.cpp params.cpp )
+set(SOURCE_FILES main.cpp SVDcalculator.cpp ContaminationEstimator.cpp MathGenMin.cpp MathGold.cpp Random.cpp SimplePileupViewer.cpp MethylationModel.cpp ReadType.cpp params.cpp )
 include_directories(statgen ${HTS_INCLUDE_DIRS} samtools libVcf Eigen)
 add_executable(VerifyBamID ${SOURCE_FILES})
 
@@ -79,6 +79,9 @@ target_link_libraries(TestGramSVD statgen Vcf ${HTS_LIBRARIES} samtools ${ZLIB} 
 add_executable(TestMethylationModel TestMethylationModel.cpp MethylationModel.cpp)
 target_include_directories(TestMethylationModel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(TestMethylationModel ${HTS_LIBRARIES} ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
+
+add_executable(TestReadType TestReadType.cpp ReadType.cpp)
+target_link_libraries(TestReadType statgen ${HTS_LIBRARIES} ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
 
 # Test-only helper: synthesizes a directional methyl-seq BAM from an aligned BAM
 # so the end-to-end --Methylation test can generate its input programmatically.
@@ -121,6 +124,9 @@ add_test(NAME testGramSVD
 add_test(NAME testMethylationModel
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND TestMethylationModel)
+add_test(NAME testReadType
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND TestReadType)
 add_test(NAME myTest1
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND VerifyBamID --DisableSanityCheck --BamFile resource/test/test.bam --SVDPrefix resource/test/hapmap_3.3.b37.dat --Reference resource/test/chr20.fa.gz --NumPC 2 --Output result.myTest1)

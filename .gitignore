@@ -16,6 +16,7 @@ bin/TestMethylationModel
 bin/MethylateTestBam
 bin/MakeReadFilterTestBam
 bin/MakeMaxDepthTestBam
+bin/TestReadType
 resource/test/test.methyl.bam
 resource/test/test.methyl.bam.bai
 *vcf.gz
