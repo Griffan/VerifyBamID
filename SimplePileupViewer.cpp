@@ -365,8 +365,9 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
     // init pileup
     iter = bam_mplp_init(n, mplp_func, (void **) data);
     if (conf->flag & MPLP_SMART_OVERLAPS) bam_mplp_init_overlaps(iter);
-    max_depth = conf->max_depth;
-    if (max_depth * sm->n > 1 << 20)
+    // Zero means no limit, as in samtools mpileup.
+    max_depth = conf->max_depth > 0 ? conf->max_depth : INT_MAX;
+    if ((int64_t) max_depth * sm->n > 1 << 20)
         fprintf(stderr, "[%s] Max depth is above 1M. Potential memory hog!\n", __func__);
 
     fprintf(stderr, "[%s] Set max per-file depth to %d\n", __func__, max_depth);
@@ -409,6 +410,8 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
             bam_mplp_destroy(iter);
             iter = bam_mplp_init(n, mplp_func, (void **) data);
             if (conf->flag & MPLP_SMART_OVERLAPS) bam_mplp_init_overlaps(iter);
+            // A new pileup starts with htslib's default depth limit.
+            bam_mplp_set_maxcnt(iter, max_depth);
             continue;
         } else if (pos < beg0) continue;
 

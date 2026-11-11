@@ -91,6 +91,17 @@ add_executable(TestMixLikelihood TestMixLikelihood.cpp ContaminationEstimator.cp
 target_link_libraries(TestMixLikelihood statgen Vcf ${HTS_LIBRARIES} samtools ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
 
 enable_testing()
+add_executable(MakeMaxDepthTestBam MakeMaxDepthTestBam.cpp)
+target_include_directories(MakeMaxDepthTestBam PRIVATE ${HTS_INCLUDE_DIRS})
+target_link_libraries(MakeMaxDepthTestBam ${HTS_LIBRARIES} ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
+foreach(mode caps_every_marker zero_means_no_limit negative_is_rejected)
+    add_test(NAME testMaxDepth_${mode}
+            COMMAND ${CMAKE_COMMAND} -DMODE=${mode}
+                -DVERIFY_BAM_ID=$<TARGET_FILE:VerifyBamID>
+                -DMAKE_BAM=$<TARGET_FILE:MakeMaxDepthTestBam>
+                -DTEST_DIR=${CMAKE_CURRENT_BINARY_DIR}/max-depth-test-${mode}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/TestMaxDepth.cmake)
+endforeach()
 add_executable(MakeReadFilterTestBam MakeReadFilterTestBam.cpp)
 target_include_directories(MakeReadFilterTestBam PRIVATE ${HTS_INCLUDE_DIRS})
 target_link_libraries(MakeReadFilterTestBam ${HTS_LIBRARIES} ${ZLIB} ${BZIP2} ${LZMA} ${CURLLIB})
