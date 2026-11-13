@@ -34,7 +34,7 @@ SOFTWARE.
 #include "params.h"
 #include "backward.hpp"
 
-#define VERSION "2.0.1"
+#define VERSION "2.1.0"
 
 // Simple RAII timer that logs elapsed wall-clock time for a named phase.
 struct PhaseTimer {
