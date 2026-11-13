@@ -65,11 +65,18 @@ if(missing_dependencies)
 endif()
 
 # The sub-builds must produce archives that link into this build, so they get
-# its C and linker flags and, on macOS, its architecture, deployment target
-# and SDK.
+# its C and linker flags, its archiver and, on macOS, its architecture,
+# deployment target and SDK.
 get_property(user_c_flags CACHE CMAKE_C_FLAGS PROPERTY VALUE)
 get_property(user_linker_flags CACHE CMAKE_EXE_LINKER_FLAGS PROPERTY VALUE)
-set(libdeflate_platform_args "")
+set(libdeflate_toolchain_args "")
+set(htslib_archiver_args "")
+foreach(tool AR RANLIB)
+    if(CMAKE_${tool})
+        list(APPEND libdeflate_toolchain_args "-DCMAKE_${tool}=${CMAKE_${tool}}")
+        list(APPEND htslib_archiver_args "${tool}=${CMAKE_${tool}}")
+    endif()
+endforeach()
 set(htslib_platform_flags "")
 if(APPLE)
     list(LENGTH CMAKE_OSX_ARCHITECTURES architecture_count)
@@ -80,7 +87,7 @@ if(APPLE)
     endif()
     foreach(setting CMAKE_OSX_ARCHITECTURES CMAKE_OSX_DEPLOYMENT_TARGET CMAKE_OSX_SYSROOT)
         if(${setting})
-            list(APPEND libdeflate_platform_args "-D${setting}=${${setting}}")
+            list(APPEND libdeflate_toolchain_args "-D${setting}=${${setting}}")
         endif()
     endforeach()
     if(CMAKE_OSX_ARCHITECTURES)
@@ -93,6 +100,51 @@ if(APPLE)
         string(APPEND htslib_platform_flags " -isysroot ${CMAKE_OSX_SYSROOT}")
     endif()
 endif()
+
+# Packagers that fetch sources themselves, such as conda recipes, can supply
+# each release instead of having the build download it.
+set(HTSLIB_SOURCE "" CACHE STRING "Absolute path to the htslib ${HTSLIB_VERSION} release tarball, or to its extracted contents, to build instead of downloading it")
+set(LIBDEFLATE_SOURCE "" CACHE STRING "Absolute path to the libdeflate ${LIBDEFLATE_VERSION} release tarball, or to its extracted contents, to build instead of downloading it")
+
+# Sets `out` to ExternalProject_Add()'s source arguments for one project: the
+# pinned download when `source` is empty, otherwise the given tarball, which
+# must match the pinned checksum, or the given directory, whose
+# `version_file` must report `version` through the first capture group of
+# `version_regex`.
+function(bundled_source_args out name version source default_url sha256 version_file version_regex)
+    if(NOT source)
+        set(${out} URL ${default_url} URL_HASH SHA256=${sha256} PARENT_SCOPE)
+        return()
+    endif()
+    if(NOT IS_ABSOLUTE "${source}" OR NOT EXISTS "${source}")
+        message(FATAL_ERROR "The ${name} source must be an absolute path to an existing tarball or "
+            "directory: ${source}")
+    endif()
+    if(NOT IS_DIRECTORY "${source}")
+        set(${out} URL ${source} URL_HASH SHA256=${sha256} PARENT_SCOPE)
+        return()
+    endif()
+    # ExternalProject copies a directory without checking it, so check its version.
+    set(found_version "")
+    if(EXISTS "${source}/${version_file}")
+        file(STRINGS "${source}/${version_file}" version_line REGEX "${version_regex}" LIMIT_COUNT 1)
+        string(REGEX REPLACE "${version_regex}" "\\1" found_version "${version_line}")
+    endif()
+    if(NOT found_version STREQUAL version)
+        message(FATAL_ERROR "${source} doesn't hold ${name} ${version}: its ${version_file} "
+            "reports version '${found_version}'")
+    endif()
+    set(${out} URL ${source} PARENT_SCOPE)
+endfunction()
+
+bundled_source_args(libdeflate_source_args libdeflate ${LIBDEFLATE_VERSION} "${LIBDEFLATE_SOURCE}"
+    https://github.com/ebiggers/libdeflate/releases/download/v${LIBDEFLATE_VERSION}/libdeflate-${LIBDEFLATE_VERSION}.tar.gz
+    125856d4656e0feab660f94842f835923410c9281fedbcee64598c918da42b5a
+    libdeflate.h "^#define LIBDEFLATE_VERSION_STRING[ \t]+\"([0-9.]+)\"")
+bundled_source_args(htslib_source_args htslib ${HTSLIB_VERSION} "${HTSLIB_SOURCE}"
+    https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2
+    158c271e4e2986bb2dd11283b640edc10c56695b293df77a109ce99480303730
+    version.sh "^VERSION=([0-9.]+)$")
 
 # Each version installs to its own prefix, so changing a version changes every
 # include path and link line that uses it, and everything is rebuilt.
@@ -126,8 +178,7 @@ endif()
 # Both projects install during their build step, the step that declares the
 # installed archive, so Ninja relinks in the same run when an archive changes.
 ExternalProject_Add(libdeflate_external
-    URL https://github.com/ebiggers/libdeflate/releases/download/v${LIBDEFLATE_VERSION}/libdeflate-${LIBDEFLATE_VERSION}.tar.gz
-    URL_HASH SHA256=125856d4656e0feab660f94842f835923410c9281fedbcee64598c918da42b5a
+    ${libdeflate_source_args}
     CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${LIBDEFLATE_PREFIX}
         # GNUInstallDirs would pick lib64 on some Linux distributions.
@@ -140,7 +191,7 @@ ExternalProject_Add(libdeflate_external
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DLIBDEFLATE_BUILD_SHARED_LIB=OFF
         -DLIBDEFLATE_BUILD_GZIP=OFF
-        ${libdeflate_platform_args}
+        ${libdeflate_toolchain_args}
     BUILD_COMMAND ${LIBDEFLATE_BUILD_COMMAND}
     INSTALL_COMMAND ""
     BUILD_BYPRODUCTS ${LIBDEFLATE_LIBRARY})
@@ -190,8 +241,7 @@ set(HTSLIB_LDFLAGS "${HTSLIB_LDFLAGS}${htslib_platform_flags} ${user_linker_flag
 # library and htslib's programs aren't needed.
 ExternalProject_Add(htslib_external
     DEPENDS libdeflate_external
-    URL https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2
-    URL_HASH SHA256=158c271e4e2986bb2dd11283b640edc10c56695b293df77a109ce99480303730
+    ${htslib_source_args}
     BUILD_IN_SOURCE 1
     CONFIGURE_COMMAND <SOURCE_DIR>/configure
         --prefix=${HTSLIB_PREFIX}
@@ -211,7 +261,7 @@ ExternalProject_Add(htslib_external
         # Copying the headers here, once per configure, keeps a rebuild of
         # libhts.a from making everything that includes them recompile.
         COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/htslib ${HTSLIB_PREFIX}/include/htslib
-    BUILD_COMMAND ${HTSLIB_MAKE} lib-static
+    BUILD_COMMAND ${HTSLIB_MAKE} lib-static ${htslib_archiver_args}
         COMMAND ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>/libhts.a ${HTSLIB_LIBRARY}
     INSTALL_COMMAND ""
     BUILD_BYPRODUCTS ${HTSLIB_LIBRARY})

@@ -35,8 +35,15 @@ make test
 
 The executable is written to `bin/VerifyBamID`. If the dependencies are installed somewhere CMake doesn't search, for example a conda environment, add `-DCMAKE_PREFIX_PATH=/that/prefix` to the `cmake` command.
 
+#### Building without network access
+To build the bundled htslib without network access, for example when packaging, download the [htslib 1.25](https://github.com/samtools/htslib/releases/download/1.25/htslib-1.25.tar.bz2) and [libdeflate 1.26](https://github.com/ebiggers/libdeflate/releases/download/v1.26/libdeflate-1.26.tar.gz) release tarballs beforehand and pass their absolute paths. Each may also be the tarball's extracted contents. A tarball must match the pinned checksum, and an extracted directory must hold the right version:
+
+```
+cmake -DHTSLIB_SOURCE=/path/to/htslib-1.25.tar.bz2 -DLIBDEFLATE_SOURCE=/path/to/libdeflate-1.26.tar.gz ..
+```
+
 #### Building against an installed htslib
-To build without network access, for example when packaging, link an installed htslib 1.25 or later instead:
+To link an installed htslib 1.25 or later instead of building one, which then has to be present at run time too:
 
 ```
 cmake -DUSE_SYSTEM_HTSLIB=ON ..
