@@ -53,13 +53,17 @@ ReadTypeDecision ClassifyReadType(const std::vector<std::string> &platforms,
     if (readLengths.empty())
         return {ReadType::Short, "no primary mapped reads to sample; assuming short reads"};
 
+    // An even-sized sample's median is the mean of its two middle lengths.
     const size_t mid = readLengths.size() / 2;
     std::nth_element(readLengths.begin(), readLengths.begin() + mid, readLengths.end());
-    const int32_t median = readLengths[mid];
+    const double upper = readLengths[mid];
+    const double lower =
+        readLengths.size() % 2 == 1 ? upper : *std::max_element(readLengths.begin(), readLengths.begin() + mid);
+    const double median = (lower + upper) / 2;
     const ReadType type = median >= kLongReadMinMedianLength ? ReadType::Long : ReadType::Short;
 
     char reason[160];
-    snprintf(reason, sizeof(reason), "median length %d bp over the first %zu primary mapped reads (long if >= %d bp)",
+    snprintf(reason, sizeof(reason), "median length %.12g bp over the first %zu primary mapped reads (long if >= %d bp)",
              median, readLengths.size(), kLongReadMinMedianLength);
     return {type, reason};
 }

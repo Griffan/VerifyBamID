@@ -105,6 +105,30 @@ static void median_just_below_threshold_is_short() {
     EXPECT(ClassifyReadType({}, {998, 999, 50000}).type == ReadType::Short);
 }
 
+static void even_sample_median_at_threshold_is_long() {
+    EXPECT(ClassifyReadType({}, {50000, 999, 100, 1001}).type == ReadType::Long);
+}
+
+static void even_sample_median_half_a_base_below_threshold_is_short() {
+    EXPECT(ClassifyReadType({}, {50000, 999, 100, 1000}).type == ReadType::Short);
+}
+
+static void half_150bp_and_half_1000bp_reads_are_short() {
+    std::vector<int32_t> lengths(250, 150);
+    lengths.insert(lengths.end(), 250, 1000);
+    EXPECT(ClassifyReadType({}, lengths).type == ReadType::Short);
+}
+
+static void reason_reports_a_half_base_median() {
+    const std::string reason = ClassifyReadType({}, {100, 999, 1000, 50000}).reason;
+    EXPECT(reason.find("median length 999.5 bp over the first 4 primary mapped reads") != std::string::npos);
+}
+
+static void reason_reports_a_whole_base_median_without_a_fraction() {
+    const std::string reason = ClassifyReadType({}, {999, 1000, 1001}).reason;
+    EXPECT(reason.find("median length 1000 bp over the first 3 primary mapped reads") != std::string::npos);
+}
+
 static void a_few_very_long_reads_do_not_make_short_reads_long() {
     std::vector<int32_t> lengths(90, 150);
     lengths.insert(lengths.end(), 10, 100000);
@@ -237,6 +261,13 @@ int main() {
     Run("short_reads_without_read_groups_are_short", short_reads_without_read_groups_are_short);
     Run("median_at_threshold_is_long", median_at_threshold_is_long);
     Run("median_just_below_threshold_is_short", median_just_below_threshold_is_short);
+    Run("even_sample_median_at_threshold_is_long", even_sample_median_at_threshold_is_long);
+    Run("even_sample_median_half_a_base_below_threshold_is_short",
+        even_sample_median_half_a_base_below_threshold_is_short);
+    Run("half_150bp_and_half_1000bp_reads_are_short",
+        half_150bp_and_half_1000bp_reads_are_short);
+    Run("reason_reports_a_half_base_median", reason_reports_a_half_base_median);
+    Run("reason_reports_a_whole_base_median_without_a_fraction", reason_reports_a_whole_base_median_without_a_fraction);
     Run("a_few_very_long_reads_do_not_make_short_reads_long", a_few_very_long_reads_do_not_make_short_reads_long);
     Run("ont_platform_is_long_even_for_short_reads", ont_platform_is_long_even_for_short_reads);
     Run("platform_matching_ignores_case", platform_matching_ignores_case);
