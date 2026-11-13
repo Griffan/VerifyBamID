@@ -1,6 +1,6 @@
 # Checks --max-depth on a BAM from MakeMaxDepthTestBam, which has five reads at
 # each of two markers. MODE is one of:
-#   caps_every_marker     --max-depth 3 caps both markers alike
+#   caps_every_marker     --max-depth 3 keeps three of the five reads at both markers
 #   zero_means_no_limit   --max-depth 0 keeps all five reads at both markers
 #   negative_is_rejected  --max-depth -1 is an error
 # Keep every output under the build tree.
@@ -45,10 +45,8 @@ if(MODE STREQUAL "caps_every_marker")
         message(FATAL_ERROR "--max-depth 3 failed:\n${log}")
     endif()
     read_depths()
-    list(GET depths 0 first)
-    list(GET depths 1 second)
-    if(NOT first EQUAL second OR NOT first LESS 5)
-        message(FATAL_ERROR "--max-depth 3: expected both markers capped alike below 5, got ${depths}")
+    if(NOT depths STREQUAL "3;3")
+        message(FATAL_ERROR "--max-depth 3: expected three reads at both markers, got ${depths}")
     endif()
 elseif(MODE STREQUAL "zero_means_no_limit")
     run_verify_bam_id(0)
