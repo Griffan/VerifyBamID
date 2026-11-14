@@ -181,7 +181,7 @@ int execute(int argc, char **argv) {
   LONG_INT_PARAM("adjust-MQ", &mplp.capQ_thres,
                  "[Int] adjust mapping quality; "
                  "recommended:50, disable:0")
-  LONG_INT_PARAM("max-depth", &mplp.max_depth, "[Int] max per-file depth")
+  LONG_INT_PARAM("max-depth", &mplp.max_depth, "[Int] max per-file depth; 0 means no limit")
   LONG_PARAM("no-orphans", &noOrphan, "[Bool] do not use anomalous read pairs")
   LONG_PARAM("ignoreRG", &ignoreRG,
              "[Bool] ignore read-group tags; treat all reads as one sample group")
@@ -212,6 +212,9 @@ int execute(int argc, char **argv) {
   pl.Status();
 
   /// Pass along mpileup arguments
+  if (mplp.max_depth < 0) {
+    error("--max-depth must be 0 (no limit) or positive, not %d", mplp.max_depth);
+  }
   if (noOrphan)
     mplp.flag |= MPLP_NO_ORPHAN;
   else
