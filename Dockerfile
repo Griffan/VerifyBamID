@@ -5,7 +5,7 @@ FROM ubuntu:20.04 AS build
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LD_LIBRARY_PATH="/usr/local/lib"
 
-ARG HTSLIB_VERSION=1.23.1
+ARG HTSLIB_VERSION=1.25
 ARG VERSION=v2.0.3
 
 # apt update and install build requirements
