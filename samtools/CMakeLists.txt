@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(samtools)
 
 file(GLOB SOURCE_FILES *.c)
 
 add_library(samtools ${SOURCE_FILES})
-include_directories(samtools ${HTS_INCLUDE_DIRS})
-target_link_libraries(samtools ${HTS_LIBRARIES})
+include_directories(samtools)
+target_link_htslib(samtools)

@@ -26,12 +26,18 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         compiler: [gcc, clang]
+        htslib: [bundled]
         include:
           - os: ubuntu-22.04
             compiler: gcc-9
+            htslib: bundled
+          # Keeps the -DUSE_SYSTEM_HTSLIB=ON build that packagers use tested.
+          - os: ubuntu-latest
+            compiler: gcc
+            htslib: system
 
     runs-on: ${{ matrix.os }}
-    name: Build on ${{ matrix.os }} with ${{ matrix.compiler }}
+    name: Build on ${{ matrix.os }} with ${{ matrix.compiler }} (${{ matrix.htslib }} htslib)
 
     steps:
       - name: Checkout code
@@ -83,6 +89,7 @@ jobs:
           packages+=(
             libbz2-dev
             libcurl4-openssl-dev
+            libssl-dev
             zlib1g-dev
             liblzma-dev
           )
@@ -106,21 +113,22 @@ jobs:
           echo "short-sha=${COMMIT_HASH}" >> $GITHUB_OUTPUT
 
       - name: Cache htslib
+        if: matrix.htslib == 'system'
         id: cache-htslib
         uses: actions/cache@v4
         with:
           path: |
             /usr/local/lib/libhts*
             /usr/local/include/htslib
-          key: htslib-1.11-${{ runner.os }}
+          key: htslib-1.25-${{ runner.os }}
 
       - name: Download and build htslib
-        if: steps.cache-htslib.outputs.cache-hit != 'true'
+        if: matrix.htslib == 'system' && steps.cache-htslib.outputs.cache-hit != 'true'
         run: |
           cd /tmp
-          wget -q https://github.com/samtools/htslib/releases/download/1.11/htslib-1.11.tar.bz2
-          tar -xf htslib-1.11.tar.bz2
-          cd htslib-1.11
+          wget -q https://github.com/samtools/htslib/releases/download/1.25/htslib-1.25.tar.bz2
+          tar -xf htslib-1.25.tar.bz2
+          cd htslib-1.25
           ./configure --prefix=/usr/local
           make -j"$(nproc || sysctl -n hw.ncpu || echo 2)"
           if command -v sudo >/dev/null 2>&1; then
@@ -138,6 +146,7 @@ jobs:
           cmake \
             -DCMAKE_C_COMPILER=${{ env.CC }} \
             -DCMAKE_CXX_COMPILER=${{ env.CXX }} \
+            -DUSE_SYSTEM_HTSLIB=${{ matrix.htslib == 'system' && 'ON' || 'OFF' }} \
             ..
 
       - name: Build
@@ -161,7 +170,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: VerifyBamID-${{ runner.os }}-${{ steps.compiler.outputs.compiler-name }}-${{ steps.commit.outputs.short-sha }}-${{ github.run_number }}
+          name: VerifyBamID-${{ runner.os }}-${{ steps.compiler.outputs.compiler-name }}-${{ matrix.htslib }}-htslib-${{ steps.commit.outputs.short-sha }}-${{ github.run_number }}
           path: artifacts/
           retention-days: 30
 
