@@ -19,6 +19,8 @@ Fan Zhang, Matthew Flickinger, Sarah A. Gagliano Taliun, InPSYght Psychiatric Ge
 The official project name is **verifyBamID2**. The command-line executable is named `VerifyBamID`.
 
 ### From source code
+VerifyBamID requires [htslib](https://github.com/samtools/htslib) 1.25 or later.
+
   - mkdir build
   - cd build
   - cmake ..
@@ -116,13 +118,15 @@ $(VERIFY_BAM_ID_HOME)/bin/VerifyBamID --BamFile [/path/to/bam/or/cram/file] --SV
 /*To construct SVDPrefix auxillary files*/
 --RefVCF         [String] Reference panel VCF with genotype information, for generation of .UD .mu .bed files[Optional]
 /*Pileup information related*/
+--ReadType       [String] auto, short or long. Selects pileup defaults for the reads; see "Long reads" below. [default:auto]
 --Methylation    [Bool] Directional bisulfite (WGBS) / enzymatic methyl-seq (EM-seq) mode. Uses only observations that unambiguously identify an allele on each read's bisulfite-conversion strand, and disables MAPQ adjustment (--adjust-MQ) and BAQ (both penalize the expected C-to-T/G-to-A conversions). See the "Methylation sequencing" section below. [Optional]
 --no-orphans     [Bool] Skip anomalous read pairs in variant calling. Anomolous read pairs are those marked in the FLAG field as paired in sequencing but without the properly-paired flag set. [Optional]
 --ignoreRG       [Bool] Ignore read-group tags and treat all reads as one sample group regardless of BAM read-group headers. Reads are grouped by the input file name. [Optional]
---adjust-MQ      [Int] Coefficient for downgrading mapping quality for reads containing excessive mismatches. Given a read with a phred-scaled probability q of being generated from the mapped position, the new mapping quality is about sqrt((INT-q)/INT)*INT. A zero value disables this functionality; if enabled, the recommended value for BWA is 50. [default:40]
+--adjust-MQ      [Int] Coefficient for downgrading mapping quality for reads containing excessive mismatches. Given a read with a phred-scaled probability q of being generated from the mapped position, the new mapping quality is about sqrt((INT-q)/INT)*INT. A zero value disables this functionality; if enabled, the recommended value for BWA is 50. -1 means 40 for short reads and 0 for long reads. [default:-1]
 --max-depth      [Int] Setting this limit reduces the amount of memory and time needed to process regions with very high coverage. Passing zero for this option sets it to the highest possible value, effectively removing the depth limit. [8000]
 --incl-flags     [Int] Required flags: skip reads with mask bits unset [null]
 --excl-flags     [Int] Filter flags: skip reads with mask bits set [UNMAP,SECONDARY,QCFAIL,DUP]
+--DiscardNearIndel [Int] Discard bases this many or fewer aligned bases from an insertion or deletion in their read. 0 disables; -1 means 2 for long reads and 0 for short reads. [default:-1]
 /*Below are deprecated but still available*/
 --UDPath         [String] .UD matrix file from SVD result of genotype matrix[Required]
 --MeanPath       [String] .mu matrix file of genotype matrix[Required]
@@ -149,6 +153,20 @@ Fourth line: Estimated contamination level
 Also, upon the completion of each run, you may find two files ending with suffix:
 * “.selfSM” which shares the same format as VB1(https://genome.sph.umich.edu/wiki/VerifyBamID), and the key information FREEMIX indicates the estimated contamination level.
 * “.Ancestry” which contains the PC coordinates for both intended sample and contaminating sample, with each row being one PC.
+
+## Long reads
+
+VerifyBamID works with long reads (Oxford Nanopore, PacBio) as well as short reads. `--ReadType` selects suitable pileup settings, and by default (`auto`) it detects the read type from the BAM/CRAM:
+
+* The reads are **long** if every `@RG` header line has `PL:ONT` or `PL:PACBIO`, or if the median length of the first 500 primary mapped reads (excluding duplicates and QC failures) is at least 1000 bp. Otherwise they are **short**. The decision and its reason are logged. `--ReadType` and `--DiscardNearIndel` have no effect with `--PileupFile`.
+* For **long** reads, BAQ is disabled and `--adjust-MQ` defaults to 0. BAQ's cost grows with read length times the read's net insertion/deletion imbalance, which for long reads can mean hours of computation and tens of gigabytes of memory per read. The `--adjust-MQ` mismatch heuristic was designed for short reads.
+* Also for **long** reads, bases within 2 aligned bases of an insertion or deletion in their read are discarded (`--DiscardNearIndel` defaults to 2). When an indel error sits next to a SNP, the aligner often places it on the far side and reads the SNP as the reference base, which looks like contamination. On clean public ONT and PacBio samples this cuts the reported contamination about fivefold, at a cost of 0.5–1.3% of the bases.
+* Also for **long** reads, each read counts at most once at a marker. An ONT fold-back read can align twice over the same position, as a primary alignment and a supplementary alignment on the other strand, and both copies observe the same molecule. If the copies show different alleles (a deletion counts as one), all of them are discarded, including copies that the base-quality or near-indel filters would have discarded anyway. Otherwise the copy with the highest base quality that passes those filters is kept.
+* For **short** reads, BAQ is on, `--adjust-MQ` defaults to 40, no bases are discarded near indels (BAQ already lowers their qualities), and overlapping mates are handled as in `samtools mpileup`.
+
+An explicit `--adjust-MQ` or `--DiscardNearIndel` value is always used as given. `--Methylation` still disables both BAQ and MAPQ adjustment; with short reads that leaves bases near indels unprotected, so consider `--DiscardNearIndel 2` there. Counting each read once has no separate switch: `--ReadType short` turns it off along with the other long-read settings. Use `--ReadType short` or `--ReadType long` to override detection.
+
+**Choose a panel whose markers are further apart than your reads are long.** Each read samples a single molecule from either the intended sample or the contaminant, so it is one piece of evidence. A read that covers several markers is counted at each of them, so the likelihood overstates the evidence, and where markers cluster, reads over the clusters count for more than others. Aim for each read to cover, on average, no more than one marker. The bundled 10k panels (for example `resource/1000g.phase3.10k.b38.vcf.gz.dat` or `resource/hgdp.10k.b38.vcf.gz.dat`) have markers about 270 kb apart on average (median about 150 kb) and suit long reads. The 100k panels have markers about 27 kb apart (median about 14 kb), so long reads often cover several markers. When building a panel with `--RefVCF`, thin the sites to a similar spacing.
 
 ## Methylation sequencing (bisulfite / EM-seq)
 

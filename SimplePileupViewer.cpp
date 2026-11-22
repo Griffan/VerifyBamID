@@ -1,27 +1,40 @@
 #include "SimplePileupViewer.h"
 
 #include <algorithm>
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fstream>
 #include <getopt.h>
 #include <iostream>
 #include <limits.h>
+#include <map>
 #include <math.h>
 #include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 #include <sys/stat.h>
+#include <unordered_map>
+#include <vector>
 
 #include "Error.h"
 #include "htslib/khash_str2int.h"
 #include "htslib/kstring.h"
 #include "htslib/sam.h"
-#include "htslib/vcf.h"
 #include "sample.h"
 #include "samtools.h"
 #include "MethylationModel.h"
+
+// Pileups read the markers through htslib's multi-region iterator, which had
+// fixes in every release from 1.21 to 1.25: out-of-bounds CRAM reads (1.21),
+// errors reported as end of file (1.22), long alignments dropped by threaded
+// CRAM iterators (1.23), unreliable S3 reads (1.24), and a double free and a
+// leak when building the iterator (1.25).
+#if HTS_VERSION < 102500
+#error "VerifyBamID requires htslib 1.25 or later"
+#endif
 
 // Encode one pileup observation into tmpBase in genome-forward orientation,
 // following samtools' pileup-string convention: '.'/',' for a reference match
@@ -48,6 +61,143 @@ pileup_seq(FILE *fp, const bam_pileup1_t *p, int pos, int ref_len, const char *r
     }
     tmpBase.push_back(c);
     return true;
+}
+
+/// One read's entry at a marker: a base, or a deletion when each read counts
+/// once. `usable` means it passed the per-base filters on its own.
+namespace {
+struct Observation {
+    const bam_pileup1_t *p;
+    int qual;
+    bool usable;
+    bool keep;
+};
+}
+
+/// Allele code for the agreement test: a deletion, or no allele information.
+static const int kDeletionAllele = 16;
+static const int kNoAllele = -1;
+
+/// The allele a read shows at this pileup position, as a 4-bit base code with
+/// '=' resolved to the reference base, kDeletionAllele for a deletion, or
+/// kNoAllele for an N.
+static inline int alleleAt(const bam_pileup1_t *p, int refCode) {
+    if (p->is_del) return kDeletionAllele;
+    const int code = p->qpos < p->b->core.l_qseq ? bam_seqi(bam_get_seq(p->b), p->qpos) : 15;
+    if (code == 0) return refCode;
+    return code == 15 ? kNoAllele : code;
+}
+
+/**
+ * Sets `keep` so that each read counts at most once at a marker. Two
+ * alignments of one read, such as an ONT fold-back read whose supplementary
+ * alignment covers its own primary, observe one molecule. If they show
+ * different alleles (a deletion is one; an N is none), at least one is a
+ * sequencing error and none is kept. Otherwise the usable copy with the
+ * highest base quality is kept. Agreement is judged before the per-base
+ * filters, so a filter cannot hide the copy that disagrees and let a misread
+ * copy through. `refCode` is the reference base's 4-bit code. Adds to
+ * `repeated` the reads with more than one entry and to `disagreeing` those
+ * discarded.
+ */
+static void countEachReadOnce(std::vector<Observation> &observations, int refCode, long &repeated,
+                              long &disagreeing) {
+    std::vector<size_t> order(observations.size());
+    for (size_t k = 0; k < order.size(); ++k) order[k] = k;
+    std::sort(order.begin(), order.end(), [&observations](size_t a, size_t b) {
+        const int cmp = strcmp(bam_get_qname(observations[a].p->b), bam_get_qname(observations[b].p->b));
+        return cmp != 0 ? cmp < 0 : a < b;
+    });
+    for (size_t start = 0; start < order.size();) {
+        const char *name = bam_get_qname(observations[order[start]].p->b);
+        size_t end = start + 1;
+        while (end < order.size() && strcmp(bam_get_qname(observations[order[end]].p->b), name) == 0) ++end;
+        // A read name of "*" means the name is missing, so those reads are distinct.
+        if (end - start == 1 || strcmp(name, "*") == 0) {
+            for (size_t k = start; k < end; ++k) observations[order[k]].keep = observations[order[k]].usable;
+        } else {
+            ++repeated;
+            int allele = kNoAllele;
+            bool agree = true;
+            Observation *best = NULL;
+            for (size_t k = start; k < end; ++k) {
+                Observation &o = observations[order[k]];
+                const int a = alleleAt(o.p, refCode);
+                if (a != kNoAllele) {
+                    if (allele == kNoAllele) allele = a;
+                    else if (a != allele) agree = false;
+                }
+                if (o.usable && (!best || o.qual > best->qual)) best = &o;
+            }
+            if (!agree) ++disagreeing;
+            else if (best) best->keep = true;
+        }
+        start = end;
+    }
+}
+
+/**
+ * Pileup constructor that records, for each CIGAR operation of a read, the
+ * query position where it starts. With the operation index htslib gives each
+ * pileup entry (cigar_ind), this finds a base's offset within its operation
+ * without walking the CIGAR at every marker, which matters for long reads with
+ * tens of thousands of operations.
+ */
+static int recordCigarOpStarts(void *, const bam1_t *b, bam_pileup_cd *cd) {
+    const uint32_t *cigar = bam_get_cigar(b);
+    // One spare entry, so a read without a CIGAR does not request malloc(0).
+    int32_t *starts = (int32_t *) malloc((b->core.n_cigar + 1) * sizeof(int32_t));
+    if (!starts) error("Out of memory recording the CIGAR of read %s", bam_get_qname(b));
+    int32_t queryPos = 0;
+    for (uint32_t k = 0; k < b->core.n_cigar; ++k) {
+        starts[k] = queryPos;
+        if (bam_cigar_type(bam_cigar_op(cigar[k])) & 1) queryPos += bam_cigar_oplen(cigar[k]);
+    }
+    cd->p = starts;
+    return 0;
+}
+
+static int freeCigarOpStarts(void *, const bam1_t *, bam_pileup_cd *cd) {
+    free(cd->p);
+    cd->p = NULL;
+    return 0;
+}
+
+static inline bool isAlignedOp(int op) {
+    return op == BAM_CMATCH || op == BAM_CEQUAL || op == BAM_CDIFF;
+}
+
+/**
+ * Whether the base at `p` is `limit` or fewer aligned bases from an insertion
+ * or deletion in its read, counting the base itself, so a base next to an
+ * indel is 1 aligned base from it. Clips and reference skips end the search
+ * on their side, and padding is passed over. Requires the starts recorded by
+ * recordCigarOpStarts in p->cd.
+ */
+static bool isNearIndel(const bam_pileup1_t *p, int limit) {
+    const uint32_t *cigar = bam_get_cigar(p->b);
+    const int nOps = p->b->core.n_cigar;
+    const int k = p->cigar_ind;
+    const int64_t offset = p->qpos - ((const int32_t *) p->cd.p)[k];
+
+    int64_t distance = offset + 1;
+    for (int i = k - 1; i >= 0 && distance <= limit; --i) {
+        const int op = bam_cigar_op(cigar[i]);
+        if (op == BAM_CINS || op == BAM_CDEL) return true;
+        if (op == BAM_CPAD) continue;
+        if (!isAlignedOp(op)) break;
+        distance += bam_cigar_oplen(cigar[i]);
+    }
+
+    distance = bam_cigar_oplen(cigar[k]) - offset;
+    for (int i = k + 1; i < nOps && distance <= limit; ++i) {
+        const int op = bam_cigar_op(cigar[i]);
+        if (op == BAM_CINS || op == BAM_CDEL) return true;
+        if (op == BAM_CPAD) continue;
+        if (!isAlignedOp(op)) break;
+        distance += bam_cigar_oplen(cigar[i]);
+    }
+    return false;
 }
 
 
@@ -77,12 +227,6 @@ typedef struct {
     mplp_ref_t *ref;
     const mplp_conf_t *conf;
 } mplp_aux_t;
-
-typedef struct {
-    int n;
-    int *n_plp, *m_plp;
-    bam_pileup1_t **plp;
-} mplp_pileup_t;
 
 static int mplp_get_ref(mplp_aux_t *ma, int tid, char **ref, int *ref_len) {
     mplp_ref_t *r = ma->ref;
@@ -236,49 +380,106 @@ static int mplp_func(void *data, bam1_t *b) {
     return ret;
 }
 
+/**
+ * Groups the markers by contig (tid in `header`) as sorted, distinct 0-based
+ * positions. Markers on contigs absent from the header, and repeats of a
+ * position, are dropped with one warning each.
+ */
+static std::vector<std::vector<int>> MarkerPositionsByTid(const std::vector<region_t> &markers,
+                                                          sam_hdr_t *header) {
+    std::vector<std::vector<int>> positionsByTid(sam_hdr_nref(header));
+    std::unordered_map<std::string, int> tidByContig;
+    std::map<std::string, int> skippedPerContig;
+    for (const region_t &marker : markers) {
+        auto known = tidByContig.find(marker.chr);
+        if (known == tidByContig.end())
+            known = tidByContig.emplace(marker.chr, sam_hdr_name2tid(header, marker.chr.c_str())).first;
+        if (known->second < 0) {
+            ++skippedPerContig[marker.chr];
+            continue;
+        }
+        positionsByTid[known->second].push_back(marker.beg);
+    }
+
+    size_t duplicates = 0;
+    for (std::vector<int> &positions : positionsByTid) {
+        std::sort(positions.begin(), positions.end());
+        const auto distinctEnd = std::unique(positions.begin(), positions.end());
+        duplicates += positions.end() - distinctEnd;
+        positions.erase(distinctEnd, positions.end());
+    }
+
+    if (!skippedPerContig.empty()) {
+        int skipped = 0;
+        std::string names;
+        for (const auto &contig : skippedPerContig) {
+            skipped += contig.second;
+            names += (names.empty() ? "" : ", ") + contig.first;
+        }
+        warning("Skipping %d marker(s) on %zu contig(s) absent from the BAM/CRAM header: %s",
+                skipped, skippedPerContig.size(), names.c_str());
+    }
+    if (duplicates) warning("Ignoring %zu repeated marker position(s) in the panel", duplicates);
+    return positionsByTid;
+}
+
+/// One "{chr}:pos-pos" region per marker, from 0-based positions indexed by tid.
+static std::vector<std::string> MarkerRegions(sam_hdr_t *header, const std::vector<std::vector<int>> &positionsByTid) {
+    std::vector<std::string> regions;
+    for (int tid = 0; tid < (int) positionsByTid.size(); ++tid) {
+        const std::string contig = sam_hdr_tid2name(header, tid);
+        for (int pos : positionsByTid[tid]) {
+            // Braces stop contig names that contain ':' being parsed as a range.
+            regions.push_back("{" + contig + "}:" + std::to_string(pos + 1) + "-" + std::to_string(pos + 1));
+        }
+    }
+    return regions;
+}
+
 /*
- * Performs pileup
+ * Piles up reads at the markers in bedVec. A multi-region iterator returns each
+ * record overlapping any marker exactly once, so a read spanning many markers
+ * is decoded and processed once.
  * @param conf configuration for this pileup
  * @param n number of files specified in fn
  * @param fn filenames
  */
 int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
-  bool BedEOF;
-  hts_idx_t *idx = NULL;
-  numBases = 0;
-  avgDepth = 0;
-  sdDepth = 0;
+    numBases = 0;
+    avgDepth = 0;
+    sdDepth = 0;
 
-  mplp_aux_t **data;
-  int i(0), tid(0), pos(0), *n_plp(0), beg0 = 0, end0 = INT_MAX, ref_len(0),
-                                       max_depth(0), max_indel_depth(0);
-  const bam_pileup1_t **plp;
-  mplp_ref_t mp_ref = MPLP_REF_INIT;
-  bam_mplp_t iter;
-    bam_hdr_t *h = NULL; /* header of first file in input list */
-    char *ref;
-    void *rghash = NULL;
-    FILE *pileup_fp = NULL;
-
-    htsFile *bcf_fp = NULL;
-    bcf_hdr_t *bcf_hdr = NULL;
-
-    bam_sample_t *sm = NULL;
-    kstring_t buf;
-    mplp_pileup_t gplp;
-
-    memset(&gplp, 0, sizeof(mplp_pileup_t));
-    memset(&buf, 0, sizeof(kstring_t));
-//    memset(&bc, 0, sizeof(bcf_call_t));
-    data = (mplp_aux_t **) calloc(n, sizeof(mplp_aux_t *));
-    plp = (const bam_pileup1_t **) calloc(n, sizeof(bam_pileup1_t *));
-    n_plp = (int *) calloc(n, sizeof(int));
-    sm = bam_smpl_init();
+    // A build against htslib 1.25 can still load an older libhts at run time,
+    // because the library's soname has not changed since htslib 1.10.
+    int htsMajor = 0, htsMinor = 0;
+    if (sscanf(hts_version(), "%d.%d", &htsMajor, &htsMinor) != 2 || htsMajor * 100 + htsMinor < 125)
+        error("VerifyBamID requires htslib 1.25 or later, but loaded htslib %s", hts_version());
 
     if (n == 0) {
         fprintf(stderr, "[%s] no input file/data given\n", __func__);
         exit(EXIT_FAILURE);
     }
+
+    mplp_aux_t **data = (mplp_aux_t **) calloc(n, sizeof(mplp_aux_t *));
+    hts_idx_t **idx = (hts_idx_t **) calloc(n, sizeof(hts_idx_t *));
+    const bam_pileup1_t **plp = (const bam_pileup1_t **) calloc(n, sizeof(bam_pileup1_t *));
+    int *n_plp = (int *) calloc(n, sizeof(int));
+    int i, tid(0), pos(0), ref_len(0);
+    char *ref;
+    mplp_ref_t mp_ref = MPLP_REF_INIT;
+    bam_hdr_t *h = NULL; /* header of first file in input list */
+    bam_sample_t *sm = bam_smpl_init();
+    FILE *pileup_fp = NULL;
+
+    // Decoding only these fields skips CRAM aux tags, such as the large MM/ML
+    // base-modification tags on long reads. Read names and mate fields are
+    // needed to detect overlapping read pairs. Aux tags are still decoded when
+    // BAQ is on, because BAQ reuses a read's existing BQ/ZQ tag, and in
+    // methylation mode, which reads the aligner's conversion-strand tags.
+    int requiredFields = SAM_QNAME | SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR |
+                         SAM_RNEXT | SAM_PNEXT | SAM_TLEN | SAM_SEQ | SAM_QUAL;
+    if (conf->rghash) requiredFields |= SAM_RGAUX;
+    if ((conf->flag & MPLP_REALN) || conf->methylation) requiredFields |= SAM_AUX;
 
     // read the header of each file in the list and Initialize data
     for (i = 0; i < n; ++i) {
@@ -291,6 +492,10 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
         }
         if (hts_set_opt(data[i]->fp, CRAM_OPT_DECODE_MD, 0)) {
             fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
+            exit(EXIT_FAILURE);
+        }
+        if (hts_set_opt(data[i]->fp, CRAM_OPT_REQUIRED_FIELDS, requiredFields)) {
+            fprintf(stderr, "Failed to set CRAM_OPT_REQUIRED_FIELDS value\n");
             exit(EXIT_FAILURE);
         }
         if (conf->fai_fname && hts_set_fai_filename(data[i]->fp, conf->fai_fname) != 0) {
@@ -306,43 +511,14 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
             exit(EXIT_FAILURE);
         }
         bam_smpl_add(sm, fn[i], (conf->flag & MPLP_IGNORE_RG) ? 0 : h_tmp->text);
-
-        if (0) {
-            SEQ_SM = std::string(sm->smpl[0]);//sm->n:# of sample; sm->m:max # of sample
-            warning("The BAM or CRAM file contains more than 1 sample, please be aware the risk! Ignored...");
-        } else {
-            if (sm->n == 1) SEQ_SM = std::string(sm->smpl[0]);//sm->n:# of sample; sm->m:max # of sample
-            else
-                error("This BAM or CRAM file contains more than 1 sample, please demultiplex or separate first!");
-        }
-        idx = sam_index_load(data[i]->fp, fn[i]);
-        if (idx == NULL) {
+        if (sm->n == 1) SEQ_SM = std::string(sm->smpl[0]);//sm->n:# of sample; sm->m:max # of sample
+        else
+            error("This BAM or CRAM file contains more than 1 sample, please demultiplex or separate first!");
+        idx[i] = sam_index_load(data[i]->fp, fn[i]);
+        if (idx[i] == NULL) {
             fprintf(stderr, "[%s] fail to load index for %s\n", __func__, fn[i]);
             exit(EXIT_FAILURE);
         }
-        region_t firstReg;
-        conf->reg = new char[1024];
-        REGET:
-        firstReg = GetNextRegion(BedEOF);
-        sprintf(conf->reg, "%s:%d-%d", firstReg.chr.c_str(), firstReg.beg + 1, firstReg.end);
-        if (conf->reg) {
-//            hts_idx_t *idx = sam_index_load(data[i]->fp, fn[i]);
-
-            if ((data[i]->iter = sam_itr_querys(idx, h_tmp, conf->reg)) == 0) {
-                fprintf(stderr, "[Warning::%s] initialization fail to parse region '%s' with %s, skip...\n", __func__,
-                        conf->reg, fn[i]);
-                if (BedEOF) {
-                    delete[] conf->reg;
-                    conf->reg = nullptr;
-                    fprintf(stderr, "No reads found in any of the regions, exit!");
-                    exit(EXIT_FAILURE);
-                }
-                goto REGET;
-            }
-            if (i == 0) beg0 = data[i]->iter->beg, end0 = data[i]->iter->end;
-//            hts_idx_destroy(idx);
-        } else
-            data[i]->iter = NULL;
 
         if (i == 0) h = data[i]->h = h_tmp; // save the header of the first file
         else {
@@ -354,69 +530,53 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
             data[i]->h = h;
         }
     }
-    // allocate data storage proportionate to number of samples being studied sm->n
-    gplp.n = sm->n;
-    gplp.n_plp = (int *) calloc(sm->n, sizeof(int));
-    gplp.m_plp = (int *) calloc(sm->n, sizeof(int));
-    gplp.plp = (bam_pileup1_t **) calloc(sm->n, sizeof(bam_pileup1_t *));
+
+    const std::vector<std::vector<int>> markerPositions = MarkerPositionsByTid(*bedVec, h);
+    std::vector<std::string> regions = MarkerRegions(h, markerPositions);
+    if (regions.empty())
+        error("No markers are on contigs in the BAM/CRAM header; check that the SVD panel and the "
+              "alignments use the same reference and contig names");
+    std::vector<char *> regionPtrs;
+    regionPtrs.reserve(regions.size());
+    for (std::string &region : regions) regionPtrs.push_back(&region[0]);
+    for (i = 0; i < n; ++i) {
+        data[i]->iter = sam_itr_regarray(idx[i], h, regionPtrs.data(), regionPtrs.size());
+        if (!data[i]->iter) error("Failed to create an iterator over the markers in %s", fn[i]);
+    }
 
     fprintf(stderr, "[%s] %d sample(s) in %d input file(s)\n", __func__, sm->n, n);
 
-    // init pileup
-    iter = bam_mplp_init(n, mplp_func, (void **) data);
+    bam_mplp_t iter = bam_mplp_init(n, mplp_func, (void **) data);
     if (conf->flag & MPLP_SMART_OVERLAPS) bam_mplp_init_overlaps(iter);
+    if (conf->discard_near_indel > 0) {
+        bam_mplp_constructor(iter, recordCigarOpStarts);
+        bam_mplp_destructor(iter, freeCigarOpStarts);
+    }
     // Zero means no limit, as in samtools mpileup.
-    max_depth = conf->max_depth > 0 ? conf->max_depth : INT_MAX;
+    const int max_depth = conf->max_depth > 0 ? conf->max_depth : INT_MAX;
     if ((int64_t) max_depth * sm->n > 1 << 20)
         fprintf(stderr, "[%s] Max depth is above 1M. Potential memory hog!\n", __func__);
-
     fprintf(stderr, "[%s] Set max per-file depth to %d\n", __func__, max_depth);
-
-    max_indel_depth = conf->max_indel_depth * sm->n;
     bam_mplp_set_maxcnt(iter, max_depth);
-    bcf1_t *bcf_rec = bcf_init1();
-    int ret;
-    // begin pileup
 
-    //adaptor for viewer
     int32_t globalIndex = 0;
-
-
-    while (1) {
-        ret = bam_mplp_auto(iter, &tid, &pos, n_plp, plp);
-        //Fan changed:
-        //Now we assume the bam files are sorted, then sites within each region should be consecutive,
-        // then each time pos > end0, we can update beg0 and end0, as well as data[0]->iter
-
-        //old implementation:
-        //if (conf->reg && (pos < beg0 || pos >= end0)) continue; // out of the region requested
-        //new implementation:
-        if (ret <= 0 || pos >= end0) {
-            if (BedEOF) break;
-            char reg[1024];
-            region_t tmp;
-            REGET2:
-            tmp = GetNextRegion(BedEOF);
-            sprintf(reg, "%s:%d-%d", tmp.chr.c_str(), tmp.beg + 1, tmp.end);
-            notice("Process %s...", reg);
-            if ((data[0]->iter = sam_itr_querys(idx, data[0]->h, reg)) == 0) {
-                fprintf(stderr, "[Warning::%s] fail to parse region '%s' with %s\n", __func__, reg, fn[0]);
-                if (BedEOF) {
-                    break;
-                }
-                goto REGET2;
-            }
-            beg0 = data[0]->iter->beg, end0 = data[0]->iter->end;
-            bam_mplp_destroy(iter);
-            iter = bam_mplp_init(n, mplp_func, (void **) data);
-            if (conf->flag & MPLP_SMART_OVERLAPS) bam_mplp_init_overlaps(iter);
-            // A new pileup starts with htslib's default depth limit.
-            bam_mplp_set_maxcnt(iter, max_depth);
-            continue;
-        } else if (pos < beg0) continue;
-
-/*if original -l option*/    if (conf->bed && tid >= 0 &&
-                                 !bed_overlap(conf->bed, h->target_name[tid], pos, pos + 1))
+    int lastTid = -1;
+    const std::vector<int> *contigMarkers = NULL;
+    size_t nextMarker = 0;
+    int ret;
+    while ((ret = bam_mplp_auto(iter, &tid, &pos, n_plp, plp)) > 0) {
+        if (tid != lastTid) {
+            notice("Processing %s...", h->target_name[tid]);
+            lastTid = tid;
+            contigMarkers = &markerPositions[tid];
+            nextMarker = 0;
+        }
+        // The reads overlap markers, but the pileup also yields every other
+        // position they cover. Columns arrive in coordinate order, so a cursor
+        // over the contig's sorted marker positions picks out the markers without
+        // a lookup per column.
+        while (nextMarker < contigMarkers->size() && (*contigMarkers)[nextMarker] < pos) ++nextMarker;
+        if (nextMarker == contigMarkers->size() || (*contigMarkers)[nextMarker] != pos)
             continue;
 
         mplp_get_ref(data[0], tid, &ref, &ref_len);
@@ -424,29 +584,13 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
         {
             //fprintf(pileup_fp, "%s\t%d\t%c", h->target_name[tid], pos + 1, (ref && pos < ref_len)? ref[pos] : 'N');
 
+            // Marker positions are distinct and each column is visited once, so
+            // every marker gets exactly one entry.
             std::string chr = h->target_name[tid];
-            bool existed(false);
-
-            if (posIndex.find(chr) != posIndex.end())//chr existed
-            {
-                if (posIndex[chr].find(pos + 1) != posIndex[chr].end())//pos existed
-                {
-                    existed = true;
-                } else {
-                    posIndex[chr][pos + 1] = globalIndex;
-                    globalIndex++;
-                }
-            } else {
-                posIndex[chr][pos + 1] = globalIndex;
-                globalIndex++;
-            }
-
-            if (existed) {
-                warning("Duplicated marker %s:%d present, skip ...", chr.c_str(), pos + 1);
-                continue;
-            }
+            posIndex[chr][pos + 1] = globalIndex++;
 
             std::vector<char> tmpBase, tmpQual;
+            std::vector<Observation> observations;
 
             // In methylation mode, resolve this marker's alleles once so each
             // read's observation can be tested for bisulfite ambiguity below.
@@ -471,18 +615,12 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
                 } else {
                     /*calculate number of reads covering snps*/
 //                    numBases += n_plp[i];
-                    // Push each read's base and quality together in a single
-                    // pass so baseInfo and qualInfo stay in lockstep. A base is
-                    // recorded (and its quality with it) only when pileup_seq
-                    // actually emits one: deletions emit nothing, so pushing a
-                    // quality for them would shift every later quality at this
-                    // marker onto the wrong base.
                     for (j = 0; j < n_plp[i]; ++j) {//each covered read in ith bam file
                         const bam_pileup1_t *p = plp[i] + j;
-                        // Deletions and ref-skips contribute no base; skip them
-                        // before accessing qpos/QUAL (qpos is not meaningful for
-                        // a deletion and could be out of range).
-                        if (p->is_del || p->is_refskip) continue;
+                        if (p->is_refskip) continue;
+                        // A deletion contributes no base, but when each read
+                        // counts once it can show that a read's copies disagree.
+                        if (p->is_del && !conf->count_each_read_once) continue;
                         // Methylation mode: drop this observation when the
                         // marker's alleles cannot be told apart on this read's
                         // conversion strand. The test is per (marker alleles,
@@ -494,16 +632,18 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
                             (mRef == 0 ||
                              !observationUsable(mRef, mAlt, conversionStrandOf(p->b))))
                             continue;
-                        int c = p->qpos < p->b->core.l_qseq
-                                ? bam_get_qual(p->b)[p->qpos]
-                                : 0;
-                        if (c >= conf->min_baseQ)//SimplePileupViewer Change
-                        {
-                            if (pileup_seq(pileup_fp, p, pos, ref_len, ref, tmpBase)) {
-                                int q = c + 33 < 126 ? c + 33 : 126;
-                                tmpQual.push_back(q);
+                        Observation o{p, 0, false, false};
+                        // qpos is not meaningful for a deletion and could be out of range.
+                        if (!p->is_del) {
+                            o.qual = p->qpos < p->b->core.l_qseq ? bam_get_qual(p->b)[p->qpos] : 0;
+                            if (o.qual >= conf->min_baseQ) {
+                                if (conf->discard_near_indel > 0 && isNearIndel(p, conf->discard_near_indel))
+                                    ++discardedNearIndel;
+                                else
+                                    o.usable = true;
                             }
                         }
+                        observations.push_back(o);
                     }
 //                    if (conf->flag & MPLP_PRINT_MAPQ) {//multiple pileups
 //                        putc('\t', pileup_fp);
@@ -530,61 +670,62 @@ int SimplePileupViewer::SimplePileup(mplp_conf_t *conf, int n, char **fn) {
 //                    }
                 }
             }
+            if (conf->count_each_read_once) {
+                const int refCode = ref && pos < ref_len ? seq_nt16_table[(unsigned char) ref[pos]] : 15;
+                countEachReadOnce(observations, refCode, repeatedReads, discardedDisagreeing);
+            } else {
+                for (Observation &o : observations) o.keep = o.usable;
+            }
+            // Push each base and its quality together so baseInfo and qualInfo
+            // stay in lockstep.
+            for (const Observation &o : observations) {
+                if (!o.keep) continue;
+                if (pileup_seq(pileup_fp, o.p, pos, ref_len, ref, tmpBase))
+                    tmpQual.push_back(o.qual + 33 < 126 ? o.qual + 33 : 126);
+            }
             if(tmpBase.size()>0)
             {
                 effectiveNumSite++;
                 numBases +=tmpBase.size();
             }
             // putc('\n', pileup_fp);
-            if (not existed) {
-                baseInfo.push_back(tmpBase);
-                qualInfo.push_back(tmpQual);
-            }
+            baseInfo.push_back(tmpBase);
+            qualInfo.push_back(tmpQual);
 
         }
 
     }
+    if (ret < 0)
+        error("Failed while reading alignments; check that the input is coordinate-sorted and intact");
+
     avgDepth = double(numBases) / GetNumMarker();
     fprintf(stderr, "[%s] Total Number Bases: %d\n", __func__, numBases);
     fprintf(stderr, "[%s] Total Number Markers: %d\n", __func__, GetNumMarker());
+    if (conf->discard_near_indel > 0)
+        notice("Discarded %ld base(s) within %d aligned base(s) of an indel in their read", discardedNearIndel,
+               conf->discard_near_indel);
+    if (conf->count_each_read_once)
+        notice("Counted each read once per marker: a read was aligned more than once at a marker %ld time(s), "
+               "and %ld of those were discarded because the alignments disagreed", repeatedReads,
+               discardedDisagreeing);
 
-    hts_idx_destroy(idx);
-
-    // clean up
-//    free(bc.tmp.s);
-    bcf_destroy1(bcf_rec);
-    if (bcf_fp) {
-        hts_close(bcf_fp);
-        bcf_hdr_destroy(bcf_hdr);
-//        bcf_call_destroy(bca);
-//        free(bc.PL);
-//        free(bc.DP4);
-//        free(bc.ADR);
-//        free(bc.ADF);
-//        free(bc.fmt_arr);
-//        free(bcr);
-    }
-    //if (pileup_fp && conf->output_fname) fclose(pileup_fp);
     bam_smpl_destroy(sm);
-    free(buf.s);
-    for (i = 0; i < gplp.n; ++i) free(gplp.plp[i]);
-    free(gplp.plp);
-    free(gplp.n_plp);
-    free(gplp.m_plp);
-//    bcf_call_del_rghash(rghash);
     bam_mplp_destroy(iter);
     bam_hdr_destroy(h);
     for (i = 0; i < n; ++i) {
-        sam_close(data[i]->fp);
         if (data[i]->iter) hts_itr_destroy(data[i]->iter);
+        // A CRAM index refers to its open file, so it must be freed before the file is closed.
+        hts_idx_destroy(idx[i]);
+        sam_close(data[i]->fp);
         free(data[i]);
     }
     free(data);
+    free(idx);
     free(plp);
     free(n_plp);
     free(mp_ref.ref[0]);
     free(mp_ref.ref[1]);
-    return ret;
+    return 0;
 }
 
 #define MAX_PATH_LEN 1024
@@ -656,7 +797,6 @@ SimplePileupViewer::SimplePileupViewer(std::vector<region_t> *BedPtr,
                                        mplp_conf_t *mplpPtr, const BED &chooseBed,
                                        int nfiles) {
   bedVec = BedPtr;
-  regIndex = 0;
   // Retain the marker allele table so methylation mode can look up each
   // marker's ref/alt while building the pileup. Only methylation mode reads it,
   // so skip the (panel-sized) copy on ordinary runs.
