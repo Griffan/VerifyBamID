@@ -41,6 +41,7 @@ class ContaminationEstimator {
 public:
     bool isPCFixed;
     bool isAlphaFixed;
+    double maxAlpha;
     bool isAFknown;
     bool isHeter;
     bool isPileupInput;
