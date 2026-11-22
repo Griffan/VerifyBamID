@@ -191,6 +191,31 @@ public:
             GF[2] = AF * AF;
         }
 
+        // Returns log( sum_{g1,g2} exp(baseLKAccum[g1][g2]) * GF[g1] * GF2[g2] ), evaluated
+        // with log-sum-exp so the result stays finite when every term underflows a double.
+        // Zero-prior terms drop out; the result is -infinity only if every term is impossible.
+        static double LogMarginalLK(const double baseLKAccum[3][3], const double *GF, const double *GF2) {
+            double logGF[3], logGF2[3];
+            for (int g = 0; g < 3; ++g) {
+                logGF[g] = log(GF[g]);
+                logGF2[g] = log(GF2[g]);
+            }
+            double terms[9];
+            double maxTerm = -std::numeric_limits<double>::infinity();
+            for (int g1 = 0; g1 < 3; ++g1) {
+                for (int g2 = 0; g2 < 3; ++g2) {
+                    const double term = baseLKAccum[g1][g2] + logGF[g1] + logGF2[g2];
+                    terms[3 * g1 + g2] = term;
+                    if (term > maxTerm) maxTerm = term;
+                }
+            }
+            if (maxTerm == -std::numeric_limits<double>::infinity()) return maxTerm;
+
+            double scaledSum = 0;
+            for (double term : terms) scaledSum += exp(term - maxTerm);
+            return maxTerm + log(scaledSum);
+        }
+
         inline double
         ComputeMixLLKs(const std::vector<double> &tPC1, const std::vector<double> &tPC2, const double alpha) {
 
@@ -301,30 +326,21 @@ public:
                             baseLKAccum[g1][g2] += logLkTable[bc][q][g1][g2];
                 }
 
-                // Keep the genotype-prior-weighted terms in log space. Direct
-                // exponentiation can underflow all nine terms at high depth,
-                // causing an informative marker to contribute zero instead.
-                double logGF[3], logGF2[3];
-                for (int g = 0; g < 3; ++g) {
-                    logGF[g] = log(GF[g]);
-                    logGF2[g] = log(GF2[g]);
-                }
-                double terms[9];
-                double maxTerm = -std::numeric_limits<double>::infinity();
-                for (int g1 = 0; g1 < 3; ++g1) {
-                    for (int g2 = 0; g2 < 3; ++g2) {
-                        const double term = baseLKAccum[g1][g2] + logGF[g1] + logGF2[g2];
-                        terms[3 * g1 + g2] = term;
-                        if (term > maxTerm) maxTerm = term;
-                    }
-                }
-                if (maxTerm == -std::numeric_limits<double>::infinity()) {
-                    sumLLK += maxTerm;
-                } else {
-                    double scaledSum = 0;
-                    for (double term : terms) scaledSum += exp(term - maxTerm);
-                    sumLLK += maxTerm + log(scaledSum);
-                }
+                // Marginalize over genotype pairs, weighting each by its prior
+                // probability under Hardy-Weinberg (GF for contaminating, GF2 for intended).
+                double markerLK = 0;
+                for (int g1 = 0; g1 < 3; ++g1)
+                    for (int g2 = 0; g2 < 3; ++g2)
+                        markerLK += exp(baseLKAccum[g1][g2]) * GF[g1] * GF2[g2];
+
+                // The direct sum underflows only at very deep markers (roughly 1,000+
+                // reads at a het site), so only those pay for the log-space calculation.
+                // While the sum is still a normal double, any terms lost to underflow
+                // are negligible relative to it.
+                if (markerLK >= std::numeric_limits<double>::min())
+                    sumLLK += log(markerLK);
+                else
+                    sumLLK += LogMarginalLK(baseLKAccum, GF, GF2);
             }
             return sumLLK;
         }
