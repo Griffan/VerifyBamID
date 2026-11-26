@@ -1,7 +1,8 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(statgen)
 
 file(GLOB CXX_SOURCE_FILES *.cpp)
 file(GLOB C_SOURCE_FILES *.c)
 
 add_library(statgen ${CXX_SOURCE_FILES} ${C_SOURCE_FILES})
+target_link_libraries(statgen ZLIB::ZLIB)

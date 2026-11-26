@@ -17,6 +17,15 @@
 
 // FIXME: currently I/O is unbuffered
 
+// htslib exports knet_open() and friends as wrappers around its own
+// knetFile, which has a different layout from this one. Renaming these keeps
+// the two apart when htslib is linked statically.
+#define knet_open statgen_knet_open
+#define knet_dopen statgen_knet_dopen
+#define knet_read statgen_knet_read
+#define knet_seek statgen_knet_seek
+#define knet_close statgen_knet_close
+
 #define KNF_TYPE_LOCAL 1
 #define KNF_TYPE_FTP   2
 #define KNF_TYPE_HTTP  3
