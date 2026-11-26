@@ -4,11 +4,6 @@ FROM ubuntu:26.04 AS build
 # Set noninterative mode
 ENV DEBIAN_FRONTEND=noninteractive
 
-# The release to build, and the repository to clone it from. VERSION must name
-# a release whose build bundles htslib.
-ARG VERSION=v2.0.3
-ARG REPO=https://github.com/Griffan/VerifyBamID.git
-
 # apt update and install build requirements. The build downloads htslib and
 # libdeflate over HTTPS and links them statically.
 RUN apt-get update \
@@ -24,9 +19,9 @@ RUN apt-get update \
         zlib1g-dev \
         liblzma-dev
 
-# Compile VerifyBamID. Version ${VERSION}
-WORKDIR /
-RUN git clone --depth 1 --branch ${VERSION} ${REPO} VerifyBamID
+# Build the source supplied in the Docker build context.
+WORKDIR /VerifyBamID
+COPY . .
 WORKDIR /VerifyBamID/build
 
 # -fsigned-char: VerifyBamID's genotype-missing sentinel relies on `char`
